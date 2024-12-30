@@ -1,5 +1,6 @@
 #pragma once
 #include <memory>
+#include <type_traits>
 
 #include "mathprim/core/defines.hpp"
 #include "mathprim/core/dim.hpp"
@@ -63,5 +64,16 @@ using index_buffer = basic_buffer<index_t>;
 
 template <typename T>
 using basic_buffer_ptr = std::unique_ptr<basic_buffer<T>>;
+
+template <typename T, device_t dev>
+struct buffer_traits {
+  static_assert(!std::is_same_v<T, T>, "Unsupported device type.");
+
+  static constexpr size_t alloc_alignment = 0;  ///< The alignment of the buffer.
+
+  static constexpr basic_buffer<T> make_buffer(const dim_t & /* shape */) {
+    MATHPRIM_UNREACHABLE();
+  }
+};
 
 }  // namespace mathprim

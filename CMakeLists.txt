@@ -13,8 +13,6 @@ if(${CMAKE_SOURCE_DIR} STREQUAL ${CMAKE_BINARY_DIR})
   )
 endif()
 
-project(mathprim)
-
 # master project detection with cmake variable
 if(CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
   set(MATHPRIM_MASTER_PROJECT ON)
@@ -22,12 +20,31 @@ else()
   set(MATHPRIM_MASTER_PROJECT OFF)
 endif()
 
-add_subdirectory(src)
+project(mathprim)
+# Test if cuda is available
+include(CheckLanguage)
+check_language(CUDA)
+
+if(CMAKE_CUDA_COMPILER)
+  set(MATHPRIM_ENABLE_CUDA_TEST ${MATHPRIM_MASTER_PROJECT})
+else()
+  set(MATHPRIM_ENABLE_CUDA_TEST OFF)
+endif()
 
 option(MATHPRIM_BUILD_TESTS "Build tests" ${MATHPRIM_MASTER_PROJECT})
+option(MATHPRIM_BUILD_TESTS_CUDA "Build cuda tests" ${MATHPRIM_ENABLE_CUDA_TEST})
+
+if(MATHPRIM_BUILD_TESTS_CUDA)
+  enable_language(CUDA)
+  set(CMAKE_CUDA_STANDARD 17)
+  set(CMAKE_CUDA_STANDARD_REQUIRED ON)
+  set(CMAKE_CUDA_EXTENSIONS OFF)
+endif()
+
+add_subdirectory(src)
 
 if(MATHPRIM_BUILD_TESTS)
   enable_testing()
+  message(STATUS "Building tests")
   add_subdirectory(tests)
 endif()
-

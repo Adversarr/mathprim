@@ -11,6 +11,10 @@ namespace backend::cpu {
 namespace internal {
 void free(void* ptr) noexcept {
   std::free(ptr);
+
+#if MATHPRIM_VERBOSE_MALLOC
+  printf("CPU: Freed %p\n", ptr);
+#endif
 }
 
 // 128-byte alignment.
@@ -19,6 +23,11 @@ void* alloc_128(size_t size) {
   if (!ptr) {
     throw std::bad_alloc{};
   }
+
+#if MATHPRIM_VERBOSE_MALLOC
+  printf("CPU: Allocated %zu bytes at %p\n", size, ptr);
+#endif
+
   return ptr;
 }
 }  // namespace internal
@@ -32,5 +41,14 @@ basic_buffer<T> make_buffer(const dim_t& shape) {
 }
 
 }  // namespace backend::cpu
+
+template <typename T>
+struct buffer_traits<T, device_t::cpu> {
+  static constexpr size_t alloc_alignment = 128;
+
+  static constexpr basic_buffer<T> make_buffer(const dim_t& shape) {
+    return backend::cpu::make_buffer<T>(shape);
+  }
+};
 
 }  // namespace mathprim

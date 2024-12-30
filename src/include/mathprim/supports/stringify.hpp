@@ -4,9 +4,24 @@
 #include <sstream>
 #include <string>
 
-#include "mathprim/core/common.hpp"
+#include "mathprim/core/common.hpp"  // IWYU pragma: export
 
 namespace mathprim {
+
+inline std::ostream& operator<<(std::ostream& os, const device_t& device) {
+  switch (device) {
+    case device_t::cpu:
+      os << "cpu";
+      break;
+    case device_t::cuda:
+      os << "cuda";
+      break;
+    default:
+      os << "Unknown";
+      break;
+  }
+  return os;
+}
 
 template <index_t N>
 std::ostream& operator<<(std::ostream& os, const dim<N>& dim) {
@@ -40,7 +55,7 @@ std::ostream& operator<<(std::ostream& os, const basic_buffer<T>& buffer) {
       os << ", ";
     }
   }
-  os << "))";
+  os << "), device=" << buffer.device() << ")";
   return os;
 }
 

@@ -2,6 +2,7 @@
 #include <assert.h>
 
 #include <cstdint>
+#include <cstdio>  // IWYU pragma: export
 
 ///////////////////////////////////////////////////////////////////////////////
 /// General Options
@@ -10,6 +11,11 @@
 // use 64-bit indices for indexing, this is not supported in most libraries.
 #ifndef MATHPRIM_USE_LONG_INDEX
 #  define MATHPRIM_USE_LONG_INDEX 0
+#endif
+
+// verbose malloc/free
+#ifndef MATHPRIM_VERBOSE_MALLOC
+#  define MATHPRIM_VERBOSE_MALLOC 0
 #endif
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -48,6 +54,7 @@
 #define MATHPRIM_PRIMCOPY(cls, option)         \
   MATHPRIM_PRIMFUNC cls(const cls &) = option; \
   MATHPRIM_PRIMFUNC cls &operator=(const cls &) = option
+
 #define MATHPRIM_COPY(cls, option) \
   cls(const cls &) = option;       \
   cls &operator=(const cls &) = option
@@ -100,10 +107,26 @@ using float64_t = double;  ///< Type for 64-bit floating point numbers.
 
 constexpr index_t max_supported_dim = 4;  ///< The maximum supported dimension.
 
+// Indicates this dimension does not exist logically.
+constexpr index_t no_dim = 0;
+
+// Indicates this dimension does not change under some operation.
+constexpr index_t keep_dim = -1;
+
 // TODO: currently, we only support cpu and gpu backends.
 enum class device_t {
-  cpu,  ///< CPU.
-  gpu,  ///< GPU.
+  cpu,   ///< CPU.
+  cuda,  ///< Nvidia GPU.
 };
+
+///////////////////////////////////////////////////////////////////////////////
+/// Declarations.
+///////////////////////////////////////////////////////////////////////////////
+
+template <index_t N>
+struct dim;
+
+template <typename T>
+class basic_buffer;
 
 }  // namespace mathprim
