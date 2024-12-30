@@ -89,7 +89,7 @@ void memset(basic_buffer<T>& buffer, int value) {
       MATHPRIM_UNREACHABLE();
     }
   }
-  backend_traits<T, dev>::memset(buffer.data(), value, buffer.physical_size());
+  buffer_backend_traits<T, dev>::memset(buffer.data(), value, buffer.physical_size());
 }
 
 /**
@@ -101,9 +101,9 @@ void memset(basic_buffer<T>& buffer, int value) {
  */
 template <typename T, device_t dev = device_t::cpu>
 basic_buffer<T> make_buffer(const dim_t &shape) {
-  void *ptr = backend_traits<T, dev>::alloc(shape.numel() * sizeof(T));
+  void *ptr = buffer_backend_traits<T, dev>::alloc(shape.numel() * sizeof(T));
   return basic_buffer<T>(shape, make_default_stride(shape), static_cast<T *>(ptr), dev,
-                         backend_traits<T, dev>::free);
+                         buffer_backend_traits<T, dev>::free);
 }
 
 /**

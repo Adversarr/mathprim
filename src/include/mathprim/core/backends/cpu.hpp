@@ -38,7 +38,7 @@ void* alloc(size_t size) {
 }  // namespace backend::cpu
 
 template <typename T>
-struct backend_traits<T, device_t::cpu> {
+struct buffer_backend_traits<T, device_t::cpu> {
   static constexpr size_t alloc_alignment = 128;
 
   static void* alloc(size_t mem_in_bytes) { return backend::cpu::internal::alloc(mem_in_bytes); }

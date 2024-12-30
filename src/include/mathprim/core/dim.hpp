@@ -9,6 +9,11 @@
 
 namespace mathprim {
 
+struct index_pair {
+  index_t x_;
+  index_t y_;
+};
+
 namespace internal {
 
 MATHPRIM_PRIMFUNC bool is_valid_size(index_t size) {
@@ -17,6 +22,10 @@ MATHPRIM_PRIMFUNC bool is_valid_size(index_t size) {
 
 MATHPRIM_PRIMFUNC index_t to_valid_size(index_t size) {
   return is_valid_size(size) ? size : 1;
+}
+
+MATHPRIM_PRIMFUNC index_pair div(index_t x, index_t y) {
+  return index_pair{x / y, x % y};
 }
 
 }  // namespace internal
@@ -57,7 +66,15 @@ struct dim<1> {
     return x_;
   }
 
-  MATHPRIM_PRIMFUNC index_t operator[](index_t i) const noexcept { return size(i); }
+  MATHPRIM_PRIMFUNC index_t &operator[](index_t i) noexcept {
+    MATHPRIM_ASSERT(i == 0);
+    return x_;
+  }
+
+  MATHPRIM_PRIMFUNC const index_t &operator[](index_t i) const noexcept {
+    MATHPRIM_ASSERT(i == 0);
+    return x_;
+  }
 
   index_t x_;  ///< The x dimension.
 };
@@ -94,7 +111,15 @@ struct dim<2> {
     return i == 0 ? x_ : y_;
   }
 
-  MATHPRIM_PRIMFUNC index_t operator[](index_t i) const noexcept { return size(i); }
+  MATHPRIM_PRIMFUNC index_t &operator[](index_t i) noexcept {
+    MATHPRIM_ASSERT(i >= 0 && i < 2);
+    return i == 0 ? x_ : y_;
+  }
+
+  MATHPRIM_PRIMFUNC const index_t &operator[](index_t i) const noexcept {
+    MATHPRIM_ASSERT(i >= 0 && i < 2);
+    return i == 0 ? x_ : y_;
+  }
 
   // data
   index_t x_;  ///< The x dimension.
@@ -139,7 +164,15 @@ struct dim<3> {
 
   MATHPRIM_PRIMFUNC dim<2> xy() const { return dim<2>{x_, y_}; }
 
-  MATHPRIM_PRIMFUNC index_t operator[](index_t i) const noexcept { return size(i); }
+  MATHPRIM_PRIMFUNC index_t& operator[](index_t i) noexcept {
+    MATHPRIM_ASSERT(i >= 0 && i < 3);
+    return i == 0 ? x_ : (i == 1 ? y_ : z_);
+  }
+
+  MATHPRIM_PRIMFUNC const index_t& operator[](index_t i) const noexcept {
+    MATHPRIM_ASSERT(i >= 0 && i < 3);
+    return i == 0 ? x_ : (i == 1 ? y_ : z_);
+  }
 
   index_t x_;  ///< The x dimension.
   index_t y_;  ///< The y dimension.
@@ -193,7 +226,15 @@ struct dim<4> {
     return i == 0 ? x_ : (i == 1 ? y_ : (i == 2 ? z_ : w_));
   }
 
-  MATHPRIM_PRIMFUNC index_t operator[](index_t i) const noexcept { return size(i); }
+  MATHPRIM_PRIMFUNC index_t &operator[](index_t i) noexcept {
+    MATHPRIM_ASSERT(i >= 0 && i < 4);
+    return i == 0 ? x_ : (i == 1 ? y_ : (i == 2 ? z_ : w_));
+  }
+
+  MATHPRIM_PRIMFUNC const index_t &operator[](index_t i) const noexcept {
+    MATHPRIM_ASSERT(i >= 0 && i < 4);
+    return i == 0 ? x_ : (i == 1 ? y_ : (i == 2 ? z_ : w_));
+  }
 
   MATHPRIM_PRIMFUNC dim<2> xy() const { return dim<2>{x_, y_}; }
 
@@ -353,6 +394,42 @@ MATHPRIM_PRIMFUNC void check_in_bounds(const dim<4> &shape, const dim<4> &sub) {
   MATHPRIM_ASSERT(sub.y_ >= 0 && sub.y_ < shape.y_);
   MATHPRIM_ASSERT(sub.z_ >= 0 && sub.z_ < shape.z_);
   MATHPRIM_ASSERT(sub.w_ >= 0 && sub.w_ < shape.w_);
+}
+
+MATHPRIM_PRIMFUNC dim<1> ind2sub(const dim<1> & /*shape*/, index_t index) {
+  return dim<1>{index};
+}
+
+MATHPRIM_PRIMFUNC dim<2> ind2sub(const dim<2> &shape, index_t index) {
+  if (shape.y_ == no_dim) {
+    return dim<2>{index, no_dim};
+  } else {
+    return dim<2>{index / shape.y_, index % shape.y_};
+  }
+}
+
+MATHPRIM_PRIMFUNC dim<3> ind2sub(const dim<3> &shape, index_t index) {
+  if (shape.z_ == no_dim) {
+    return dim<3>{index, no_dim, no_dim};
+  } else if (shape.y_ == no_dim) {
+    return dim<3>{index / shape.z_, index % shape.z_, no_dim};
+  } else {
+    return dim<3>{index / (shape.y_ * shape.z_), (index / shape.z_) % shape.y_, index % shape.z_};
+  }
+}
+
+MATHPRIM_PRIMFUNC dim<4> ind2sub(const dim<4> &shape, index_t index) {
+  if (shape.w_ == no_dim) {
+    return dim<4>{index, no_dim, no_dim, no_dim};
+  } else if (shape.z_ == no_dim) {
+    return dim<4>{index / shape.w_, index % shape.w_, no_dim, no_dim};
+  } else if (shape.y_ == no_dim) {
+    return dim<4>{index / shape.z_, (index / shape.z_) % shape.z_, index % shape.z_, no_dim};
+  } else {
+    return dim<4>{index / (shape.y_ * shape.z_ * shape.w_),
+                  (index / (shape.z_ * shape.w_)) % shape.y_, (index / shape.w_) % shape.z_,
+                  index % shape.w_};
+  }
 }
 
 }  // namespace mathprim

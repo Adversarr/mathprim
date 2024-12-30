@@ -40,7 +40,7 @@ template <typename T> basic_buffer<T> make_buffer(const dim_t &shape) {
 
 } // namespace backend::cuda
 
-template <typename T> struct backend_traits<T, device_t::cuda> {
+template <typename T> struct buffer_backend_traits<T, device_t::cuda> {
   static constexpr size_t alloc_alignment = 128;
 
   static void *alloc(size_t size) {

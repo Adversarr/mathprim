@@ -30,7 +30,7 @@ struct backend_blas {
   // C <- alpha * A * B + beta * C
   void gemm(T alpha, const_matrix_view A, const_matrix_view B, T beta, matrix_view C);
 
-  // Element wise
+  // element-wise operatons
   // y = x * y
   void emul(const_vector_view x, vector_view y);
   // y = x / y

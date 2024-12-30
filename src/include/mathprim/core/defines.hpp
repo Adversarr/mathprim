@@ -137,6 +137,12 @@ enum class device_t {
   dynamic,  ///< Reserved for untyped buffer view
 };
 
+enum class parallel_t {
+  none,    ///< No parallelism.
+  openmp,  ///< OpenMP. for cpu backend only
+  cuda,    ///< CUDA.   for cuda backend only
+};
+
 ///////////////////////////////////////////////////////////////////////////////
 /// Declarations.
 ///////////////////////////////////////////////////////////////////////////////
@@ -154,12 +160,27 @@ using float_buffer = f32_buffer;
 using double_buffer = f64_buffer;
 
 template <typename T, device_t dev>
-struct backend_traits {
-  static constexpr size_t alloc_alignment = 0;  ///< The alignment of the buffer.
+struct buffer_backend_traits {
+  // The alignment of the buffer.
+  static constexpr size_t alloc_alignment = 0;
+  // The default parallel backend.
+  static constexpr parallel_t default_parallel = parallel_t::none;
 
   static void *alloc(size_t /* mem_in_bytes */);
   static void free(void * /* ptr */) noexcept;
   static void memset(void * /* ptr */, int /* value */, size_t /* mem_in_bytes */) noexcept;
+
+  template <device_t from_dev>
+  static void memcpy(void * /* dst */, const void * /* src */, size_t /* mem_in_bytes */) noexcept;
+};
+
+template <parallel_t par, device_t dev>
+struct parallel_backend_traits {
+  // currently, foreach_index is the only function to be implemented.
+  template <typename Fn, typename... Args>
+  static void foreach_index(const dim_t & /* grid_dim */, Fn && /* fn */, Args &&.../* args */) {
+    static_assert(std::is_same_v<Fn, void>, "Unsupported parallel backend for given device");
+  }
 };
 
 template <typename T>
