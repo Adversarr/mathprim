@@ -1,8 +1,11 @@
 #pragma once
 
 #include <cstdlib>
+#include <cstring>
+#include <new>
 
-#include "basic_buffer.hpp"
+#include "mathprim/core/defines.hpp"
+#include "mathprim/core/dim.hpp"  // IWYU pragma: keep
 
 namespace mathprim {
 
@@ -18,7 +21,7 @@ void free(void* ptr) noexcept {
 }
 
 // 128-byte alignment.
-void* alloc_128(size_t size) {
+void* alloc(size_t size) {
   void* ptr = std::aligned_alloc(128, size);
   if (!ptr) {
     throw std::bad_alloc{};
@@ -32,22 +35,18 @@ void* alloc_128(size_t size) {
 }
 }  // namespace internal
 
-template <typename T>
-basic_buffer<T> make_buffer(const dim_t& shape) {
-  dim_t stride = make_default_stride(shape);
-  size_t total = numel(shape) * sizeof(T);
-  T* data = static_cast<T*>(internal::alloc_128(total));
-  return {shape, stride, data, device_t::cpu, internal::free};
-}
-
 }  // namespace backend::cpu
 
 template <typename T>
-struct buffer_traits<T, device_t::cpu> {
+struct backend_traits<T, device_t::cpu> {
   static constexpr size_t alloc_alignment = 128;
 
-  static constexpr basic_buffer<T> make_buffer(const dim_t& shape) {
-    return backend::cpu::make_buffer<T>(shape);
+  static void* alloc(size_t mem_in_bytes) { return backend::cpu::internal::alloc(mem_in_bytes); }
+
+  static void free(void* ptr) noexcept { backend::cpu::internal::free(ptr); }
+
+  static void memset(void* ptr, int value, size_t mem_in_bytes) noexcept {
+    ::memset(ptr, value, mem_in_bytes);
   }
 };
 

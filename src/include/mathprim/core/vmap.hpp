@@ -1,0 +1,1 @@
+// Implements jax-like vmap function for vectorized operations

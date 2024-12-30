@@ -3,6 +3,7 @@
 
 #include <cstdint>
 #include <cstdio>  // IWYU pragma: export
+#include <memory>
 
 ///////////////////////////////////////////////////////////////////////////////
 /// General Options
@@ -77,6 +78,22 @@
 #  endif
 #endif
 
+#ifndef MATHPRIM_INTERNAL_FATAL
+#  if defined(__GNUC__) || defined(__clang__)
+#    define MATHPRIM_INTERNAL_FATAL() \
+      __builtin_trap();               \
+      MATHPRIM_UNREACHABLE()
+#  elif defined(_MSC_VER)
+#    define MATHPRIM_INTERNAL_FATAL() \
+      __debugbreak();                 \
+      MATHPRIM_UNREACHABLE()
+#  else
+#    define MATHPRIM_INTERNAL_FATAL() \
+      ((void)0);                      \
+      MATHPRIM_UNREACHABLE()
+#  endif
+#endif
+
 namespace mathprim {
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -98,8 +115,8 @@ constexpr size_t to_size(index_t i) {
   return static_cast<size_t>(i);
 }
 
-using float32_t = float;   ///< Type for 32-bit floating point numbers.
-using float64_t = double;  ///< Type for 64-bit floating point numbers.
+using f32_t = float;   ///< Type for 32-bit floating point numbers.
+using f64_t = double;  ///< Type for 64-bit floating point numbers.
 
 ///////////////////////////////////////////////////////////////////////////////
 /// Constants.
@@ -115,8 +132,9 @@ constexpr index_t keep_dim = -1;
 
 // TODO: currently, we only support cpu and gpu backends.
 enum class device_t {
-  cpu,   ///< CPU.
-  cuda,  ///< Nvidia GPU.
+  cpu,      ///< CPU.
+  cuda,     ///< NVidia GPU.
+  dynamic,  ///< Reserved for untyped buffer view
 };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -125,8 +143,55 @@ enum class device_t {
 
 template <index_t N>
 struct dim;
+using dim_t = dim<max_supported_dim>;  ///< The default dimensionality type for general buffers.
 
 template <typename T>
 class basic_buffer;
+using f32_buffer = basic_buffer<f32_t>;
+using f64_buffer = basic_buffer<f64_t>;
+using index_buffer = basic_buffer<index_t>;
+using float_buffer = f32_buffer;
+using double_buffer = f64_buffer;
+
+template <typename T, device_t dev>
+struct backend_traits {
+  static constexpr size_t alloc_alignment = 0;  ///< The alignment of the buffer.
+
+  static void *alloc(size_t /* mem_in_bytes */);
+  static void free(void * /* ptr */) noexcept;
+  static void memset(void * /* ptr */, int /* value */, size_t /* mem_in_bytes */) noexcept;
+};
+
+template <typename T>
+using basic_buffer_ptr = std::unique_ptr<basic_buffer<T>>;
+
+template <typename T, index_t N = max_supported_dim, device_t dev = device_t::dynamic>
+class basic_buffer_view;
+
+#define MATHPRIM_DECLARE_BUFFER_VIEW(tp, prefix)                                \
+  template <index_t N = max_supported_dim, device_t dev = device_t::dynamic>    \
+  using prefix##_buffer_view = basic_buffer_view<tp, N, dev>;                   \
+  template <index_t N = max_supported_dim, device_t dev = device_t::dynamic>    \
+  using const_##prefix##_buffer_view = basic_buffer_view<const tp, N, dev>;     \
+  template <device_t dev = device_t::dynamic>                                   \
+  using prefix##_buffer_view_1d = prefix##_buffer_view<1, dev>;                 \
+  template <device_t dev = device_t::dynamic>                                   \
+  using const_##prefix##_buffer_view_1d = const_##prefix##_buffer_view<1, dev>; \
+  template <device_t dev = device_t::dynamic>                                   \
+  using prefix##_buffer_view_2d = prefix##_buffer_view<2, dev>;                 \
+  template <device_t dev = device_t::dynamic>                                   \
+  using const_##prefix##_buffer_view_2d = const_##prefix##_buffer_view<2, dev>; \
+  template <device_t dev = device_t::dynamic>                                   \
+  using prefix##_buffer_view_3d = prefix##_buffer_view<3, dev>;                 \
+  template <device_t dev = device_t::dynamic>                                   \
+  using const_##prefix##_buffer_view_3d = const_##prefix##_buffer_view<3, dev>; \
+  template <device_t dev = device_t::dynamic>                                   \
+  using prefix##_buffer_view_4d = prefix##_buffer_view<4, dev>;                 \
+  template <device_t dev = device_t::dynamic>                                   \
+  using const_##prefix##_buffer_view_4d = const_##prefix##_buffer_view<4, dev>
+
+MATHPRIM_DECLARE_BUFFER_VIEW(f32_t, f32);
+MATHPRIM_DECLARE_BUFFER_VIEW(f64_t, f64);
+MATHPRIM_DECLARE_BUFFER_VIEW(index_t, index);
 
 }  // namespace mathprim

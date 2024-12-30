@@ -28,23 +28,23 @@ MATHPRIM_PRIMFUNC dim3 to_cuda_dim(index_t dim) {
 }
 
 MATHPRIM_PRIMFUNC dim3 to_cuda_dim(const dim<1> &dim) {
-  return {static_cast<unsigned int>(dim.x), 1, 1};
+  return {static_cast<unsigned int>(dim.x_), 1, 1};
 }
 
 MATHPRIM_PRIMFUNC dim3 to_cuda_dim(const dim<2> &dim) {
-  return {static_cast<unsigned int>(dim.x), static_cast<unsigned int>(dim.y),
+  return {static_cast<unsigned int>(dim.x_), static_cast<unsigned int>(dim.y_),
           1};
 }
 
 MATHPRIM_PRIMFUNC dim3 to_cuda_dim(const dim<3> &dim) {
-  return {static_cast<unsigned int>(dim.x), static_cast<unsigned int>(dim.y),
-          static_cast<unsigned int>(dim.z)};
+  return {static_cast<unsigned int>(dim.x_), static_cast<unsigned int>(dim.y_),
+          static_cast<unsigned int>(dim.z_)};
 }
 
 MATHPRIM_PRIMFUNC dim3 to_cuda_dim(const dim<4> &dim) {
-  MATHPRIM_ASSERT(dim.w == no_dim && "CUDA does not support 4D indexing.");
-  return {static_cast<unsigned int>(dim.x), static_cast<unsigned int>(dim.y),
-          static_cast<unsigned int>(dim.z)};
+  MATHPRIM_ASSERT(dim.w_ == no_dim && "CUDA does not support 4D indexing.");
+  return {static_cast<unsigned int>(dim.x_), static_cast<unsigned int>(dim.y_),
+          static_cast<unsigned int>(dim.z_)};
 }
 
 } // namespace mathprim

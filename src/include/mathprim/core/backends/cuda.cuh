@@ -2,7 +2,6 @@
 
 #include <cuda_runtime.h>
 
-#include "basic_buffer.hpp"
 #include "mathprim/core/cuda_utils.cuh"
 #include "mathprim/core/dim.hpp"
 
@@ -41,11 +40,17 @@ template <typename T> basic_buffer<T> make_buffer(const dim_t &shape) {
 
 } // namespace backend::cuda
 
-template <typename T> struct buffer_traits<T, device_t::cuda> {
+template <typename T> struct backend_traits<T, device_t::cuda> {
   static constexpr size_t alloc_alignment = 128;
 
-  static constexpr basic_buffer<T> make_buffer(const dim_t &shape) {
-    return backend::cuda::make_buffer<T>(shape);
+  static void *alloc(size_t size) {
+    return backend::cuda::internal::alloc(size);
+  }
+
+  static void free(void *ptr) noexcept { backend::cuda::internal::free(ptr); }
+
+  static void memset(void *ptr, int value, size_t size) noexcept {
+    backend::cuda::internal::assert_success(cudaMemset(ptr, value, size));
   }
 };
 
