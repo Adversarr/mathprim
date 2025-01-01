@@ -26,21 +26,26 @@ public:
   // default
   MATHPRIM_PRIMFUNC basic_buffer_view() noexcept : data_{nullptr} {}
 
-  MATHPRIM_PRIMFUNC basic_buffer_view(const dim<N> &shape, pointer data, device_t dyn_dev) noexcept
+  MATHPRIM_PRIMFUNC basic_buffer_view(const dim<N> &shape, pointer data,
+                                      device_t dyn_dev) noexcept
       : basic_buffer_view(shape, make_default_stride(shape), data, dyn_dev) {}
 
-  MATHPRIM_PRIMFUNC basic_buffer_view(const dim<N> &shape, const dim<N> &stride, pointer data,
-                                      device_t dyn_dev) noexcept
+  MATHPRIM_PRIMFUNC basic_buffer_view(const dim<N> &shape, const dim<N> &stride,
+                                      pointer data, device_t dyn_dev) noexcept
       : shape_(shape), stride_(stride), data_(data), dyn_dev_(dyn_dev) {
-    MATHPRIM_ASSERT(dyn_dev != device_t::dynamic && "Runtime device must be specified.");
-    MATHPRIM_ASSERT((dev == device_t::dynamic || dyn_dev == dev) && "Device mismatch.");
+    MATHPRIM_ASSERT(dyn_dev != device_t::dynamic
+                    && "Runtime device must be specified.");
+    MATHPRIM_ASSERT((dev == device_t::dynamic || dyn_dev == dev)
+                    && "Device mismatch.");
   }
 
   template <typename T2, index_t N2, device_t dev2>
-  MATHPRIM_PRIMFUNC basic_buffer_view(basic_buffer_view<T2, N2, dev2> other) noexcept  // NOLINT
-      : basic_buffer_view(dim<N>(other.shape()), dim<N>(other.stride()), other.data(),
-                          other.device()) {
-    // Although the constructor of dim<N> will test it, we this assert here to make sure.
+  MATHPRIM_PRIMFUNC basic_buffer_view(
+      basic_buffer_view<T2, N2, dev2> other) noexcept  // NOLINT
+      : basic_buffer_view(dim<N>(other.shape()), dim<N>(other.stride()),
+                          other.data(), other.device()) {
+    // Although the constructor of dim<N> will test it, we this assert here to
+    // make sure.
     MATHPRIM_ASSERT(other.ndim() <= N && "Assigning to a smaller buffer view.");
   }
 
@@ -52,16 +57,36 @@ public:
   MATHPRIM_PRIMFUNC device_t device() const noexcept { return dyn_dev_; }
 
   // Return the number of element in view
-  MATHPRIM_PRIMFUNC size_t numel() const noexcept { return mathprim::numel<N>(shape_); }
+  MATHPRIM_PRIMFUNC size_t numel() const noexcept {
+    return mathprim::numel<N>(shape_);
+  }
 
   // Returns the actual dimension of the buffer.
-  MATHPRIM_PRIMFUNC index_t ndim() const noexcept { return mathprim::ndim<N>(shape_); }
+  MATHPRIM_PRIMFUNC index_t ndim() const noexcept {
+    return mathprim::ndim<N>(shape_);
+  }
 
   // Return shape
   MATHPRIM_PRIMFUNC const dim<N> &shape() const noexcept { return shape_; }
 
+  MATHPRIM_PRIMFUNC index_t shape(index_t i) {
+    if (i < 0) {
+      return shape_[ndim() + i];
+    } else {
+      return shape_[i];
+    }
+  }
+
   // Return stride
   MATHPRIM_PRIMFUNC const dim<N> &stride() const noexcept { return stride_; }
+
+  MATHPRIM_PRIMFUNC index_t stride(index_t i) {
+    if (i < 0) {
+      return stride_[ndim() + i];
+    } else {
+      return stride_[i];
+    }
+  }
 
   // Return true if the buffer is valid
   MATHPRIM_PRIMFUNC bool valid() const noexcept { return data_ != nullptr; }
@@ -105,7 +130,8 @@ public:
   }
 
   template <typename... Args,
-            typename = std::enable_if_t<(std::is_convertible_v<Args, index_t> && ...)>>
+            typename
+            = std::enable_if_t<(std::is_convertible_v<Args, index_t> && ...)>>
   MATHPRIM_PRIMFUNC reference operator()(Args &&...args) noexcept {
     return operator()(dim<N>(static_cast<index_t>(args)...));
   }

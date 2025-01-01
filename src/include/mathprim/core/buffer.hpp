@@ -12,24 +12,31 @@ template <typename T>
 static constexpr bool is_trival_v = std::is_trivial_v<T>;
 
 template <typename T>
-static constexpr bool no_cvref_v = std::is_same_v<std::remove_cv_t<std::remove_reference_t<T>>, T>;
+static constexpr bool no_cvref_v
+    = std::is_same_v<std::remove_cv_t<std::remove_reference_t<T>>, T>;
 
 }  // namespace internal
 
 using buffer_deleter = void (*)(void *) noexcept;
 
 template <typename T>
-static constexpr bool is_buffer_supported_v = internal::is_trival_v<T> && internal::no_cvref_v<T>;
+static constexpr bool is_buffer_supported_v
+    = internal::is_trival_v<T> && internal::no_cvref_v<T>;
 
 template <typename T>
 class basic_buffer final {
 public:
   static_assert(is_buffer_supported_v<T>, "Unsupported buffer type.");
 
-  // buffer is not responsible for the allocate but responsible for the deallocate.
-  basic_buffer(const dim_t &shape, const dim_t &stride, T *data, device_t device,
-               buffer_deleter deleter)
-      : shape_(shape), stride_(stride), data_(data), device_(device), deleter_(deleter) {}
+  // buffer is not responsible for the allocate but responsible for the
+  // deallocate.
+  basic_buffer(const dim_t &shape, const dim_t &stride, T *data,
+               device_t device, buffer_deleter deleter)
+      : shape_(shape),
+        stride_(stride),
+        data_(data),
+        device_(device),
+        deleter_(deleter) {}
 
   ~basic_buffer() { deleter_(data_); }
 
@@ -77,7 +84,7 @@ private:
 };
 
 template <device_t dev, typename T>
-void memset(basic_buffer<T>& buffer, int value) {
+void memset(basic_buffer<T> &buffer, int value) {
   if constexpr (dev == device_t::dynamic) {
     device_t dyn_dev = buffer.device();
     if (dyn_dev == device_t::cpu) {
@@ -89,7 +96,8 @@ void memset(basic_buffer<T>& buffer, int value) {
       MATHPRIM_UNREACHABLE();
     }
   }
-  buffer_backend_traits<T, dev>::memset(buffer.data(), value, buffer.physical_size());
+  buffer_backend_traits<T, dev>::memset(buffer.data(), value,
+                                        buffer.physical_size());
 }
 
 /**
@@ -102,7 +110,8 @@ void memset(basic_buffer<T>& buffer, int value) {
 template <typename T, device_t dev = device_t::cpu>
 basic_buffer<T> make_buffer(const dim_t &shape) {
   void *ptr = buffer_backend_traits<T, dev>::alloc(shape.numel() * sizeof(T));
-  return basic_buffer<T>(shape, make_default_stride(shape), static_cast<T *>(ptr), dev,
+  return basic_buffer<T>(shape, make_default_stride(shape),
+                         static_cast<T *>(ptr), dev,
                          buffer_backend_traits<T, dev>::free);
 }
 

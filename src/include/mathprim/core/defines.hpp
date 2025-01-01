@@ -115,6 +115,7 @@ constexpr size_t to_size(index_t i) {
   return static_cast<size_t>(i);
 }
 
+// TODO: We may support complex, it depends on the necessity.
 using f32_t = float;   ///< Type for 32-bit floating point numbers.
 using f64_t = double;  ///< Type for 64-bit floating point numbers.
 
@@ -141,6 +142,14 @@ enum class parallel_t {
   none,    ///< No parallelism.
   openmp,  ///< OpenMP. for cpu backend only
   cuda,    ///< CUDA.   for cuda backend only
+};
+
+enum class blas_t {
+  cpu_handmade,  ///< hand made cpu blas.
+  // Extensions (need external libraries)
+  cpu_blas,  ///< cpu-blas, e.g. openblas
+  cublas,    ///< cublas
+  eigen,     ///< cpu eigen
 };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -181,6 +190,22 @@ struct parallel_backend_traits {
   static void foreach_index(const dim_t & /* grid_dim */, Fn && /* fn */, Args &&.../* args */) {
     static_assert(std::is_same_v<Fn, void>, "Unsupported parallel backend for given device");
   }
+};
+
+template <device_t dev>
+struct parallel_select_fallback;
+
+template <device_t dev>
+struct parallel_select {
+  static constexpr parallel_t value = parallel_select_fallback<dev>::value;
+};
+
+template <device_t dev>
+struct blas_select_fallback;
+
+template <device_t dev>
+struct blas_select {
+  static constexpr blas_t value = blas_select_fallback<dev>::value;
 };
 
 template <typename T>

@@ -1,5 +1,13 @@
 #pragma once
 
+#ifndef MATHPRIM_BACKEND_CPU_ALIGNMENT
+#  ifdef MATHPRIM_BACKEND_CPU_NO_ALIGNMENT
+#    define MATHPRIM_BACKEND_CPU_ALIGNMENT 0
+#  else
+#    define MATHPRIM_BACKEND_CPU_ALIGNMENT alignof(std::max_align_t)
+#  endif
+#endif
+
 #include <cstdlib>
 #include <cstring>
 #include <new>
@@ -22,7 +30,11 @@ void free(void* ptr) noexcept {
 
 // 128-byte alignment.
 void* alloc(size_t size) {
-  void* ptr = std::aligned_alloc(128, size);
+#ifdef MATPRIM_BACKEND_CPU_NO_ALIGNMENT
+  void* ptr = std::malloc(size);
+#else
+  void* ptr = std::aligned_alloc(MATHPRIM_BACKEND_CPU_ALIGNMENT, size);
+#endif
   if (!ptr) {
     throw std::bad_alloc{};
   }
@@ -39,7 +51,7 @@ void* alloc(size_t size) {
 
 template <typename T>
 struct buffer_backend_traits<T, device_t::cpu> {
-  static constexpr size_t alloc_alignment = 128;
+  static constexpr size_t alloc_alignment = MATHPRIM_BACKEND_CPU_ALIGNMENT;
 
   static void* alloc(size_t mem_in_bytes) { return backend::cpu::internal::alloc(mem_in_bytes); }
 

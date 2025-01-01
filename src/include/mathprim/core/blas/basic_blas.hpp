@@ -4,7 +4,7 @@
 
 namespace mathprim::buffer_blas {
 
-template <typename T, device_t dev>
+template <typename T, blas_t blas, device_t dev>
 struct backend_blas {
   using vector_view = basic_buffer_view<T, 1, dev>;
   using matrix_view = basic_buffer_view<T, 2, dev>;
@@ -24,11 +24,13 @@ struct backend_blas {
 
   // Level 2
   // y <- alpha * A * x + beta * y
-  void gemv(T alpha, const_matrix_view A, const_vector_view x, T beta, vector_view y);
+  void gemv(T alpha, const_matrix_view A, const_vector_view x, T beta,
+            vector_view y);
 
   // Level 3
   // C <- alpha * A * B + beta * C
-  void gemm(T alpha, const_matrix_view A, const_matrix_view B, T beta, matrix_view C);
+  void gemm(T alpha, const_matrix_view A, const_matrix_view B, T beta,
+            matrix_view C);
 
   // element-wise operatons
   // y = x * y
