@@ -42,10 +42,9 @@ MATHPRIM_PRIMFUNC dim3 to_cuda_dim(const dim<3> &dim) {
 }
 
 MATHPRIM_PRIMFUNC dim3 to_cuda_dim(const dim<4> &dim) {
-  MATHPRIM_ASSERT(dim.w_ == no_dim && "CUDA does not support 4D indexing.");
+  // NOTE: We ignore the 4th dimension.
   return {static_cast<unsigned int>(dim.x_), static_cast<unsigned int>(dim.y_),
           static_cast<unsigned int>(dim.z_)};
 }
-
 
 } // namespace mathprim

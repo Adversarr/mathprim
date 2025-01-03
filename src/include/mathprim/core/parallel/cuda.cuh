@@ -47,23 +47,19 @@ template <> struct parallel_backend_traits<parallel_t::cuda> {
   }
 };
 
-namespace parallel {
-
 template <> struct foreach_index<parallel_t::cuda> {
+  using impl_type = parallel_backend_traits<parallel_t::cuda>;
   template <typename Fn>
   static void launch(const dim_t &grid_dim, const dim_t &block_dim, Fn fn) {
-    parallel_backend_traits<parallel_t::cuda>::foreach_index(
-        grid_dim, block_dim, std::forward<Fn>(fn));
+    impl_type::foreach_index(grid_dim, block_dim, fn);
   }
 
   template <typename Fn> static void launch(const dim_t &grid_dim, Fn fn) {
-    launch(grid_dim, dim_t{1},
-           [fn](const dim_t &grid_id, const dim_t & /* block_id */) {
-             fn(grid_id);
-           });
+    launch(
+        grid_dim, dim_t{1},
+        [fn] MATHPRIM_GENERAL(const dim_t &grid_id,
+                              const dim_t & /* block_id */) { fn(grid_id); });
   }
 };
-
-} // namespace parallel
 
 } // namespace mathprim

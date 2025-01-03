@@ -61,7 +61,7 @@ int main() {
 
   auto buffer2 = make_buffer<float, 4, device_t::cuda>(dim_t{4, 3, 2, 1});
 
-  parallel::foreach_index<parallel_t::cuda>::launch(
+  foreach_index<parallel_t::cuda>::launch(
       dim_t(4, 3, 2, 1), dim_t(1),
       [bv = buffer2.view()] __device__(dim_t grid_id, dim_t block_id) {
         printf("blockIdx: (%d, %d, %d), threadIdx: (%d, %d, %d); Grid: (%d, "

@@ -1,11 +1,12 @@
 #pragma once
-#include "parallel/sequential.hpp"
+#include "mathprim/core/dim.hpp"
 
-namespace mathprim::parallel {
+namespace mathprim {
 
 template <parallel_t parallel>
 struct foreach_index {
   using impl_type = parallel_backend_traits<parallel>;
+
   template <typename Fn>
   static void launch(const dim_t& grid_dim, const dim_t& block_dim, Fn fn) {
     impl_type::foreach_index(grid_dim, block_dim, fn);
@@ -20,4 +21,4 @@ struct foreach_index {
   }
 };
 
-}  // namespace mathprim::parallel
+}  // namespace mathprim

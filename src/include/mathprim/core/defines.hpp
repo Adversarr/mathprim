@@ -192,7 +192,6 @@ using double_buffer = f64_buffer;
 
 template <typename T, device_t dev>
 struct buffer_backend_traits;
-
 // {
 //   // The alignment of the buffer.
 //   static constexpr size_t alloc_alignment = 0;
@@ -221,18 +220,8 @@ struct parallel_backend_traits;
 //   }
 // };
 
-template <device_t dev>
-struct parallel_select_fallback;
-
-template <device_t dev>
-struct parallel_select {
-  static constexpr parallel_t value = parallel_select_fallback<dev>::value;
-};
-
-namespace parallel {
 template <parallel_t parallel>
 struct foreach_index;  // launcher type.
-}
 
 template <device_t dev>
 struct blas_select_fallback;
