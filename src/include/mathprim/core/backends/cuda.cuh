@@ -3,7 +3,6 @@
 #include <cuda_runtime.h>
 
 #include "mathprim/core/cuda_utils.cuh"
-#include "mathprim/core/dim.hpp"
 
 namespace mathprim {
 namespace backend::cuda {
@@ -23,24 +22,17 @@ void *alloc(size_t size) {
 }
 
 void free(void *ptr) noexcept {
-  assert_success(cudaFree(ptr));
 #ifdef MATHPRIM_VERBOSE_MALLOC
-  printf("CUDA: Freed %p\n", ptr);
+  printf("CUDA: Free %p\n", ptr);
 #endif
+  assert_success(cudaFree(ptr));
 }
-} // namespace internal
+}  // namespace internal
 
-template <typename T> basic_buffer<T> make_buffer(const dim_t &shape) {
-  size_t byte_size = shape.numel() * sizeof(T);
-  T *ptr = static_cast<T *>(internal::alloc(byte_size));
-  // TODO: we do not support pitch for now
-  dim_t stride = make_default_stride(shape);
-  return {shape, stride, ptr, device_t::cuda, internal::free};
-}
+}  // namespace backend::cuda
 
-} // namespace backend::cuda
-
-template <typename T> struct buffer_backend_traits<T, device_t::cuda> {
+template <typename T>
+struct buffer_backend_traits<T, device_t::cuda> {
   static constexpr size_t alloc_alignment = 128;
 
   static void *alloc(size_t size) {
@@ -54,4 +46,4 @@ template <typename T> struct buffer_backend_traits<T, device_t::cuda> {
   }
 };
 
-} // namespace mathprim
+}  // namespace mathprim

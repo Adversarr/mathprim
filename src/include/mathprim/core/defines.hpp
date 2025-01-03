@@ -1,6 +1,7 @@
 #pragma once
 #include <assert.h>
 
+#include <cstddef>
 #include <cstdint>
 #include <cstdio>  // IWYU pragma: export
 #include <memory>
@@ -18,6 +19,22 @@
 #ifndef MATHPRIM_VERBOSE_MALLOC
 #  define MATHPRIM_VERBOSE_MALLOC 0
 #endif
+
+#ifndef MATHPRIM_BACKEND_CPU_ALIGNMENT
+#  ifdef MATHPRIM_BACKEND_CPU_NO_ALIGNMENT
+#    define MATHPRIM_BACKEND_CPU_ALIGNMENT 0
+#  else
+#    define MATHPRIM_BACKEND_CPU_ALIGNMENT alignof(std::max_align_t)
+#  endif
+#endif
+
+#define MATHPRIM_CONCAT_IMPL(a, b) a##b
+#define MATHPRIM_CONCAT(a, b) MATHPRIM_CONCAT_IMPL(a, b)
+#ifndef MATHPRIM_CPU_BLAS
+#  define MATHPRIM_CPU_BLAS handmade
+#endif
+#define MATHPRIM_INTERNAL_CPU_BLAS_FALLBACK \
+  MATHPRIM_CONCAT(blas_cpu_, MATHPRIM_CPU_BLAS)
 
 ///////////////////////////////////////////////////////////////////////////////
 /// Feature detection
@@ -66,8 +83,6 @@
   cls(cls &&) = option;            \
   cls &operator=(cls &&) = option
 
-#define MATHPRIM_STRINGIFY(x) #x
-
 #ifndef MATHPRIM_UNREACHABLE
 #  if defined(__GNUC__) || defined(__clang__)
 #    define MATHPRIM_UNREACHABLE() __builtin_unreachable()
@@ -80,16 +95,19 @@
 
 #ifndef MATHPRIM_INTERNAL_FATAL
 #  if defined(__GNUC__) || defined(__clang__)
-#    define MATHPRIM_INTERNAL_FATAL() \
-      __builtin_trap();               \
+#    define MATHPRIM_INTERNAL_FATAL(msg) \
+      fprintf(stderr, "%s\n", msg);      \
+      __builtin_trap();                  \
       MATHPRIM_UNREACHABLE()
 #  elif defined(_MSC_VER)
-#    define MATHPRIM_INTERNAL_FATAL() \
-      __debugbreak();                 \
+#    define MATHPRIM_INTERNAL_FATAL(msg) \
+      fprintf(stderr, "%s\n", msg);      \
+      __debugbreak();                    \
       MATHPRIM_UNREACHABLE()
 #  else
-#    define MATHPRIM_INTERNAL_FATAL() \
-      ((void)0);                      \
+#    define MATHPRIM_INTERNAL_FATAL(msg) \
+      fprintf(stderr, "%s\n", msg);      \
+      ((void)0);                         \
       MATHPRIM_UNREACHABLE()
 #  endif
 #endif
@@ -144,13 +162,15 @@ enum class parallel_t {
   cuda,    ///< CUDA.   for cuda backend only
 };
 
-enum class blas_t {
-  cpu_handmade,  ///< hand made cpu blas.
-  // Extensions (need external libraries)
-  cpu_blas,  ///< cpu-blas, e.g. openblas
-  cublas,    ///< cublas
-  eigen,     ///< cpu eigen
-};
+struct blas_base {};
+
+struct blas_cpu_handmade : public blas_base {};
+
+struct blas_cpu_blas : public blas_base {};
+
+struct blas_cpu_eigen : public blas_base {};
+
+struct blas_cuda_cublas : public blas_base {};
 
 ///////////////////////////////////////////////////////////////////////////////
 /// Declarations.
@@ -158,39 +178,48 @@ enum class blas_t {
 
 template <index_t N>
 struct dim;
-using dim_t = dim<max_supported_dim>;  ///< The default dimensionality type for general buffers.
+using dim_t = dim<max_supported_dim>;  ///< The default dimensionality type for
+                                       ///< general buffers.
 
-template <typename T>
+template <typename T, index_t N, device_t dev>
 class basic_buffer;
-using f32_buffer = basic_buffer<f32_t>;
-using f64_buffer = basic_buffer<f64_t>;
-using index_buffer = basic_buffer<index_t>;
+using f32_buffer = basic_buffer<f32_t, max_supported_dim, device_t::dynamic>;
+using f64_buffer = basic_buffer<f64_t, max_supported_dim, device_t::dynamic>;
+using index_buffer
+    = basic_buffer<index_t, max_supported_dim, device_t::dynamic>;
 using float_buffer = f32_buffer;
 using double_buffer = f64_buffer;
 
 template <typename T, device_t dev>
-struct buffer_backend_traits {
-  // The alignment of the buffer.
-  static constexpr size_t alloc_alignment = 0;
-  // The default parallel backend.
-  static constexpr parallel_t default_parallel = parallel_t::none;
+struct buffer_backend_traits;
 
-  static void *alloc(size_t /* mem_in_bytes */);
-  static void free(void * /* ptr */) noexcept;
-  static void memset(void * /* ptr */, int /* value */, size_t /* mem_in_bytes */) noexcept;
+// {
+//   // The alignment of the buffer.
+//   static constexpr size_t alloc_alignment = 0;
+//   // The default parallel backend.
+//   static constexpr parallel_t default_parallel = parallel_t::none;
 
-  template <device_t from_dev>
-  static void memcpy(void * /* dst */, const void * /* src */, size_t /* mem_in_bytes */) noexcept;
-};
+//   static void *alloc(size_t /* mem_in_bytes */);
+//   static void free(void * /* ptr */) noexcept;
+//   static void memset(void * /* ptr */, int /* value */,
+//                      size_t /* mem_in_bytes */) noexcept;
+
+//   template <device_t from_dev>
+//   static void memcpy(void * /* dst */, const void * /* src */,
+//                      size_t /* mem_in_bytes */) noexcept;
+// };
 
 template <parallel_t par, device_t dev>
-struct parallel_backend_traits {
-  // currently, foreach_index is the only function to be implemented.
-  template <typename Fn, typename... Args>
-  static void foreach_index(const dim_t & /* grid_dim */, Fn && /* fn */, Args &&.../* args */) {
-    static_assert(std::is_same_v<Fn, void>, "Unsupported parallel backend for given device");
-  }
-};
+struct parallel_backend_traits;
+// {
+// // currently, foreach_index is the only function to be implemented.
+//   template <typename Fn>
+//   static void foreach_index(const dim_t & /* grid_dim */,
+//                             const dim_t & /* block_dim */, Fn && /* fn */) {
+//     static_assert(std::is_same_v<Fn, void>,
+//                   "Unsupported parallel backend for given device");
+//   }
+// };
 
 template <device_t dev>
 struct parallel_select_fallback;
@@ -205,35 +234,42 @@ struct blas_select_fallback;
 
 template <device_t dev>
 struct blas_select {
-  static constexpr blas_t value = blas_select_fallback<dev>::value;
+  using type = typename blas_select_fallback<dev>::type;
 };
 
-template <typename T>
-using basic_buffer_ptr = std::unique_ptr<basic_buffer<T>>;
+template <device_t dev>
+using blas_select_t = typename blas_select<dev>::type;
 
-template <typename T, index_t N = max_supported_dim, device_t dev = device_t::dynamic>
+template <typename T, index_t N, device_t dev>
+using basic_buffer_ptr = std::unique_ptr<basic_buffer<T, N, dev>>;
+
+template <typename T, index_t N = max_supported_dim,
+          device_t dev = device_t::dynamic>
 class basic_buffer_view;
 
-#define MATHPRIM_DECLARE_BUFFER_VIEW(tp, prefix)                                \
-  template <index_t N = max_supported_dim, device_t dev = device_t::dynamic>    \
-  using prefix##_buffer_view = basic_buffer_view<tp, N, dev>;                   \
-  template <index_t N = max_supported_dim, device_t dev = device_t::dynamic>    \
-  using const_##prefix##_buffer_view = basic_buffer_view<const tp, N, dev>;     \
-  template <device_t dev = device_t::dynamic>                                   \
-  using prefix##_buffer_view_1d = prefix##_buffer_view<1, dev>;                 \
-  template <device_t dev = device_t::dynamic>                                   \
-  using const_##prefix##_buffer_view_1d = const_##prefix##_buffer_view<1, dev>; \
-  template <device_t dev = device_t::dynamic>                                   \
-  using prefix##_buffer_view_2d = prefix##_buffer_view<2, dev>;                 \
-  template <device_t dev = device_t::dynamic>                                   \
-  using const_##prefix##_buffer_view_2d = const_##prefix##_buffer_view<2, dev>; \
-  template <device_t dev = device_t::dynamic>                                   \
-  using prefix##_buffer_view_3d = prefix##_buffer_view<3, dev>;                 \
-  template <device_t dev = device_t::dynamic>                                   \
-  using const_##prefix##_buffer_view_3d = const_##prefix##_buffer_view<3, dev>; \
-  template <device_t dev = device_t::dynamic>                                   \
-  using prefix##_buffer_view_4d = prefix##_buffer_view<4, dev>;                 \
-  template <device_t dev = device_t::dynamic>                                   \
+#define MATHPRIM_DECLARE_BUFFER_VIEW(tp, prefix)                             \
+  template <index_t N = max_supported_dim, device_t dev = device_t::dynamic> \
+  using prefix##_buffer_view = basic_buffer_view<tp, N, dev>;                \
+  template <index_t N = max_supported_dim, device_t dev = device_t::dynamic> \
+  using const_##prefix##_buffer_view = basic_buffer_view<const tp, N, dev>;  \
+  template <device_t dev = device_t::dynamic>                                \
+  using prefix##_buffer_view_1d = prefix##_buffer_view<1, dev>;              \
+  template <device_t dev = device_t::dynamic>                                \
+  using const_##prefix##_buffer_view_1d                                      \
+      = const_##prefix##_buffer_view<1, dev>;                                \
+  template <device_t dev = device_t::dynamic>                                \
+  using prefix##_buffer_view_2d = prefix##_buffer_view<2, dev>;              \
+  template <device_t dev = device_t::dynamic>                                \
+  using const_##prefix##_buffer_view_2d                                      \
+      = const_##prefix##_buffer_view<2, dev>;                                \
+  template <device_t dev = device_t::dynamic>                                \
+  using prefix##_buffer_view_3d = prefix##_buffer_view<3, dev>;              \
+  template <device_t dev = device_t::dynamic>                                \
+  using const_##prefix##_buffer_view_3d                                      \
+      = const_##prefix##_buffer_view<3, dev>;                                \
+  template <device_t dev = device_t::dynamic>                                \
+  using prefix##_buffer_view_4d = prefix##_buffer_view<4, dev>;              \
+  template <device_t dev = device_t::dynamic>                                \
   using const_##prefix##_buffer_view_4d = const_##prefix##_buffer_view<4, dev>
 
 MATHPRIM_DECLARE_BUFFER_VIEW(f32_t, f32);

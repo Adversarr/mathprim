@@ -47,4 +47,5 @@ MATHPRIM_PRIMFUNC dim3 to_cuda_dim(const dim<4> &dim) {
           static_cast<unsigned int>(dim.z_)};
 }
 
+
 } // namespace mathprim

@@ -39,8 +39,9 @@ MATHPRIM_PRIMFUNC index_pair div(index_t x, index_t y) {
  */
 template <index_t N>
 struct dim {
-  static_assert(0 < N && N <= max_supported_dim, "dim<N> only supports N in [0, 4].");
-  MATHPRIM_PRIMFUNC size_t numel() const noexcept;
+  static_assert(0 < N && N <= max_supported_dim,
+                "dim<N> only supports N in [0, 4].");
+  MATHPRIM_PRIMFUNC index_t numel() const noexcept;
   MATHPRIM_PRIMFUNC index_t ndim() const noexcept;
   MATHPRIM_PRIMFUNC index_t size(index_t i) const noexcept;
   MATHPRIM_PRIMFUNC index_t operator[](index_t i) const noexcept;
@@ -48,6 +49,8 @@ struct dim {
 
 template <>
 struct dim<1> {
+  MATHPRIM_PRIMFUNC dim() : x_(no_dim) {}
+
   explicit MATHPRIM_PRIMFUNC dim(index_t x) : x_(x) {}
 
   explicit MATHPRIM_PRIMFUNC dim(const dim<2> &d);
@@ -57,9 +60,13 @@ struct dim<1> {
   MATHPRIM_COPY(dim, default);
   MATHPRIM_MOVE(dim, default);
 
-  MATHPRIM_PRIMFUNC size_t numel() const noexcept { return internal::to_valid_size(x_); }
+  MATHPRIM_PRIMFUNC index_t numel() const noexcept {
+    return internal::to_valid_size(x_);
+  }
 
-  MATHPRIM_PRIMFUNC index_t ndim() const noexcept { return internal::is_valid_size(x_) ? 1 : 0; }
+  MATHPRIM_PRIMFUNC index_t ndim() const noexcept {
+    return internal::is_valid_size(x_) ? 1 : 0;
+  }
 
   MATHPRIM_PRIMFUNC index_t size(index_t i) const {
     MATHPRIM_ASSERT(i == 0);
@@ -81,6 +88,10 @@ struct dim<1> {
 
 template <>
 struct dim<2> {
+  MATHPRIM_PRIMFUNC dim() : x_(no_dim), y_(no_dim) {}
+
+  explicit MATHPRIM_PRIMFUNC dim(index_t x) : x_(x), y_(no_dim) {}
+
   MATHPRIM_PRIMFUNC dim(index_t x, index_t y) : x_(x), y_(y) {}
 
   MATHPRIM_COPY(dim, default);
@@ -92,7 +103,7 @@ struct dim<2> {
   explicit MATHPRIM_PRIMFUNC dim(const dim<4> &d);
 
   // common functionalities.
-  MATHPRIM_PRIMFUNC size_t numel() const noexcept {
+  MATHPRIM_PRIMFUNC index_t numel() const noexcept {
     return internal::to_valid_size(x_) * internal::to_valid_size(y_);
   }
 
@@ -107,17 +118,17 @@ struct dim<2> {
   }
 
   MATHPRIM_PRIMFUNC index_t size(index_t i) const noexcept {
-    MATHPRIM_ASSERT(i >= 0 && i < 2);
+    MATHPRIM_ASSERT(i >= -1 && i < 2);
     return i == 0 ? x_ : y_;
   }
 
   MATHPRIM_PRIMFUNC index_t &operator[](index_t i) noexcept {
-    MATHPRIM_ASSERT(i >= 0 && i < 2);
+    MATHPRIM_ASSERT(i >= -1 && i < 2);
     return i == 0 ? x_ : y_;
   }
 
   MATHPRIM_PRIMFUNC const index_t &operator[](index_t i) const noexcept {
-    MATHPRIM_ASSERT(i >= 0 && i < 2);
+    MATHPRIM_ASSERT(i >= -1 && i < 2);
     return i == 0 ? x_ : y_;
   }
 
@@ -128,21 +139,31 @@ struct dim<2> {
 
 template <>
 struct dim<3> {
-  MATHPRIM_PRIMFUNC dim(index_t x, index_t y, index_t z) : x_(x), y_(y), z_(z) {}
+  MATHPRIM_PRIMFUNC dim() : x_(no_dim), y_(no_dim), z_(no_dim) {}
+
+  explicit MATHPRIM_PRIMFUNC dim(index_t x) : x_(x), y_(no_dim), z_(no_dim) {}
+
+  MATHPRIM_PRIMFUNC dim(index_t x, index_t y) : x_(x), y_(y), z_(no_dim) {}
+
+  MATHPRIM_PRIMFUNC dim(index_t x, index_t y, index_t z)
+      : x_(x), y_(y), z_(z) {}
 
   MATHPRIM_COPY(dim, default);
   MATHPRIM_MOVE(dim, default);
 
   // construct from lower dimensions
-  explicit MATHPRIM_PRIMFUNC dim(const dim<1> &d) : x_(d.x_), y_(no_dim), z_(no_dim) {}
+  explicit MATHPRIM_PRIMFUNC dim(const dim<1> &d)
+      : x_(d.x_), y_(no_dim), z_(no_dim) {}
 
-  explicit MATHPRIM_PRIMFUNC dim(const dim<2> &d) : x_(d.x_), y_(d.y_), z_(no_dim) {}
+  explicit MATHPRIM_PRIMFUNC dim(const dim<2> &d)
+      : x_(d.x_), y_(d.y_), z_(no_dim) {}
 
   explicit MATHPRIM_PRIMFUNC dim(const dim<4> &d);
 
   // common functionalities.
-  MATHPRIM_PRIMFUNC size_t numel() const noexcept {
-    return internal::to_valid_size(x_) * internal::to_valid_size(y_) * internal::to_valid_size(z_);
+  MATHPRIM_PRIMFUNC index_t numel() const noexcept {
+    return internal::to_valid_size(x_) * internal::to_valid_size(y_)
+           * internal::to_valid_size(z_);
   }
 
   MATHPRIM_PRIMFUNC index_t ndim() const noexcept {
@@ -158,20 +179,41 @@ struct dim<3> {
   }
 
   MATHPRIM_PRIMFUNC index_t size(index_t i) const {
-    MATHPRIM_ASSERT(i >= 0 && i < 3);
-    return i == 0 ? x_ : (i == 1 ? y_ : z_);
+    MATHPRIM_ASSERT(i >= -2 && i < 3);
+    if (i == 0) {
+      return x_;
+    } else if (i == 1 || i == -2) {
+      return y_;
+    } else if (i == 2 || i == -1) {
+      return z_;
+    }
+    MATHPRIM_UNREACHABLE();
   }
 
   MATHPRIM_PRIMFUNC dim<2> xy() const { return dim<2>{x_, y_}; }
 
   MATHPRIM_PRIMFUNC index_t &operator[](index_t i) noexcept {
-    MATHPRIM_ASSERT(i >= 0 && i < 3);
-    return i == 0 ? x_ : (i == 1 ? y_ : z_);
+    MATHPRIM_ASSERT(i >= -2 && i < 3);
+    if (i == 0) {
+      return x_;
+    } else if (i == 1 || i == -2) {
+      return y_;
+    } else if (i == 2 || i == -1) {
+      return z_;
+    }
+    MATHPRIM_UNREACHABLE();
   }
 
   MATHPRIM_PRIMFUNC const index_t &operator[](index_t i) const noexcept {
-    MATHPRIM_ASSERT(i >= 0 && i < 3);
-    return i == 0 ? x_ : (i == 1 ? y_ : z_);
+    MATHPRIM_ASSERT(i >= -2 && i < 3);
+    if (i == 0) {
+      return x_;
+    } else if (i == 1 || i == -2) {
+      return y_;
+    } else if (i == 2 || i == -1) {
+      return z_;
+    }
+    MATHPRIM_UNREACHABLE();
   }
 
   index_t x_;  ///< The x dimension.
@@ -183,21 +225,25 @@ template <>
 struct dim<4> {
   MATHPRIM_PRIMFUNC dim() : x_(no_dim), y_(no_dim), z_(no_dim), w_(no_dim) {}
 
-  explicit MATHPRIM_PRIMFUNC dim(index_t x) : x_(x), y_(no_dim), z_(no_dim), w_(no_dim) {}
+  explicit MATHPRIM_PRIMFUNC dim(index_t x)
+      : x_(x), y_(no_dim), z_(no_dim), w_(no_dim) {}
 
-  MATHPRIM_PRIMFUNC dim(index_t x, index_t y) : x_(x), y_(y), z_(no_dim), w_(no_dim) {}
+  MATHPRIM_PRIMFUNC dim(index_t x, index_t y)
+      : x_(x), y_(y), z_(no_dim), w_(no_dim) {}
 
-  MATHPRIM_PRIMFUNC dim(index_t x, index_t y, index_t z) : x_(x), y_(y), z_(z), w_(no_dim) {}
+  MATHPRIM_PRIMFUNC dim(index_t x, index_t y, index_t z)
+      : x_(x), y_(y), z_(z), w_(no_dim) {}
 
-  MATHPRIM_PRIMFUNC dim(index_t x, index_t y, index_t z, index_t w) : x_(x), y_(y), z_(z), w_(w) {}
+  MATHPRIM_PRIMFUNC dim(index_t x, index_t y, index_t z, index_t w)
+      : x_(x), y_(y), z_(z), w_(w) {}
 
   MATHPRIM_COPY(dim, default);
   MATHPRIM_MOVE(dim, default);
 
   // common functionalities.
-  MATHPRIM_PRIMFUNC size_t numel() const noexcept {
-    return internal::to_valid_size(x_) * internal::to_valid_size(y_) * internal::to_valid_size(z_)
-           * internal::to_valid_size(w_);
+  MATHPRIM_PRIMFUNC index_t numel() const noexcept {
+    return internal::to_valid_size(x_) * internal::to_valid_size(y_)
+           * internal::to_valid_size(z_) * internal::to_valid_size(w_);
   }
 
   MATHPRIM_PRIMFUNC index_t ndim() const noexcept {
@@ -215,25 +261,55 @@ struct dim<4> {
   }
 
   // construct from lower dimensions
-  explicit MATHPRIM_PRIMFUNC dim(const dim<1> &d) : x_(d.x_), y_(no_dim), z_(no_dim), w_(no_dim) {}
+  explicit MATHPRIM_PRIMFUNC dim(const dim<1> &d)
+      : x_(d.x_), y_(no_dim), z_(no_dim), w_(no_dim) {}
 
-  explicit MATHPRIM_PRIMFUNC dim(const dim<2> &d) : x_(d.x_), y_(d.y_), z_(no_dim), w_(no_dim) {}
+  explicit MATHPRIM_PRIMFUNC dim(const dim<2> &d)
+      : x_(d.x_), y_(d.y_), z_(no_dim), w_(no_dim) {}
 
-  explicit MATHPRIM_PRIMFUNC dim(const dim<3> &d) : x_(d.x_), y_(d.y_), z_(d.z_), w_(no_dim) {}
+  explicit MATHPRIM_PRIMFUNC dim(const dim<3> &d)
+      : x_(d.x_), y_(d.y_), z_(d.z_), w_(no_dim) {}
 
   MATHPRIM_PRIMFUNC index_t size(index_t i) const noexcept {
-    MATHPRIM_ASSERT(i >= 0 && i < 4);
-    return i == 0 ? x_ : (i == 1 ? y_ : (i == 2 ? z_ : w_));
+    MATHPRIM_ASSERT(i >= -3 && i < 4);
+    if (i == 0) {
+      return x_;
+    } else if (i == 1 || i == -3) {
+      return y_;
+    } else if (i == 2 || i == -2) {
+      return z_;
+    } else if (i == 3 || i == -1) {
+      return w_;
+    }
+    MATHPRIM_UNREACHABLE();
   }
 
   MATHPRIM_PRIMFUNC index_t &operator[](index_t i) noexcept {
-    MATHPRIM_ASSERT(i >= 0 && i < 4);
-    return i == 0 ? x_ : (i == 1 ? y_ : (i == 2 ? z_ : w_));
+    MATHPRIM_ASSERT(i >= -3 && i < 4);
+    if (i == 0) {
+      return x_;
+    } else if (i == 1 || i == -3) {
+      return y_;
+    } else if (i == 2 || i == -2) {
+      return z_;
+    } else if (i == 3 || i == -1) {
+      return w_;
+    }
+    MATHPRIM_UNREACHABLE();
   }
 
   MATHPRIM_PRIMFUNC const index_t &operator[](index_t i) const noexcept {
-    MATHPRIM_ASSERT(i >= 0 && i < 4);
-    return i == 0 ? x_ : (i == 1 ? y_ : (i == 2 ? z_ : w_));
+    MATHPRIM_ASSERT(i >= -3 && i < 4);
+    if (i == 0) {
+      return x_;
+    } else if (i == 1 || i == -3) {
+      return y_;
+    } else if (i == 2 || i == -2) {
+      return z_;
+    } else if (i == 3 || i == -1) {
+      return w_;
+    }
+    MATHPRIM_UNREACHABLE();
   }
 
   MATHPRIM_PRIMFUNC dim<2> xy() const { return dim<2>{x_, y_}; }
@@ -294,7 +370,8 @@ MATHPRIM_PRIMFUNC bool operator==(const dim<3> &lhs, const dim<3> &rhs) {
 }
 
 MATHPRIM_PRIMFUNC bool operator==(const dim<4> &lhs, const dim<4> &rhs) {
-  return lhs.x_ == rhs.x_ && lhs.y_ == rhs.y_ && lhs.z_ == rhs.z_ && lhs.w_ == rhs.w_;
+  return lhs.x_ == rhs.x_ && lhs.y_ == rhs.y_ && lhs.z_ == rhs.z_
+         && lhs.w_ == rhs.w_;
 }
 
 template <index_t N>
@@ -308,7 +385,7 @@ MATHPRIM_PRIMFUNC bool operator!=(const dim<N> &lhs, const dim<N> &rhs) {
 
 // Returns the total number of elements
 template <index_t N>
-MATHPRIM_PRIMFUNC size_t numel(const dim<N> &d) {
+MATHPRIM_PRIMFUNC index_t numel(const dim<N> &d) {
   return d.numel();
 }
 
@@ -334,8 +411,30 @@ MATHPRIM_PRIMFUNC index_t size(const dim<N> &d) {
 ///////////////////////////////////////////////////////////////////////////////
 /// Helpers for strides.
 ///////////////////////////////////////////////////////////////////////////////
+MATHPRIM_PRIMFUNC dim<1> make_default_stride(const dim<1> & /*shape*/) {
+  return dim<1>{1};
+}
+
+MATHPRIM_PRIMFUNC dim<2> make_default_stride(const dim<2> &shape) {
+  if (shape.y_ == no_dim) {
+    return dim<2>{1, no_dim};
+  } else {
+    return dim<2>{shape.y_, 1};
+  }
+}
+
+MATHPRIM_PRIMFUNC dim<3> make_default_stride(const dim<3> &shape) {
+  if (shape.z_ == no_dim) {
+    return dim<3>{1, no_dim, no_dim};
+  } else if (shape.y_ == no_dim) {
+    return dim<3>{shape.z_, 1, no_dim};
+  } else {
+    return dim<3>{shape.y_ * shape.z_, shape.z_, 1};
+  }
+}
+
 // Return a row-majored stride, similar to numpy.
-inline dim_t make_default_stride(const dim_t &shape) {
+MATHPRIM_PRIMFUNC dim_t make_default_stride(const dim_t &shape) {
   index_t ndim = mathprim::ndim(shape);
 
   if (ndim == 0) {
@@ -347,7 +446,8 @@ inline dim_t make_default_stride(const dim_t &shape) {
   } else if (ndim == 3) {
     return dim_t{shape[1] * shape[2], shape[2], 1, no_dim};
   } else if (ndim == 4) {
-    return dim_t{shape[1] * shape[2] * shape[3], shape[2] * shape[3], shape[3], 1};
+    return dim_t{shape[1] * shape[2] * shape[3], shape[2] * shape[3], shape[3],
+                 1};
   }
   MATHPRIM_UNREACHABLE();
 }
@@ -409,26 +509,28 @@ MATHPRIM_PRIMFUNC dim<2> ind2sub(const dim<2> &shape, index_t index) {
 }
 
 MATHPRIM_PRIMFUNC dim<3> ind2sub(const dim<3> &shape, index_t index) {
-  if (shape.z_ == no_dim) {
+  if (shape.y_ == no_dim) {
     return dim<3>{index, no_dim, no_dim};
-  } else if (shape.y_ == no_dim) {
-    return dim<3>{index / shape.z_, index % shape.z_, no_dim};
+  } else if (shape.z_ == no_dim) {
+    return dim<3>{index / shape.y_, index % shape.y_, no_dim};
   } else {
-    return dim<3>{index / (shape.y_ * shape.z_), (index / shape.z_) % shape.y_, index % shape.z_};
+    return dim<3>{index / (shape.y_ * shape.z_), (index / shape.z_) % shape.y_,
+                  index % shape.z_};
   }
 }
 
 MATHPRIM_PRIMFUNC dim<4> ind2sub(const dim<4> &shape, index_t index) {
-  if (shape.w_ == no_dim) {
+  if (shape.y_ == no_dim) {
     return dim<4>{index, no_dim, no_dim, no_dim};
   } else if (shape.z_ == no_dim) {
-    return dim<4>{index / shape.w_, index % shape.w_, no_dim, no_dim};
-  } else if (shape.y_ == no_dim) {
-    return dim<4>{index / shape.z_, (index / shape.z_) % shape.z_, index % shape.z_, no_dim};
+    return dim<4>{index / shape.y_, index % shape.y_, no_dim, no_dim};
+  } else if (shape.w_ == no_dim) {
+    return dim<4>{index / (shape.y_ * shape.z_), (index / shape.z_) % shape.y_,
+                  index % shape.z_, no_dim};
   } else {
     return dim<4>{index / (shape.y_ * shape.z_ * shape.w_),
-                  (index / (shape.z_ * shape.w_)) % shape.y_, (index / shape.w_) % shape.z_,
-                  index % shape.w_};
+                  (index / (shape.z_ * shape.w_)) % shape.y_,
+                  (index / shape.w_) % shape.z_, index % shape.w_};
   }
 }
 
@@ -439,8 +541,6 @@ MATHPRIM_PRIMFUNC dim<4> ind2sub(const dim<4> &shape, index_t index) {
 template <index_t N>
 class dim_iterator final {
 public:
-  using value_type = dim<N>;
-
   MATHPRIM_PRIMFUNC dim_iterator(const dim<N> &start, const dim<N> &end)
       : current_(start), shape_(end) {}
 
@@ -464,7 +564,7 @@ public:
     return tmp;
   }
 
-  MATHPRIM_PRIMFUNC const value_type &operator*() const { return current_; }
+  MATHPRIM_PRIMFUNC const dim<N> &operator*() const { return current_; }
 
   MATHPRIM_PRIMFUNC bool operator!=(const dim_iterator &other) const {
     return current_ != other.current_;

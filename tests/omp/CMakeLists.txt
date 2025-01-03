@@ -1,0 +1,5 @@
+find_package(OpenMP)
+if(OpenMP_FOUND)
+  add_executable(omp main.cpp)
+  target_link_libraries(omp PRIVATE OpenMP::OpenMP_CXX mathprim)
+endif()

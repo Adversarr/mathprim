@@ -30,25 +30,23 @@ inline std::ostream& operator<<(std::ostream& os, const device_t& device) {
 template <index_t N>
 std::ostream& operator<<(std::ostream& os, const dim<N>& dim) {
   os << "dim" << N << "(";
-  const index_t ndim = dim.ndim();
-  for (index_t i = 0; i < ndim; ++i) {
+  for (index_t i = 0; i < N; ++i) {
     os << dim[i] << ", ";
   }
   os << ")";
   return os;
 }
 
-template <typename T>
-std::ostream& operator<<(std::ostream& os, const basic_buffer<T>& buffer) {
+template <typename T, index_t N, device_t dev>
+std::ostream& operator<<(std::ostream& os, const basic_buffer<T, N, dev>& buffer) {
   os << "buffer(" << static_cast<const void*>(buffer.data());
-  const index_t ndim = buffer.ndim();
   os << ", shape=(";
-  for (index_t i = 0; i < ndim; ++i) {
+  for (index_t i = 0; i < N; ++i) {
     os << buffer.shape()[i];
     os << ", ";
   }
   os << "), stride=(";
-  for (index_t i = 0; i < ndim; ++i) {
+  for (index_t i = 0; i < N; ++i) {
     os << buffer.stride()[i] << ", ";
   }
   os << "), device=" << buffer.device() << ")";
@@ -58,21 +56,20 @@ std::ostream& operator<<(std::ostream& os, const basic_buffer<T>& buffer) {
 template <typename T, index_t N, device_t dev>
 std::ostream& operator<<(std::ostream& os, const basic_buffer_view<T, N, dev>& view) {
   os << "view(" << static_cast<const void*>(view.data());
-  const index_t ndim = view.ndim();
   os << ", shape=(";
-  for (index_t i = 0; i < ndim; ++i) {
+  for (index_t i = 0; i < N; ++i) {
     os << view.shape()[i] << ", ";
   }
   os << "), stride=(";
-  for (index_t i = 0; i < ndim; ++i) {
+  for (index_t i = 0; i < N; ++i) {
     os << view.stride()[i] << ", ";
   }
   os << "), device=" << view.device() << ")";
   return os;
 }
 
-template <typename T>
-std::string to_string(const basic_buffer<T>& buffer) {
+template <typename T, index_t N, device_t dev>
+std::string to_string(const basic_buffer<T, N, dev>& buffer) {
   std::ostringstream os;
   os << buffer;
   return os.str();

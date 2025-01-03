@@ -1,6 +1,8 @@
 add_subdirectory(hello_world)
 add_subdirectory(dim_iterator)
-
+add_subdirectory(cpu_blas)
+add_subdirectory(omp)
 if(MATHPRIM_BUILD_TESTS_CUDA)
   add_subdirectory(hello_world_cuda)
+  add_subdirectory(cublas)
 endif()

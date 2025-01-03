@@ -1,5 +1,6 @@
 #pragma once
 
+#include <stdexcept>
 #include <type_traits>
 
 #include "dim.hpp"
@@ -7,6 +8,55 @@
 #include "mathprim/core/defines.hpp"
 
 namespace mathprim {
+
+class reshape_error : public std::runtime_error {
+public:
+  explicit reshape_error(const std::string &msg) : std::runtime_error(msg) {}
+};
+
+namespace internal {
+
+template <index_t M, index_t N>
+inline dim<N> determine_reshape_shape(const dim<M> &from, const dim<N> &to) {
+  dim<N> new_shape = to;
+  index_t total_to = 1;
+  index_t keep_dim_dim = -1;
+  for (index_t i = 0; i < N; i++) {
+    if (to[i] == -1) {
+      // if (!(keep_dim_dim >= 0)) {
+      //   throw reshape_error("Only one dimension can be -1.");
+      // }
+      MATHPRIM_ASSERT(keep_dim_dim < 0 && "Only one dimension can be -1.");
+
+      keep_dim_dim = i;
+    } else {
+      total_to *= to[i];
+    }
+  }
+
+  index_t total_from = from.numel();  // from is a valid shape.
+  if (keep_dim_dim >= 0) {
+    new_shape[keep_dim_dim] = total_from / total_to;
+    total_to *= new_shape[keep_dim_dim];
+  }
+
+  // TODO: For host version, we should throw an exception.
+  // if (total_to != total_from) {
+  //   throw reshape_error("Total number of elements must be the same.");
+  // }
+  MATHPRIM_ASSERT(total_to == total_from
+                  && "Total number of elements must be the same.");
+  return new_shape;
+}
+
+template <typename T>
+MATHPRIM_PRIMFUNC void swap_(T &a, T &b) {
+  T tmp = a;
+  a = b;
+  b = tmp;
+}
+
+}  // namespace internal
 
 // General template for buffer view.
 template <typename T, index_t N, device_t dev>
@@ -26,6 +76,10 @@ public:
   // default
   MATHPRIM_PRIMFUNC basic_buffer_view() noexcept : data_{nullptr} {}
 
+  MATHPRIM_PRIMFUNC basic_buffer_view(const dim<N> &shape,
+                                      pointer data) noexcept
+      : basic_buffer_view(shape, make_default_stride(shape), data, dev) {}
+
   MATHPRIM_PRIMFUNC basic_buffer_view(const dim<N> &shape, pointer data,
                                       device_t dyn_dev) noexcept
       : basic_buffer_view(shape, make_default_stride(shape), data, dyn_dev) {}
@@ -40,8 +94,8 @@ public:
   }
 
   template <typename T2, index_t N2, device_t dev2>
-  MATHPRIM_PRIMFUNC basic_buffer_view(
-      basic_buffer_view<T2, N2, dev2> other) noexcept  // NOLINT
+  MATHPRIM_PRIMFUNC basic_buffer_view(  // NOLINT
+      basic_buffer_view<T2, N2, dev2> other) noexcept
       : basic_buffer_view(dim<N>(other.shape()), dim<N>(other.stride()),
                           other.data(), other.device()) {
     // Although the constructor of dim<N> will test it, we this assert here to
@@ -57,7 +111,7 @@ public:
   MATHPRIM_PRIMFUNC device_t device() const noexcept { return dyn_dev_; }
 
   // Return the number of element in view
-  MATHPRIM_PRIMFUNC size_t numel() const noexcept {
+  MATHPRIM_PRIMFUNC index_t numel() const noexcept {
     return mathprim::numel<N>(shape_);
   }
 
@@ -76,6 +130,8 @@ public:
       return shape_[i];
     }
   }
+
+  MATHPRIM_PRIMFUNC index_t size(index_t i) { return shape(i); }
 
   // Return stride
   MATHPRIM_PRIMFUNC const dim<N> &stride() const noexcept { return stride_; }
@@ -109,11 +165,16 @@ public:
     return stride() == make_default_stride(shape_);
   }
 
+  // TODO: Maybe we should iterate over internal data?
+  auto begin() const noexcept { return mathprim::begin(shape_); }
+
+  auto end() const noexcept { return mathprim::end(shape_); }
+
   ///////////////////////////////////////////////////////////////////////////////
   /// Data accessing.
   ///////////////////////////////////////////////////////////////////////////////
 
-  // direct access to data
+  // direct access to data, ignores stride
   MATHPRIM_PRIMFUNC reference operator[](index_t i) noexcept {
     MATHPRIM_ASSERT(data_ != nullptr && "Buffer is not valid.");
     MATHPRIM_ASSERT(is_contiguous() && "Buffer is not contiguous.");
@@ -136,6 +197,82 @@ public:
     return operator()(dim<N>(static_cast<index_t>(args)...));
   }
 
+  // Reshape the buffer view.
+  template <index_t M>
+  MATHPRIM_PRIMFUNC basic_buffer_view<T, M, dev> view(const dim<M> &new_shape) {
+    dim<M> target_shape = internal::determine_reshape_shape(shape_, new_shape);
+    return basic_buffer_view<T, M, dev>(target_shape, data_, dyn_dev_);
+  }
+
+  template <index_t M>
+  MATHPRIM_PRIMFUNC basic_buffer_view<const T, M, dev> view(
+      const dim<M> &new_shape) const {
+    dim<M> target_shape = internal::determine_reshape_shape(shape_, new_shape);
+    return basic_buffer_view<T, M, dev>(target_shape, data_, dyn_dev_);
+  }
+
+  template <index_t M>
+  MATHPRIM_PRIMFUNC basic_buffer_view<T, M, dev> view() {
+    dim<M> target_shape{1};  // Initialize to 1, nodim...
+    for (index_t i = 1; i < M; i++) {
+      target_shape[i] = shape_[N - M + i];
+    }
+    target_shape[0] = numel() / target_shape.numel();
+    return basic_buffer_view<T, M, dev>(target_shape, data_, dyn_dev_);
+  }
+
+  template <index_t M>
+  MATHPRIM_PRIMFUNC basic_buffer_view<const T, M, dev> view() const {
+    dim<M> target_shape{1};  // Initialize to 1, nodim...
+    for (index_t i = 1; i < M; i++) {
+      target_shape[i] = shape_[N - M + i];
+    }
+    target_shape[0] = numel() / target_shape.numel();
+    return basic_buffer_view<T, M, dev>(target_shape, data_, dyn_dev_);
+  }
+
+  // TODO:
+  // 1. subview
+
+  MATHPRIM_PRIMFUNC basic_buffer_view<T, 1, dev> flatten() {
+    return view<1>(dim<1>{numel()});
+  }
+
+  MATHPRIM_PRIMFUNC basic_buffer_view<const T, 1, dev> flatten() const {
+    return view<1>(dim<1>{numel()});
+  }
+
+  MATHPRIM_PRIMFUNC basic_buffer_view<T, N, dev> transpose(index_t i,
+                                                           index_t j) {
+    dim<N> new_shape = shape_, new_stride = stride_;
+    if (i < 0) {
+      i += N;
+    }
+    if (j < 0) {
+      j += N;
+    }
+    internal::swap_(new_shape[i], new_shape[j]);
+    internal::swap_(new_stride[i], new_stride[j]);
+    return basic_buffer_view<T, N, dev>(new_shape, new_stride, data_, dyn_dev_);
+  }
+
+  template <device_t new_dev>
+  MATHPRIM_PRIMFUNC basic_buffer_view<T, N, new_dev> as() {
+    MATHPRIM_ASSERT(dyn_dev_ == new_dev);
+    return basic_buffer_view<T, N, new_dev>(shape_, stride_, data_, new_dev);
+  }
+
+  template <device_t new_dev>
+  MATHPRIM_PRIMFUNC basic_buffer_view<const T, N, new_dev> as() const {
+    MATHPRIM_ASSERT(dyn_dev_ == new_dev);
+    return basic_buffer_view<const T, N, new_dev>(shape_, stride_, data_,
+                                                  new_dev);
+  }
+
+  MATHPRIM_PRIMFUNC basic_buffer_view<const T, N, dev> as_const() const {
+    return basic_buffer_view<const T, N, dev>(shape_, stride_, data_, dyn_dev_);
+  }
+
 private:
   dim<N> shape_;
   dim<N> stride_;
@@ -143,15 +280,13 @@ private:
   device_t dyn_dev_;  // TODO: EBO if necessary
 };
 
-template <typename T>
-template <index_t N, device_t dev>
-basic_buffer_view<T, N, dev> basic_buffer<T>::view() {
+template <typename T, index_t N, device_t dev>
+basic_buffer_view<T, N, dev> basic_buffer<T, N, dev>::view() {
   return basic_buffer_view<T, N, dev>(shape_, stride_, data_, device_);
 }
 
-template <typename T>
-template <index_t N, device_t dev>
-basic_buffer_view<const T, N, dev> basic_buffer<T>::view() const {
+template <typename T, index_t N, device_t dev>
+basic_buffer_view<const T, N, dev> basic_buffer<T, N, dev>::view() const {
   return basic_buffer_view<const T, N, dev>(shape_, stride_, data_, device_);
 }
 

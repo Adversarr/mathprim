@@ -1,0 +1,5 @@
+find_package(CUDAToolkit)
+if(CUDAToolkit_FOUND)
+  add_executable(cublas main.cu)
+  target_link_libraries(cublas PRIVATE CUDA::cublas mathprim)
+endif()

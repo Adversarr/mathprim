@@ -1,19 +1,10 @@
 #pragma once
 
-#ifndef MATHPRIM_BACKEND_CPU_ALIGNMENT
-#  ifdef MATHPRIM_BACKEND_CPU_NO_ALIGNMENT
-#    define MATHPRIM_BACKEND_CPU_ALIGNMENT 0
-#  else
-#    define MATHPRIM_BACKEND_CPU_ALIGNMENT alignof(std::max_align_t)
-#  endif
-#endif
-
 #include <cstdlib>
 #include <cstring>
 #include <new>
 
 #include "mathprim/core/defines.hpp"
-#include "mathprim/core/dim.hpp"  // IWYU pragma: keep
 
 namespace mathprim {
 
@@ -21,11 +12,10 @@ namespace backend::cpu {
 
 namespace internal {
 void free(void* ptr) noexcept {
-  std::free(ptr);
-
 #if MATHPRIM_VERBOSE_MALLOC
-  printf("CPU: Freed %p\n", ptr);
+  printf("CPU: Free %p\n", ptr);
 #endif
+  std::free(ptr);
 }
 
 // 128-byte alignment.
@@ -53,7 +43,9 @@ template <typename T>
 struct buffer_backend_traits<T, device_t::cpu> {
   static constexpr size_t alloc_alignment = MATHPRIM_BACKEND_CPU_ALIGNMENT;
 
-  static void* alloc(size_t mem_in_bytes) { return backend::cpu::internal::alloc(mem_in_bytes); }
+  static void* alloc(size_t mem_in_bytes) {
+    return backend::cpu::internal::alloc(mem_in_bytes);
+  }
 
   static void free(void* ptr) noexcept { backend::cpu::internal::free(ptr); }
 

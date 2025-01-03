@@ -33,7 +33,7 @@ __global__ void print_value(const_f32_buffer_view<3, device_t::cuda> bv) {
 }
 
 int main() {
-  auto buffer = make_buffer<float, device_t::cuda>({2, 3, 4});
+  auto buffer = make_buffer<float, 3, device_t::cuda>(dim{2, 3, 4});
   std::cout << "Buffer: " << buffer << std::endl;
   test_convertible(buffer.view());
 

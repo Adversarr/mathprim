@@ -1,5 +1,4 @@
 #pragma once
-#include <omp.h>
 
 #include "mathprim/core/dim.hpp"
 
@@ -9,12 +8,9 @@ namespace parallel::openmp {
 
 template <typename Fn>
 void foreach_index(const dim_t& grid_dim, const dim_t& block_dim, Fn&& fn) {
-  index_t total = grid_dim.numel();
-#pragma omp parallel for schedule(static)
-  for (index_t i = 0; i < total; ++i) {
-    dim_t sub_id = ind2sub(grid_dim, i);
+  for (auto grid_id : grid_dim) {
     for (auto block_id : block_dim) {
-      fn(sub_id, block_id);
+      fn(grid_id, block_id);
     }
   }
 }
@@ -22,7 +18,7 @@ void foreach_index(const dim_t& grid_dim, const dim_t& block_dim, Fn&& fn) {
 }  // namespace parallel::openmp
 
 template <>
-struct parallel_backend_traits<parallel_t::openmp, device_t::cpu> {
+struct parallel_backend_traits<parallel_t::none, device_t::cpu> {
   template <typename Fn>
   static void foreach_index(const dim_t& grid_dim, const dim_t& block_dim,
                             Fn&& fn) {

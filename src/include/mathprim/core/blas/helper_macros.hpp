@@ -58,4 +58,14 @@
       Type beta,                                                           \
       MATHPRIM_BACKEND_BLAS_TYPE(Type, Blas, Device)::matrix_view C)
 
+#define MATHPRIM_BACKEND_BLAS_EMUL_IMPL(Type, Blas, Device)                \
+  void MATHPRIM_BACKEND_BLAS_TYPE(Type, Blas, Device)::emul(               \
+      MATHPRIM_BACKEND_BLAS_TYPE(Type, Blas, Device)::const_vector_view x, \
+      MATHPRIM_BACKEND_BLAS_TYPE(Type, Blas, Device)::vector_view y)
+
+#define MATHPRIM_BACKEND_BLAS_EDIV_IMPL(Type, Blas, Device)                \
+  void MATHPRIM_BACKEND_BLAS_TYPE(Type, Blas, Device)::ediv(               \
+      MATHPRIM_BACKEND_BLAS_TYPE(Type, Blas, Device)::const_vector_view x, \
+      MATHPRIM_BACKEND_BLAS_TYPE(Type, Blas, Device)::vector_view y)
+
 #endif
