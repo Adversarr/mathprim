@@ -2,7 +2,7 @@
 
 #include <cuda_runtime.h>
 
-#include "mathprim/core/cuda_utils.cuh"
+#include "mathprim/core/utils/cuda_utils.cuh"
 
 namespace mathprim {
 namespace backend::cuda {

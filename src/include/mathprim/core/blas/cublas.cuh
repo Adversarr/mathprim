@@ -4,7 +4,7 @@
 
 #include "basic_blas.hpp"
 #include "helper_macros.hpp"
-#include "mathprim/core/cuda_utils.cuh"
+#include "mathprim/core/utils/cuda_utils.cuh"
 #include "mathprim/core/defines.hpp"
 
 namespace mathprim {

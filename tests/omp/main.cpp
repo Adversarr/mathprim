@@ -1,4 +1,5 @@
 #include <iostream>
+#include <mathprim/core/parallel.hpp>
 #include <mathprim/core/parallel/openmp.hpp>
 #include <mathprim/supports/stringify.hpp>
 #include <mutex>
@@ -9,7 +10,7 @@ int main() {
   dim_t block_dim{2, 2};
 
   std::mutex mtx;
-  parallel::openmp::foreach_index(
+  parallel::foreach_index<parallel_t::openmp>::launch(
       grid_dim, block_dim, [&mtx](dim_t grid_id, dim_t block_id) {
         std::lock_guard<std::mutex> lock(mtx);
         std::cout << "Grid ID: " << grid_id << ", Block ID: " << block_id

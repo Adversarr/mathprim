@@ -8,7 +8,7 @@ namespace mathprim {
 namespace parallel::openmp {
 
 template <typename Fn>
-void foreach_index(const dim_t& grid_dim, const dim_t& block_dim, Fn&& fn) {
+void foreach_index(const dim_t& grid_dim, const dim_t& block_dim, Fn fn) {
   index_t total = grid_dim.numel();
 #pragma omp parallel for schedule(static)
   for (index_t i = 0; i < total; ++i) {
@@ -22,10 +22,10 @@ void foreach_index(const dim_t& grid_dim, const dim_t& block_dim, Fn&& fn) {
 }  // namespace parallel::openmp
 
 template <>
-struct parallel_backend_traits<parallel_t::openmp, device_t::cpu> {
+struct parallel_backend_traits<parallel_t::openmp> {
   template <typename Fn>
   static void foreach_index(const dim_t& grid_dim, const dim_t& block_dim,
-                            Fn&& fn) {
+                            Fn fn) {
     parallel::openmp::foreach_index(grid_dim, block_dim, std::forward<Fn>(fn));
   }
 };

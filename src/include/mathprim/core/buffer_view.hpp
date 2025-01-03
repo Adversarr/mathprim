@@ -183,7 +183,7 @@ public:
   }
 
   // subscripting.
-  MATHPRIM_PRIMFUNC reference operator()(const dim<N> &index) noexcept {
+  MATHPRIM_PRIMFUNC reference operator()(const dim<N> &index) const noexcept {
     MATHPRIM_ASSERT(data_ != nullptr);
     check_in_bounds(shape_, index);
     size_t offset = sub2ind(stride_, index);
@@ -193,7 +193,7 @@ public:
   template <typename... Args,
             typename
             = std::enable_if_t<(std::is_convertible_v<Args, index_t> && ...)>>
-  MATHPRIM_PRIMFUNC reference operator()(Args &&...args) noexcept {
+  MATHPRIM_PRIMFUNC reference operator()(Args &&...args) const noexcept {
     return operator()(dim<N>(static_cast<index_t>(args)...));
   }
 

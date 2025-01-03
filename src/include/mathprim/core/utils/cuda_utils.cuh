@@ -4,7 +4,7 @@
 #include <cstdio>
 #include <stdexcept> // IWYU pragma: export
 
-#include "dim.hpp"
+#include "mathprim/core/dim.hpp"
 
 namespace mathprim {
 namespace backend::cuda::internal {

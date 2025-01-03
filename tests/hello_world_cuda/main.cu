@@ -1,13 +1,13 @@
 #include <cstdio>
 #include <cuda.h>
 #include <cuda_runtime_api.h>
-#include <chrono>
 #include <iostream>
-#include <thread>
 
 #define MATHPRIM_VERBOSE_MALLOC 1
 #include <mathprim/core/backends/cuda.cuh>
 #include <mathprim/core/common.hpp>
+#include <mathprim/core/parallel.hpp>
+#include <mathprim/core/parallel/cuda.cuh>
 #include <mathprim/supports/stringify.hpp>
 
 using namespace mathprim;
@@ -32,6 +32,22 @@ __global__ void print_value(const_f32_buffer_view<3, device_t::cuda> bv) {
   }
 }
 
+__global__ void
+check_parallel_assignment(const_f32_buffer_view<4, device_t::cuda> bv) {
+  int x = blockIdx.x, y = blockIdx.y, z = blockIdx.z;
+  auto [X, Y, Z, W] = bv.shape();
+  if (x < X && y < Y && z < Z) {
+    assert(bv(x, y, z, 0) == x * Y * Z + y * Z + z);
+  }
+}
+
+template <typename Fn> __global__ void lambda_call(Fn fn) { fn(); }
+
+void lambda_call_lambda() {
+  auto lambda = [] __device__() { printf("Hello from lambda\n"); };
+  lambda_call<<<1, 1>>>([l = lambda] __device__() { l(); });
+}
+
 int main() {
   auto buffer = make_buffer<float, 3, device_t::cuda>(dim{2, 3, 4});
   std::cout << "Buffer: " << buffer << std::endl;
@@ -42,6 +58,25 @@ int main() {
   dim3 block_dim = {1, 1, 1};
   set_value<<<grid_dim, block_dim>>>(buffer.view());
   print_value<<<grid_dim, block_dim>>>(buffer.view());
+
+  auto buffer2 = make_buffer<float, 4, device_t::cuda>(dim_t{4, 3, 2, 1});
+
+  parallel::foreach_index<parallel_t::cuda>::launch(
+      dim_t(4, 3, 2, 1), dim_t(1),
+      [bv = buffer2.view()] __device__(dim_t grid_id, dim_t block_id) {
+        printf("blockIdx: (%d, %d, %d), threadIdx: (%d, %d, %d); Grid: (%d, "
+               "%d, %d, %d), Block: (%d, %d, %d, %d)\n",
+               blockIdx.x, blockIdx.y, blockIdx.z, threadIdx.x, threadIdx.y,
+               threadIdx.z, grid_id.x_, grid_id.y_, grid_id.z_, grid_id.w_,
+               block_id.x_, block_id.y_, block_id.z_, block_id.w_);
+
+        bv(grid_id) = grid_id.x_ * 3 * 2 * 1 + grid_id.y_ * 2 * 1 +
+                      grid_id.z_ * 1 + grid_id.w_;
+      });
+
+  check_parallel_assignment<<<dim3(4, 3, 2), dim3(1)>>>(buffer2.view());
+
+  lambda_call_lambda();
 
   auto err = cudaDeviceSynchronize();
   if (err != cudaSuccess) {

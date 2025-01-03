@@ -209,7 +209,7 @@ struct buffer_backend_traits;
 //                      size_t /* mem_in_bytes */) noexcept;
 // };
 
-template <parallel_t par, device_t dev>
+template <parallel_t par>
 struct parallel_backend_traits;
 // {
 // // currently, foreach_index is the only function to be implemented.
@@ -228,6 +228,11 @@ template <device_t dev>
 struct parallel_select {
   static constexpr parallel_t value = parallel_select_fallback<dev>::value;
 };
+
+namespace parallel {
+template <parallel_t parallel>
+struct foreach_index;  // launcher type.
+}
 
 template <device_t dev>
 struct blas_select_fallback;

@@ -4,10 +4,10 @@
 
 namespace mathprim {
 
-namespace parallel::openmp {
+namespace parallel::seq {
 
 template <typename Fn>
-void foreach_index(const dim_t& grid_dim, const dim_t& block_dim, Fn&& fn) {
+void foreach_index(const dim_t& grid_dim, const dim_t& block_dim, Fn fn) {
   for (auto grid_id : grid_dim) {
     for (auto block_id : block_dim) {
       fn(grid_id, block_id);
@@ -15,14 +15,14 @@ void foreach_index(const dim_t& grid_dim, const dim_t& block_dim, Fn&& fn) {
   }
 }
 
-}  // namespace parallel::openmp
+}  // namespace parallel::seq
 
 template <>
-struct parallel_backend_traits<parallel_t::none, device_t::cpu> {
+struct parallel_backend_traits<parallel_t::none> {
   template <typename Fn>
   static void foreach_index(const dim_t& grid_dim, const dim_t& block_dim,
-                            Fn&& fn) {
-    parallel::openmp::foreach_index(grid_dim, block_dim, std::forward<Fn>(fn));
+                            Fn fn) {
+    parallel::seq::foreach_index(grid_dim, block_dim, std::forward<Fn>(fn));
   }
 };
 
