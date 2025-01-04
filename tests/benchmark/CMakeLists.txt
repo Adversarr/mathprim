@@ -1,4 +1,8 @@
 find_package(benchmark REQUIRED)
 find_package(Eigen3 REQUIRED)
-add_executable(benchmark_cpu main.cpp)
-target_link_libraries(benchmark_cpu PRIVATE benchmark::benchmark mathprim Eigen3::Eigen)
+find_package(BLAS REQUIRED)
+add_executable(BM_map map.cpp)
+target_link_libraries(BM_map PRIVATE benchmark::benchmark mathprim Eigen3::Eigen)
+
+add_executable(BM_blas blas.cpp)
+target_link_libraries(BM_blas PRIVATE benchmark::benchmark mathprim Eigen3::Eigen BLAS::BLAS)

@@ -7,12 +7,12 @@
 #endif
 
 #ifdef __CUDACC__
-#pragma nv_diagnostic push
-#pragma nv_diag_suppress 20012
+#  pragma nv_diagnostic push
+#  pragma nv_diag_suppress 20012
 #endif
 #include <eigen3/Eigen/Dense>
 #ifdef __CUDACC__
-#pragma nv_diagnostic pop
+#  pragma nv_diagnostic pop
 #endif
 #include <mathprim/core/common.hpp>  // IWYU pragma: export
 
@@ -41,7 +41,7 @@ template <typename T, device_t dev, int rows, int cols>
 struct continuous_buffer_alignment {
   // Default is not aligned.
   static constexpr size_t alloc_alignment
-      = buffer_backend_traits<T, dev>::alloc_alignment;
+      = buffer_backend_traits<dev>::alloc_alignment;
 
   static constexpr Eigen::AlignmentType value
       = get_eigen_alignment(sizeof(T) * static_cast<size_t>(rows)

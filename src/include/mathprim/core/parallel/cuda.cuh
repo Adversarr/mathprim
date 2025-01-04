@@ -8,12 +8,12 @@ namespace mathprim {
 namespace parallel::cuda {
 template <typename Fn>
 __global__ void do_work(Fn fn, dim_t grid_dim, dim_t block_dim) {
-  dim_t grid_id = {static_cast<index_t>(blockIdx.x),
-                   static_cast<index_t>(blockIdx.y),
-                   static_cast<index_t>(blockIdx.z)};
-  dim_t block_id = {static_cast<index_t>(threadIdx.x),
-                    static_cast<index_t>(threadIdx.y),
-                    static_cast<index_t>(threadIdx.z)};
+  dim_t grid_id
+      = {static_cast<index_t>(blockIdx.x), static_cast<index_t>(blockIdx.y),
+         static_cast<index_t>(blockIdx.z)};
+  dim_t block_id
+      = {static_cast<index_t>(threadIdx.x), static_cast<index_t>(threadIdx.y),
+         static_cast<index_t>(threadIdx.z)};
 
   for (index_t grid_w = 0; grid_w < internal::to_valid_size(grid_dim.w_);
        ++grid_w) {
@@ -38,7 +38,7 @@ void foreach_index(const dim_t &grid_dim, const dim_t &block_dim, Fn fn) {
   do_work<<<grid, block>>>(fn, grid_dim, block_dim);
 }
 
-} // namespace parallel::cuda
+}  // namespace parallel::cuda
 
 template <> struct parallel_backend_impl<par::cuda> {
   template <typename Fn>
@@ -58,7 +58,9 @@ template <> struct parfor<par::cuda> {
   template <typename Fn> static void run(const dim_t &grid_dim, Fn fn) {
     run(grid_dim, dim_t{1},
         [fn] MATHPRIM_DEVICE(const dim_t &grid_id,
-                             const dim_t & /* block_id */) { fn(grid_id); });
+                             const dim_t & /* block_id */) {
+          fn(grid_id);
+        });
   }
 
   template <typename Fn, typename T, index_t N, device_t dev>
@@ -81,6 +83,6 @@ template <> struct parfor<par::cuda> {
   // each buffer has the same shape
 };
 
-using parfor_cuda = parfor<par::cuda>; ///< Alias for parfor<par::cuda>
+using parfor_cuda = parfor<par::cuda>;  ///< Alias for parfor<par::cuda>
 
-} // namespace mathprim
+}  // namespace mathprim

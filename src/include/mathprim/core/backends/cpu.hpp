@@ -39,8 +39,7 @@ void* alloc(size_t size) {
 
 }  // namespace backend::cpu
 
-template <typename T>
-struct buffer_backend_traits<T, device_t::cpu> {
+template <> struct buffer_backend_traits<device_t::cpu> {
   static constexpr size_t alloc_alignment = MATHPRIM_BACKEND_CPU_ALIGNMENT;
 
   static void* alloc(size_t mem_in_bytes) {
@@ -51,6 +50,21 @@ struct buffer_backend_traits<T, device_t::cpu> {
 
   static void memset(void* ptr, int value, size_t mem_in_bytes) noexcept {
     ::memset(ptr, value, mem_in_bytes);
+  }
+
+  static void memcpy_host_to_device(void* dst, const void* src,
+                                    size_t mem_in_bytes) noexcept {
+    ::memcpy(dst, src, mem_in_bytes);
+  }
+
+  static void memcpy_device_to_host(void* dst, const void* src,
+                                    size_t mem_in_bytes) noexcept {
+    ::memcpy(dst, src, mem_in_bytes);
+  }
+
+  static void memcpy_device_to_device(void* dst, const void* src,
+                                      size_t mem_in_bytes) noexcept {
+    ::memcpy(dst, src, mem_in_bytes);
   }
 };
 

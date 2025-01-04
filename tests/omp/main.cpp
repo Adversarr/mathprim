@@ -32,10 +32,7 @@ int main() {
 
   auto buf2 = make_buffer<float>(dim<2>{4, 4});
 
-  parfor<par::openmp>::for_each_indexed(buf2.view(),
-                                        [](const dim<2>& idx, float& val) {
-                                          val = idx[0] * 4 + idx[1];
-                                        });
+  memcpy(buf2, buf);
 
   for (auto row : buf2.view()) {
     for (float i : row) {

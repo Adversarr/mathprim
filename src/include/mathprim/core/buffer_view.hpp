@@ -321,6 +321,28 @@ basic_buffer_view<const T, N, dev> basic_buffer<T, N, dev>::view() const {
 }
 
 template <typename T, index_t N, device_t dev>
+basic_buffer_view_iterator<T, N, dev> basic_buffer<T, N, dev>::begin() {
+  return basic_buffer_view_iterator<T, N, dev>(*this, 0);
+}
+
+template <typename T, index_t N, device_t dev>
+basic_buffer_view_iterator<const T, N, dev> basic_buffer<T, N, dev>::begin()
+    const {
+  return basic_buffer_view_iterator<const T, N, dev>(*this, 0);
+}
+
+template <typename T, index_t N, device_t dev>
+basic_buffer_view_iterator<T, N, dev> basic_buffer<T, N, dev>::end() {
+  return basic_buffer_view_iterator<T, N, dev>(*this, size());
+}
+
+template <typename T, index_t N, device_t dev>
+basic_buffer_view_iterator<const T, N, dev> basic_buffer<T, N, dev>::end()
+    const {
+  return basic_buffer_view_iterator<const T, N, dev>(*this, size());
+}
+
+template <typename T, index_t N, device_t dev>
 class basic_buffer_view_iterator {
 public:
   // NOTE: currently we do not allow you to use the iterator on the device.

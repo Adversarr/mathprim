@@ -5,6 +5,7 @@
 #include "basic_blas.hpp"
 #include "helper_macros.hpp"
 #include "mathprim/core/defines.hpp"
+#include "mathprim/core/utils/common.hpp"
 
 namespace mathprim {
 namespace blas {
@@ -134,6 +135,9 @@ template <typename T>
 MATHPRIM_BACKEND_BLAS_GEMV_IMPL(T, blas_cpu_handmade, device_t::cpu) {
   index_t m = A.shape(0);
   index_t n = A.shape(1);
+  if (m * n > 20) {
+    MATHPRIM_WARN_ONCE("cpu_handmade gemv is not optimized for large matrices");
+  }
   MATHPRIM_ASSERT(x.shape(0) == n);
   MATHPRIM_ASSERT(y.shape(0) == m);
   for (index_t i = 0; i < m; i++) {
@@ -153,13 +157,20 @@ MATHPRIM_BACKEND_BLAS_GEMM_IMPL(T, blas_cpu_handmade, device_t::cpu) {
   MATHPRIM_ASSERT(B.shape(0) == k);
   MATHPRIM_ASSERT(C.shape(0) == m);
   MATHPRIM_ASSERT(C.shape(1) == n);
+
+  MATHPRIM_WARN_ONCE("cpu_handmade gemm is not optimized for large matrices");
   for (index_t i = 0; i < m; i++) {
     for (index_t j = 0; j < n; j++) {
-      T v = 0;
-      for (index_t l = 0; l < k; l++) {
-        v += A(i, l) * B(l, j);
+      C(i, j) *= beta;
+    }
+  }
+
+  for (index_t i = 0; i < m; i++) {
+    for (index_t l = 0; l < k; l++) {
+      T a_il = A(i, l);
+      for (index_t j = 0; j < n; j++) {
+        C(i, j) += alpha * a_il * B(l, j);
       }
-      C(i, j) = alpha * v + beta * C(i, j);
     }
   }
 }

@@ -2,6 +2,9 @@
 
 #include <cuda_runtime.h>
 
+#include <stdexcept>
+
+#include "mathprim/core/defines.hpp"
 #include "mathprim/core/utils/cuda_utils.cuh"
 
 namespace mathprim {
@@ -27,11 +30,11 @@ inline void free(void *ptr) noexcept {
 #endif
   assert_success(cudaFree(ptr));
 }
-} // namespace internal
+}  // namespace internal
 
-} // namespace backend::cuda
+}  // namespace backend::cuda
 
-template <typename T> struct buffer_backend_traits<T, device_t::cuda> {
+template <> struct buffer_backend_traits<device_t::cuda> {
   static constexpr size_t alloc_alignment = 128;
 
   static void *alloc(size_t size) {
@@ -43,6 +46,30 @@ template <typename T> struct buffer_backend_traits<T, device_t::cuda> {
   static void memset(void *ptr, int value, size_t size) noexcept {
     backend::cuda::internal::assert_success(cudaMemset(ptr, value, size));
   }
+
+  static void memcpy_host_to_device(void *dst, const void *src, size_t size) {
+    auto status = cudaMemcpy(dst, src, size, cudaMemcpyHostToDevice);
+    if (status != cudaSuccess) {
+      const char *error = cudaGetErrorString(status);
+      throw memcpy_error{error};
+    }
+  }
+
+  static void memcpy_device_to_host(void *dst, const void *src, size_t size) {
+    auto status = cudaMemcpy(dst, src, size, cudaMemcpyDeviceToHost);
+    if (status != cudaSuccess) {
+      const char *error = cudaGetErrorString(status);
+      throw memcpy_error{error};
+    }
+  }
+
+  static void memcpy_device_to_device(void *dst, const void *src, size_t size) {
+    auto status = cudaMemcpy(dst, src, size, cudaMemcpyDeviceToDevice);
+    if (status != cudaSuccess) {
+      const char *error = cudaGetErrorString(status);
+      throw memcpy_error{error};
+    }
+  }
 };
 
-} // namespace mathprim
+}  // namespace mathprim

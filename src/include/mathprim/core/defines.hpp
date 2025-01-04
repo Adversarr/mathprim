@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <cstdio>  // IWYU pragma: export
 #include <memory>
+#include <stdexcept>
 
 ///////////////////////////////////////////////////////////////////////////////
 /// General Options
@@ -164,10 +165,24 @@ enum class device_t {
 };
 
 enum class par {
-  seq,    ///< No parallelism.
+  seq,     ///< No parallelism.
   openmp,  ///< OpenMP. for cpu backend only
   cuda,    ///< CUDA.   for cuda backend only
 };
+
+///////////////////////////////////////////////////////////////////////////////
+/// Errors
+///////////////////////////////////////////////////////////////////////////////
+// NOLINTBEGIN
+#define MATHPRIM_INTERNAL_DECLARE_ERROR(name, derived) \
+  class name : public std::derived {                   \
+  public:                                              \
+    using std::derived::derived;                       \
+  }
+// NOLINTEND
+
+MATHPRIM_INTERNAL_DECLARE_ERROR(memcpy_error, invalid_argument);
+#undef MATHPRIM_INTERNAL_DECLARE_ERROR
 
 ///////////////////////////////////////////////////////////////////////////////
 /// Forward Declarations.
@@ -186,8 +201,7 @@ struct blas_cuda_cublas : public blas_base {};
  * @brief Dimensionality type for general buffers.
  */
 template <index_t N> struct dim;
-using dim_t = dim<max_ndim>;  ///< The default dimensionality type for
-                              ///< general buffers.
+using dim_t = dim<max_ndim>;
 
 /**
  * @brief general buffer type.
@@ -195,21 +209,28 @@ using dim_t = dim<max_ndim>;  ///< The default dimensionality type for
  * @tparam T the data type, need to be plain-old-data.
  */
 template <typename T, index_t N, device_t dev> class basic_buffer;
-using f32_buffer = basic_buffer<f32_t, max_ndim, device_t::dynamic>;
-using f64_buffer = basic_buffer<f64_t, max_ndim, device_t::dynamic>;
-using index_buffer = basic_buffer<index_t, max_ndim, device_t::dynamic>;
-using float_buffer = f32_buffer;
-using double_buffer = f64_buffer;
 
 /// @brief The buffer backend traits.
-template <typename T, device_t dev> struct buffer_backend_traits;
+template <device_t dev> struct buffer_backend_traits;
 
+/// @brief view of a buffer.
+template <typename T, index_t N, device_t dev> class basic_buffer_view;
+
+/// @brief iterator for buffer view.
+template <typename T, index_t N, device_t dev> class basic_buffer_view_iterator;
+
+///////////////////////////////////////////////////////////////////////////////
+/// Parallelism
+///////////////////////////////////////////////////////////////////////////////
 /// @brief Parallel backend implementation.
 template <par par> struct parallel_backend_impl;
 
 /// @brief Parallel for loop
 template <par parallel> struct parfor;
 
+///////////////////////////////////////////////////////////////////////////////
+/// BLAS
+///////////////////////////////////////////////////////////////////////////////
 /// @brief BLAS backend selection fallback, do not use this to select backend.
 template <device_t dev> struct blas_select_fallback;
 
@@ -221,14 +242,18 @@ template <device_t dev> struct blas_select {
 /// @brief BLAS backend selection (shortcut)
 template <device_t dev> using blas_select_t = typename blas_select<dev>::type;
 
+///////////////////////////////////////////////////////////////////////////////
+/// Aliases.
+///////////////////////////////////////////////////////////////////////////////
+using f32_buffer = basic_buffer<f32_t, max_ndim, device_t::dynamic>;
+using f64_buffer = basic_buffer<f64_t, max_ndim, device_t::dynamic>;
+using index_buffer = basic_buffer<index_t, max_ndim, device_t::dynamic>;
+using float_buffer = f32_buffer;
+using double_buffer = f64_buffer;
+
 /// @brief default pointer to a buffer.
 template <typename T, index_t N, device_t dev>
 using basic_buffer_ptr = std::unique_ptr<basic_buffer<T, N, dev>>;
-
-/// @brief view of a buffer.
-template <typename T, index_t N = max_ndim, device_t dev = device_t::dynamic>
-class basic_buffer_view;
-template <typename T, index_t N, device_t dev> class basic_buffer_view_iterator;
 
 #define MATHPRIM_DECLARE_BUFFER_VIEW(tp, prefix)                            \
   template <index_t N = max_ndim, device_t dev = device_t::dynamic>         \

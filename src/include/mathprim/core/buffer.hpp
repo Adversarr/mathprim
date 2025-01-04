@@ -84,6 +84,8 @@ public:
   // Device of the buffer.
   device_t device() const noexcept { return device_; }
 
+  // Copy from another buffer.
+
   // default view, implemented in buffer_view.hpp
   basic_buffer_view<T, N, dev> view();
   basic_buffer_view<const T, N, dev> view() const;
@@ -112,8 +114,40 @@ void memset(basic_buffer<T, N, dev> &buffer, int value) {
       MATHPRIM_INTERNAL_FATAL("Unsupported device.");
     }
   }
-  buffer_backend_traits<T, dev>::memset(buffer.data(), value,
-                                        buffer.physical_size());
+  buffer_backend_traits<dev>::memset(buffer.data(), value,
+                                     buffer.physical_size());
+}
+
+template <typename T, device_t dev1, device_t dev2>
+void memcpy(void *dst, const void *src, size_t mem_in_bytes) {
+  static_assert(dev1 != device_t::dynamic && dev2 != device_t::dynamic,
+                "Device must be specified.");
+
+  if constexpr (dev1 == dev2) {
+    using trait = buffer_backend_traits<dev1>;
+    trait::memcpy_device_to_device(dst, src, mem_in_bytes);
+  } else if constexpr (dev1 == device_t::cpu) {
+    using trait = buffer_backend_traits<dev2>;
+    trait::memcpy_host_to_device(dst, src, mem_in_bytes);
+  } else if constexpr (dev2 == device_t::cpu) {
+    using trait = buffer_backend_traits<dev1>;
+    trait::memcpy_device_to_host(dst, src, mem_in_bytes);
+  } else {
+    static_assert(dev1 == dev2,
+                  "Copy between different devices is not supported.");
+  }
+}
+
+template <typename T1, typename T2, index_t N1, index_t N2, device_t dev1,
+          device_t dev2>
+void memcpy(basic_buffer<T1, N1, dev1> &dst,
+            const basic_buffer<T2, N2, dev2> &src) {
+  static_assert(dev1 != device_t::dynamic && dev2 != device_t::dynamic,
+                "Device must be specified.");
+
+  MATHPRIM_ASSERT(dst.physical_size() == src.physical_size()
+                  && "Size mismatch.");
+  memcpy<T1, dev1, dev2>(dst.data(), src.data(), dst.physical_size());
 }
 
 /**
@@ -125,10 +159,10 @@ void memset(basic_buffer<T, N, dev> &buffer, int value) {
  */
 template <typename T, index_t N, device_t dev = device_t::cpu>
 basic_buffer<T, N, dev> make_buffer(const dim<N> &shape) {
-  void *ptr = buffer_backend_traits<T, dev>::alloc(shape.numel() * sizeof(T));
+  void *ptr = buffer_backend_traits<dev>::alloc(shape.numel() * sizeof(T));
   dim<N> stride = make_default_stride(shape);
   return basic_buffer<T, N, dev>(shape, stride, static_cast<T *>(ptr), dev,
-                                 buffer_backend_traits<T, dev>::free);
+                                 buffer_backend_traits<dev>::free);
 }
 
 /**
