@@ -1,6 +1,7 @@
 #pragma once
 
 #include "mathprim/core/dim.hpp"
+#include "mathprim/core/parallel.hpp"
 
 namespace mathprim {
 
@@ -39,7 +40,7 @@ void foreach_index(const dim_t &grid_dim, const dim_t &block_dim, Fn fn) {
 
 } // namespace parallel::cuda
 
-template <> struct parallel_backend_traits<parallel_t::cuda> {
+template <> struct parallel_backend_impl<par::cuda> {
   template <typename Fn>
   static void foreach_index(const dim_t &grid_dim, const dim_t &block_dim,
                             Fn fn) {
@@ -47,19 +48,39 @@ template <> struct parallel_backend_traits<parallel_t::cuda> {
   }
 };
 
-template <> struct foreach_index<parallel_t::cuda> {
-  using impl_type = parallel_backend_traits<parallel_t::cuda>;
+template <> struct parfor<par::cuda> {
+  using impl_type = parallel_backend_impl<par::cuda>;
   template <typename Fn>
-  static void launch(const dim_t &grid_dim, const dim_t &block_dim, Fn fn) {
+  static void run(const dim_t &grid_dim, const dim_t &block_dim, Fn fn) {
     impl_type::foreach_index(grid_dim, block_dim, fn);
   }
 
-  template <typename Fn> static void launch(const dim_t &grid_dim, Fn fn) {
-    launch(
-        grid_dim, dim_t{1},
-        [fn] MATHPRIM_GENERAL(const dim_t &grid_id,
-                              const dim_t & /* block_id */) { fn(grid_id); });
+  template <typename Fn> static void run(const dim_t &grid_dim, Fn fn) {
+    run(grid_dim, dim_t{1},
+        [fn] MATHPRIM_DEVICE(const dim_t &grid_id,
+                             const dim_t & /* block_id */) { fn(grid_id); });
   }
+
+  template <typename Fn, typename T, index_t N, device_t dev>
+  static void for_each(basic_buffer_view<T, N, dev> buffer, Fn fn) {
+    run(dim_t{buffer.shape()}, [fn, buffer] MATHPRIM_DEVICE(const dim_t &idx) {
+      const dim<N> downgraded_idx{idx};
+      fn(buffer(downgraded_idx));
+    });
+  }
+
+  template <typename Fn, typename T, index_t N, device_t dev>
+  static void for_each_indexed(basic_buffer_view<T, N, dev> buffer, Fn fn) {
+    run(dim_t{buffer.shape()}, [fn, buffer] MATHPRIM_DEVICE(const dim_t &idx) {
+      const dim<N> downgraded_idx{idx};
+      fn(downgraded_idx, buffer(idx));
+    });
+  }
+
+  // we do not support for_each with multiple buffers, since we cannot guarantee
+  // each buffer has the same shape
 };
+
+using parfor_cuda = parfor<par::cuda>; ///< Alias for parfor<par::cuda>
 
 } // namespace mathprim

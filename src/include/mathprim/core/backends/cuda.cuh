@@ -8,8 +8,8 @@ namespace mathprim {
 namespace backend::cuda {
 namespace internal {
 
-void *alloc(size_t size) {
-  void *ptr;
+inline void *alloc(size_t size) {
+  void *ptr = nullptr;
   int ret = cudaMalloc(&ptr, size);
   if (ret != cudaSuccess) {
     throw std::bad_alloc{};
@@ -21,18 +21,17 @@ void *alloc(size_t size) {
   return ptr;
 }
 
-void free(void *ptr) noexcept {
+inline void free(void *ptr) noexcept {
 #ifdef MATHPRIM_VERBOSE_MALLOC
   printf("CUDA: Free %p\n", ptr);
 #endif
   assert_success(cudaFree(ptr));
 }
-}  // namespace internal
+} // namespace internal
 
-}  // namespace backend::cuda
+} // namespace backend::cuda
 
-template <typename T>
-struct buffer_backend_traits<T, device_t::cuda> {
+template <typename T> struct buffer_backend_traits<T, device_t::cuda> {
   static constexpr size_t alloc_alignment = 128;
 
   static void *alloc(size_t size) {
@@ -46,4 +45,4 @@ struct buffer_backend_traits<T, device_t::cuda> {
   }
 };
 
-}  // namespace mathprim
+} // namespace mathprim

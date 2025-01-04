@@ -9,7 +9,7 @@
 #include "helper_macros.hpp"
 #include "mathprim/core/blas/cpu_handmade.hpp"  // IWYU pragma: export
 #include "mathprim/core/defines.hpp"
-#include "mathprim/core/utils/call_once.hpp"
+#include "mathprim/core/utils/common.hpp"
 
 namespace mathprim {
 namespace blas {

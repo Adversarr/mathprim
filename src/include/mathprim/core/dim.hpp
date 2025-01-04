@@ -37,18 +37,15 @@ MATHPRIM_PRIMFUNC index_pair div(index_t x, index_t y) {
 /**
  * @brief Dimensionality template.
  */
-template <index_t N>
-struct dim {
-  static_assert(0 < N && N <= max_supported_dim,
-                "dim<N> only supports N in [0, 4].");
+template <index_t N> struct dim {
+  static_assert(0 < N && N <= max_ndim, "dim<N> only supports N in [0, 4].");
   MATHPRIM_PRIMFUNC index_t numel() const noexcept;
   MATHPRIM_PRIMFUNC index_t ndim() const noexcept;
   MATHPRIM_PRIMFUNC index_t size(index_t i) const noexcept;
   MATHPRIM_PRIMFUNC index_t operator[](index_t i) const noexcept;
 };
 
-template <>
-struct dim<1> {
+template <> struct dim<1> {
   MATHPRIM_PRIMFUNC dim() : x_(no_dim) {}
 
   explicit MATHPRIM_PRIMFUNC dim(index_t x) : x_(x) {}
@@ -86,8 +83,7 @@ struct dim<1> {
   index_t x_;  ///< The x dimension.
 };
 
-template <>
-struct dim<2> {
+template <> struct dim<2> {
   MATHPRIM_PRIMFUNC dim() : x_(no_dim), y_(no_dim) {}
 
   explicit MATHPRIM_PRIMFUNC dim(index_t x) : x_(x), y_(no_dim) {}
@@ -137,26 +133,25 @@ struct dim<2> {
   index_t y_;  ///< The y dimension.
 };
 
-template <>
-struct dim<3> {
+template <> struct dim<3> {
   MATHPRIM_PRIMFUNC dim() : x_(no_dim), y_(no_dim), z_(no_dim) {}
 
   explicit MATHPRIM_PRIMFUNC dim(index_t x) : x_(x), y_(no_dim), z_(no_dim) {}
 
   MATHPRIM_PRIMFUNC dim(index_t x, index_t y) : x_(x), y_(y), z_(no_dim) {}
 
-  MATHPRIM_PRIMFUNC dim(index_t x, index_t y, index_t z)
-      : x_(x), y_(y), z_(z) {}
+  MATHPRIM_PRIMFUNC dim(index_t x, index_t y, index_t z) :
+      x_(x), y_(y), z_(z) {}
 
   MATHPRIM_COPY(dim, default);
   MATHPRIM_MOVE(dim, default);
 
   // construct from lower dimensions
-  explicit MATHPRIM_PRIMFUNC dim(const dim<1> &d)
-      : x_(d.x_), y_(no_dim), z_(no_dim) {}
+  explicit MATHPRIM_PRIMFUNC dim(const dim<1> &d) :
+      x_(d.x_), y_(no_dim), z_(no_dim) {}
 
-  explicit MATHPRIM_PRIMFUNC dim(const dim<2> &d)
-      : x_(d.x_), y_(d.y_), z_(no_dim) {}
+  explicit MATHPRIM_PRIMFUNC dim(const dim<2> &d) :
+      x_(d.x_), y_(d.y_), z_(no_dim) {}
 
   explicit MATHPRIM_PRIMFUNC dim(const dim<4> &d);
 
@@ -221,21 +216,20 @@ struct dim<3> {
   index_t z_;  ///< The z dimension.
 };
 
-template <>
-struct dim<4> {
+template <> struct dim<4> {
   MATHPRIM_PRIMFUNC dim() : x_(no_dim), y_(no_dim), z_(no_dim), w_(no_dim) {}
 
-  explicit MATHPRIM_PRIMFUNC dim(index_t x)
-      : x_(x), y_(no_dim), z_(no_dim), w_(no_dim) {}
+  explicit MATHPRIM_PRIMFUNC dim(index_t x) :
+      x_(x), y_(no_dim), z_(no_dim), w_(no_dim) {}
 
-  MATHPRIM_PRIMFUNC dim(index_t x, index_t y)
-      : x_(x), y_(y), z_(no_dim), w_(no_dim) {}
+  MATHPRIM_PRIMFUNC dim(index_t x, index_t y) :
+      x_(x), y_(y), z_(no_dim), w_(no_dim) {}
 
-  MATHPRIM_PRIMFUNC dim(index_t x, index_t y, index_t z)
-      : x_(x), y_(y), z_(z), w_(no_dim) {}
+  MATHPRIM_PRIMFUNC dim(index_t x, index_t y, index_t z) :
+      x_(x), y_(y), z_(z), w_(no_dim) {}
 
-  MATHPRIM_PRIMFUNC dim(index_t x, index_t y, index_t z, index_t w)
-      : x_(x), y_(y), z_(z), w_(w) {}
+  MATHPRIM_PRIMFUNC dim(index_t x, index_t y, index_t z, index_t w) :
+      x_(x), y_(y), z_(z), w_(w) {}
 
   MATHPRIM_COPY(dim, default);
   MATHPRIM_MOVE(dim, default);
@@ -261,14 +255,14 @@ struct dim<4> {
   }
 
   // construct from lower dimensions
-  explicit MATHPRIM_PRIMFUNC dim(const dim<1> &d)
-      : x_(d.x_), y_(no_dim), z_(no_dim), w_(no_dim) {}
+  explicit MATHPRIM_PRIMFUNC dim(const dim<1> &d) :
+      x_(d.x_), y_(no_dim), z_(no_dim), w_(no_dim) {}
 
-  explicit MATHPRIM_PRIMFUNC dim(const dim<2> &d)
-      : x_(d.x_), y_(d.y_), z_(no_dim), w_(no_dim) {}
+  explicit MATHPRIM_PRIMFUNC dim(const dim<2> &d) :
+      x_(d.x_), y_(d.y_), z_(no_dim), w_(no_dim) {}
 
-  explicit MATHPRIM_PRIMFUNC dim(const dim<3> &d)
-      : x_(d.x_), y_(d.y_), z_(d.z_), w_(no_dim) {}
+  explicit MATHPRIM_PRIMFUNC dim(const dim<3> &d) :
+      x_(d.x_), y_(d.y_), z_(d.z_), w_(no_dim) {}
 
   MATHPRIM_PRIMFUNC index_t size(index_t i) const noexcept {
     MATHPRIM_ASSERT(i >= -3 && i < 4);
@@ -384,14 +378,12 @@ MATHPRIM_PRIMFUNC bool operator!=(const dim<N> &lhs, const dim<N> &rhs) {
 ///////////////////////////////////////////////////////////////////////////////
 
 // Returns the total number of elements
-template <index_t N>
-MATHPRIM_PRIMFUNC index_t numel(const dim<N> &d) {
+template <index_t N> MATHPRIM_PRIMFUNC index_t numel(const dim<N> &d) {
   return d.numel();
 }
 
 // Returns the number of valid dimensions.
-template <index_t N>
-MATHPRIM_PRIMFUNC index_t ndim(const dim<N> &d) {
+template <index_t N> MATHPRIM_PRIMFUNC index_t ndim(const dim<N> &d) {
   return d.ndim();
 }
 
@@ -538,11 +530,10 @@ MATHPRIM_PRIMFUNC dim<4> ind2sub(const dim<4> &shape, index_t index) {
 /// Iterator
 /// TODO: Improve the implementation.
 ///////////////////////////////////////////////////////////////////////////////
-template <index_t N>
-class dim_iterator final {
+template <index_t N> class dim_iterator final {
 public:
-  MATHPRIM_PRIMFUNC dim_iterator(const dim<N> &start, const dim<N> &end)
-      : current_(start), shape_(end) {}
+  MATHPRIM_PRIMFUNC dim_iterator(const dim<N> &start, const dim<N> &end) :
+      current_(start), shape_(end) {}
 
   MATHPRIM_PRIMFUNC dim_iterator &operator++() {
     for (index_t i = N - 1; i > 0; --i) {

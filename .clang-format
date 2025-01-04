@@ -13,6 +13,8 @@
   NamespaceIndentation: None
   BreakBeforeBinaryOperators: All
   BreakBeforeTernaryOperators: true
+  BreakConstructorInitializers: AfterColon
+  BreakTemplateDeclarations: MultiLine
   BracedInitializerIndentWidth: 2
   AllowShortBlocksOnASingleLine: Never
   AllowShortCaseLabelsOnASingleLine: false
@@ -21,6 +23,5 @@
   AllowShortIfStatementsOnASingleLine: Never
   AllowShortLambdasOnASingleLine: Empty
   AllowShortLoopsOnASingleLine: false
-  IfMacros: [if_unlikely, if_likely]
-  SeparateDefinitionBlocks: Always
+  SeparateDefinitionBlocks: Leave
 ...

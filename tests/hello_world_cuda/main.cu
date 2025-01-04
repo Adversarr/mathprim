@@ -1,6 +1,7 @@
-#include <cstdio>
 #include <cuda.h>
 #include <cuda_runtime_api.h>
+
+#include <cstdio>
 #include <iostream>
 
 #define MATHPRIM_VERBOSE_MALLOC 1
@@ -32,8 +33,8 @@ __global__ void print_value(const_f32_buffer_view<3, device_t::cuda> bv) {
   }
 }
 
-__global__ void
-check_parallel_assignment(const_f32_buffer_view<4, device_t::cuda> bv) {
+__global__ void check_parallel_assignment(
+    const_f32_buffer_view<4, device_t::cuda> bv) {
   int x = blockIdx.x, y = blockIdx.y, z = blockIdx.z;
   auto [X, Y, Z, W] = bv.shape();
   if (x < X && y < Y && z < Z) {
@@ -41,11 +42,17 @@ check_parallel_assignment(const_f32_buffer_view<4, device_t::cuda> bv) {
   }
 }
 
-template <typename Fn> __global__ void lambda_call(Fn fn) { fn(); }
+template <typename Fn> __global__ void lambda_call(Fn fn) {
+  fn();
+}
 
 void lambda_call_lambda() {
-  auto lambda = [] __device__() { printf("Hello from lambda\n"); };
-  lambda_call<<<1, 1>>>([l = lambda] __device__() { l(); });
+  auto lambda = [] __device__() {
+    printf("Hello from lambda\n");
+  };
+  lambda_call<<<1, 1>>>([l = lambda] __device__() {
+    l();
+  });
 }
 
 int main() {
@@ -61,18 +68,17 @@ int main() {
 
   auto buffer2 = make_buffer<float, 4, device_t::cuda>(dim_t{4, 3, 2, 1});
 
-  foreach_index<parallel_t::cuda>::launch(
+  parfor_cuda::run(
       dim_t(4, 3, 2, 1), dim_t(1),
-      [bv = buffer2.view()] __device__(dim_t grid_id, dim_t block_id) {
-        printf("blockIdx: (%d, %d, %d), threadIdx: (%d, %d, %d); Grid: (%d, "
-               "%d, %d, %d), Block: (%d, %d, %d, %d)\n",
-               blockIdx.x, blockIdx.y, blockIdx.z, threadIdx.x, threadIdx.y,
-               threadIdx.z, grid_id.x_, grid_id.y_, grid_id.z_, grid_id.w_,
-               block_id.x_, block_id.y_, block_id.z_, block_id.w_);
-
-        bv(grid_id) = grid_id.x_ * 3 * 2 * 1 + grid_id.y_ * 2 * 1 +
-                      grid_id.z_ * 1 + grid_id.w_;
+      [bv = buffer2.view()] __device__(dim_t grid_id, dim_t /* block_id */) {
+        bv(grid_id) = grid_id.x_ * 3 * 2 * 1 + grid_id.y_ * 2 * 1
+                      + grid_id.z_ * 1 + grid_id.w_;
       });
+
+  parfor_cuda::for_each_indexed(buffer2.view(), [] __device__(auto idx,
+                                                              auto value) {
+    assert(value == idx.x_ * 3 * 2 * 1 + idx.y_ * 2 * 1 + idx.z_ * 1 + idx.w_);
+  });
 
   check_parallel_assignment<<<dim3(4, 3, 2), dim3(1)>>>(buffer2.view());
 

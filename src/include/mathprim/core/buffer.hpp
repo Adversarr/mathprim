@@ -9,8 +9,7 @@ namespace mathprim {
 
 namespace internal {
 
-template <typename T>
-static constexpr bool is_trival_v = std::is_trivial_v<T>;
+template <typename T> static constexpr bool is_trival_v = std::is_trivial_v<T>;
 
 template <typename T>
 static constexpr bool no_cvref_v
@@ -24,20 +23,19 @@ template <typename T>
 static constexpr bool is_buffer_supported_v
     = internal::is_trival_v<T> && internal::no_cvref_v<T>;
 
-template <typename T, index_t N, device_t dev>
-class basic_buffer final {
+template <typename T, index_t N, device_t dev> class basic_buffer final {
 public:
   static_assert(is_buffer_supported_v<T>, "Unsupported buffer type.");
 
   // buffer is not responsible for the allocate but responsible for the
   // deallocate.
   basic_buffer(const dim<N> &shape, const dim<N> &stride, T *data,
-               device_t device, buffer_deleter deleter)
-      : shape_(shape),
-        stride_(stride),
-        data_(data),
-        device_(device),
-        deleter_(deleter) {
+               device_t device, buffer_deleter deleter) :
+      shape_(shape),
+      stride_(stride),
+      data_(data),
+      device_(device),
+      deleter_(deleter) {
     MATHPRIM_ASSERT(device != device_t::dynamic
                     && "Runtime device must be specified.");
     MATHPRIM_ASSERT((dev == device || dev == device_t::dynamic)
@@ -52,9 +50,9 @@ public:
 
   MATHPRIM_COPY(basic_buffer, delete);
 
-  basic_buffer(basic_buffer &&other)
-      : basic_buffer(other.shape_, other.stride_, other.data_, other.device_,
-                     other.deleter_) {
+  basic_buffer(basic_buffer &&other) :
+      basic_buffer(other.shape_, other.stride_, other.data_, other.device_,
+                   other.deleter_) {
     other.data_ = nullptr;
   }
 
@@ -89,10 +87,14 @@ public:
   // default view, implemented in buffer_view.hpp
   basic_buffer_view<T, N, dev> view();
   basic_buffer_view<const T, N, dev> view() const;
+  basic_buffer_view_iterator<T, N, dev> begin();
+  basic_buffer_view_iterator<const T, N, dev> begin() const;
+  basic_buffer_view_iterator<T, N, dev> end();
+  basic_buffer_view_iterator<const T, N, dev> end() const;
 
 private:
   dim<N> shape_;
-  dim<N> stride_;
+  dim<N> stride_;  // TODO: should the buffer have stride?
   T *data_;
   device_t device_;
   const buffer_deleter deleter_;

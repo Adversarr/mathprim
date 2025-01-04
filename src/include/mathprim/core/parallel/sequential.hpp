@@ -1,6 +1,7 @@
 #pragma once
 
-#include "mathprim/core/dim.hpp"
+#include "mathprim/core/dim.hpp"  // IWYU pragma: export
+#include "mathprim/core/parallel.hpp"
 
 namespace mathprim {
 
@@ -17,13 +18,14 @@ void foreach_index(const dim_t& grid_dim, const dim_t& block_dim, Fn fn) {
 
 }  // namespace parallel::seq
 
-template <>
-struct parallel_backend_traits<parallel_t::none> {
+template <> struct parallel_backend_impl<par::seq> {
   template <typename Fn>
   static void foreach_index(const dim_t& grid_dim, const dim_t& block_dim,
                             Fn fn) {
     parallel::seq::foreach_index(grid_dim, block_dim, std::forward<Fn>(fn));
   }
 };
+
+using parfor_seq = parfor<par::seq>;
 
 }  // namespace mathprim
