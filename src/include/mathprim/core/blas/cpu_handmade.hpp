@@ -126,7 +126,7 @@ MATHPRIM_BACKEND_BLAS_AMAX_IMPL(T, blas_cpu_handmade, device_t::cpu) {
   index_t n = x.numel();
   for (index_t i = 0; i < n; i++) {
     T xi = std::abs(x(i));
-    v = xi > v ? xi : v;
+    v = std::max(v, xi);
   }
   return v;
 }
@@ -135,7 +135,10 @@ template <typename T>
 MATHPRIM_BACKEND_BLAS_GEMV_IMPL(T, blas_cpu_handmade, device_t::cpu) {
   index_t m = A.shape(0);
   index_t n = A.shape(1);
-  if (m * n > 20) {
+  // Optional: Add a configurable threshold for large matrices
+  constexpr index_t threshold = 20;
+  if (m * n > threshold) {
+    // For better performance on large matrices, consider using a more optimized BLAS library like OpenBLAS or Intel MKL.
     MATHPRIM_WARN_ONCE("cpu_handmade gemv is not optimized for large matrices");
   }
   MATHPRIM_ASSERT(x.shape(0) == n);
@@ -155,9 +158,11 @@ MATHPRIM_BACKEND_BLAS_GEMM_IMPL(T, blas_cpu_handmade, device_t::cpu) {
   index_t n = B.shape(1);
   index_t k = A.shape(1);
   MATHPRIM_ASSERT(B.shape(0) == k);
-  MATHPRIM_ASSERT(C.shape(0) == m);
   MATHPRIM_ASSERT(C.shape(1) == n);
 
+  // Warning: cpu_handmade gemm is not optimized for large matrices.
+  // This implementation is intended for small matrices due to its simplicity and lack of optimizations.
+  // For better performance with large matrices, consider using a more optimized BLAS library such as OpenBLAS or Intel MKL.
   MATHPRIM_WARN_ONCE("cpu_handmade gemm is not optimized for large matrices");
   for (index_t i = 0; i < m; i++) {
     for (index_t j = 0; j < n; j++) {
@@ -165,11 +170,18 @@ MATHPRIM_BACKEND_BLAS_GEMM_IMPL(T, blas_cpu_handmade, device_t::cpu) {
     }
   }
 
-  for (index_t i = 0; i < m; i++) {
-    for (index_t l = 0; l < k; l++) {
-      T a_il = A(i, l);
-      for (index_t j = 0; j < n; j++) {
-        C(i, j) += alpha * a_il * B(l, j);
+  const index_t block_size = 16;  // Block size for cache optimization
+  for (index_t ii = 0; ii < m; ii += block_size) {
+    for (index_t ll = 0; ll < k; ll += block_size) {
+      for (index_t jj = 0; jj < n; jj += block_size) {
+        for (index_t i = ii; i < std::min(ii + block_size, m); i++) {
+          for (index_t l = ll; l < std::min(ll + block_size, k); l++) {
+            T a_il = A(i, l);
+            for (index_t j = jj; j < std::min(jj + block_size, n); j++) {
+              C(i, j) += alpha * a_il * B(l, j);
+            }
+          }
+        }
       }
     }
   }
