@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cmath>
+#include "mathprim/core/blas/utils.hpp"
 #include "mathprim/core/defines.hpp"
 #include "mathprim/supports/eigen_dense.hpp"
 
@@ -147,6 +148,7 @@ T blas_impl_cpu_eigen<T>::amax(const_vector_view x) {
 
 template <typename T>
 void blas_impl_cpu_eigen<T>::gemv(T alpha, const_matrix_view A, const_vector_view x, T beta, vector_view y) {
+  internal::check_mv_shapes(A.shape(), x.shape(), y.shape());
   if (y.is_contiguous()) {
     auto y_eigen = eigen_support::cmap(y);
     y_eigen *= beta;
@@ -176,6 +178,7 @@ void blas_impl_cpu_eigen<T>::gemv(T alpha, const_matrix_view A, const_vector_vie
 
 template <typename T>
 void blas_impl_cpu_eigen<T>::gemm(T alpha, const_matrix_view A, const_matrix_view B, T beta, matrix_view C) {
+  internal::check_mm_shapes(A.shape(), B.shape(), C.shape());
   if (A.is_contiguous() && B.is_contiguous() && C.is_contiguous()) {
     auto C_eigen = eigen_support::cmap(C);
     C_eigen *= beta;

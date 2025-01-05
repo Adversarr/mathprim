@@ -1,8 +1,10 @@
+#include <iostream>
 #define MATHPRIM_VERBOSE_MALLOC 1
 #define MATHPRIM_CPU_BLAS blas
 #include <math.h>
 
 #include <mathprim/core/backends/cuda.cuh>
+#include <mathprim/core/parallel/cuda.cuh>
 #include <mathprim/core/common.hpp>
 #include <mathprim/supports/stringify.hpp>
 
@@ -16,9 +18,6 @@ static constexpr index_t N = 24;
   if (::abs((a) - (b)) > 1e-6) {                     \
     printf("Error " #a "=%f " #b "=%f\n", (a), (b)); \
   }
-// } else {                                                                     \
-  //   printf("Success " #a "=%f " #b "=%f\n", (a), (b));                         \
-  // }
 
 __global__ void setup_x(f32_buffer_view<1, device_t::cuda> x) {
   auto i = blockIdx.x;
@@ -65,6 +64,7 @@ __global__ void check5(f32_buffer_view<1, device_t::cuda> x) {
 }
 
 int main() {
+
   auto x = mathprim::make_buffer<float, device_t::cuda>(N);
   auto y = mathprim::make_buffer<float, device_t::cuda>(N);
   auto x_view = x.view();
@@ -76,6 +76,7 @@ int main() {
   setup_x<<<grid_dim, block_dim>>>(x_view);
   setup_y<<<grid_dim, block_dim>>>(y_view);
   using blas_ = blas::blas_impl_cublas<float>;
+  using parfor_ = parfor<par::cuda>;
 
   blas_::scal(2.0f, x_view);
   check1<<<grid_dim, block_dim>>>(x_view);
@@ -112,39 +113,60 @@ int main() {
   ones_<<<cols, 1>>>(c_view);
   blas_::gemv(1.0f, a_view.as_const(), c.view().as_const(), 0.0f, b_view);
   check5<<<rows, 1>>>(b_view);
-  // for (auto i : b_view.shape()) {
-  //   MATHPRIM_EQUAL(b_view(i), 6.0f);
-  //   b_view(i) = 1;
-  // }
+  parfor_::for_each(b_view, [] __device__(float &x) { x = 1.0f; });
 
-  // blas::gemv(1.0f, a_t.as_const(), b.view().as_const(), 0.0f, c.view());
-  // for (auto i : c_view.shape()) {
-  //   MATHPRIM_EQUAL(c_view(i), 4.0f);
-  // }
+  blas_::gemv(1.0f, a_t.as_const(), b.view().as_const(), 0.0f, c.view());
+  parfor_::for_each(c_view, [] __device__(float &x) { MATHPRIM_EQUAL(x, 4.0f); });
 
-  //   {
-  //     auto d = mathprim::make_buffer<float, device_t::cuda>(rows, rows);
-  //     auto d_view = d.view();
-  //     memset(d, 0);
-  //     // d <- a * a_t
-  //     blas::gemm(1.0f, a_view.as_const(), a_t.as_const(), 0.0f, d_view);
+  {
+    auto d = mathprim::make_buffer<float, device_t::cuda>(rows, rows);
+    auto d_view = d.view();
+    memset(d, 0);
+    // d <- a * a_t
+    blas_::gemm(1.0f, a_view, a_t, 0.0f, d_view);
+    parfor_::for_each(d_view, [] __device__(float &x) { MATHPRIM_EQUAL(x, 6.0f); });
+  }
 
-  //     for (auto [i, j] : d.shape()) {
-  //       MATHPRIM_EQUAL(d_view(i, j), 6.0f);
-  //     }
-  //   }
+  {
+    constexpr index_t m = 3, n = 4, k = 5;
+    auto a = mathprim::make_buffer<float, device_t::cuda>(m, k);
+    auto b = mathprim::make_buffer<float, device_t::cuda>(k, n);
+    auto c = mathprim::make_buffer<float, device_t::cuda>(m, n);
 
-  //   {
-  //     auto d = mathprim::make_buffer<float, device_t::cuda>(cols, cols);
-  //     auto d_view = d.view();
-  //     memset(d, 0);
-  //     // dt <- a_t * a
-  //     blas::gemm(1.0f, a_t.as_const(), a_view.as_const(), 0.0f,
-  //                d_view.transpose(-1, -2));
-  //     for (auto [i, j] : d.shape()) {
-  //       MATHPRIM_EQUAL(d_view(i, j), 4.0f);
-  //     }
-  //   }
+    auto a_view = a.view(), b_view = b.view(), c_view = c.view();
+    // for (auto [i, j] : a.shape()) {
+    //   a_view(i, j) = i * k + j;
+    // }
+    parfor_::for_each_indexed(a_view, [] __device__(dim<2> ij, float &x) {
+      auto [i, j] = ij;
+      x = i * k + j;
+    });
+    // for (auto [i, j] : b.shape()) {
+    //   b_view(i, j) = i * n + j;
+    // }
+    parfor_::for_each_indexed(b_view, [] __device__(dim<2> ij, float &x) {
+      auto [i, j] = ij;
+      x = i * n + j;
+    });
+    memset(c, 0);
+    blas_::gemm(1.0f, a_view.as_const(), b_view.as_const(), 0.0f, c_view);
+    auto c_gt = mathprim::make_buffer<float>(m, n);
+    
+    memset(c, 0);
+    blas_::gemm(1.0f, b_view.transpose(), a_view.transpose(), 0.0f,
+                c_view.transpose());
+    parfor_::for_each_indexed(c_view, [] __device__(dim<2> ij, float &x) {
+      auto [i, j] = ij;
+      printf("%d %d %f\n", i, j, x);
+    });
+
+    try {
+      blas_::gemm(1.0f, a_view.as_const(), b_view.as_const(), 0.0f,
+                  c_view.transpose());
+    } catch (const std::exception& e) {
+      std::cerr << e.what() << std::endl;
+    }
+  }
 
   cudaDeviceSynchronize();
   return 0;

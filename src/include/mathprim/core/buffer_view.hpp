@@ -17,7 +17,7 @@ public:
 namespace internal {
 
 template <index_t M, index_t N>
-inline dim<N> determine_reshape_shape(const dim<M> &from, const dim<N> &to) {
+MATHPRIM_PRIMFUNC dim<N> determine_reshape_shape(const dim<M> &from, const dim<N> &to) {
   dim<N> new_shape = to;
   index_t total_to = 1;
   index_t keep_dim_dim = -1;
@@ -290,8 +290,8 @@ public:
     return view<1>(dim<1>{numel()});
   }
 
-  MATHPRIM_PRIMFUNC basic_buffer_view<T, N, dev> transpose(index_t i,
-                                                           index_t j) {
+  MATHPRIM_PRIMFUNC basic_buffer_view<T, N, dev> transpose(index_t i = N-1,
+                                                           index_t j = N-2) {
     dim<N> new_shape = shape_, new_stride = stride_;
     if (i < 0) {
       i += N;

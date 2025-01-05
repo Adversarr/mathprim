@@ -32,7 +32,11 @@
 #define MATHPRIM_CONCAT_IMPL(a, b) a##b
 #define MATHPRIM_CONCAT(a, b) MATHPRIM_CONCAT_IMPL(a, b)
 #ifndef MATHPRIM_CPU_BLAS
-#  define MATHPRIM_CPU_BLAS handmade
+#  ifdef MATHPRIM_ENABLE_BLAS
+#    define MATHPRIM_CPU_BLAS blas
+#  else
+#    define MATHPRIM_CPU_BLAS handmade
+#  endif
 #endif
 #define MATHPRIM_INTERNAL_CPU_BLAS_FALLBACK \
   MATHPRIM_CONCAT(blas_impl_cpu_, MATHPRIM_CPU_BLAS)
@@ -182,6 +186,7 @@ enum class par {
 // NOLINTEND
 
 MATHPRIM_INTERNAL_DECLARE_ERROR(memcpy_error, runtime_error);
+MATHPRIM_INTERNAL_DECLARE_ERROR(shape_error, runtime_error);
 #undef MATHPRIM_INTERNAL_DECLARE_ERROR
 
 #define MATHPRIM_INTERNAL_CUDA_ASSERT(cond, msg)                        \
@@ -250,14 +255,14 @@ template <typename T> struct blas_select_fallback<T, device_t::cuda> {
   using type = blas::blas_impl_cpu_handmade<T>;
 };
 
-
 /// @brief BLAS backend selection (for user selection)
 template <typename T, device_t dev> struct blas_select {
   using type = typename blas_select_fallback<T, dev>::type;
 };
 
 /// @brief BLAS backend selection (shortcut)
-template <typename T, device_t dev> using blas_select_t = typename blas_select<T, dev>::type;
+template <typename T, device_t dev>
+using blas_select_t = typename blas_select<T, dev>::type;
 
 ///////////////////////////////////////////////////////////////////////////////
 /// Aliases.

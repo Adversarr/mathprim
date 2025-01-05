@@ -1,10 +1,9 @@
 #pragma once
 #include "mathprim/core/utils/cuda_utils.cuh"
+#include "utils.hpp"
 
 #include <cublas_v2.h>
 #include <sstream>
-
-#include "mathprim/core/defines.hpp"
 
 namespace mathprim {
 
@@ -252,6 +251,7 @@ template <typename T> T blas_impl_cublas<T>::asum(const_vector_view x) {
 template <typename T>
 void blas_impl_cublas<T>::gemv(T alpha, const_matrix_view A,
                                const_vector_view x, T beta, vector_view y) {
+  internal::check_mv_shapes(A.shape(), x.shape(), y.shape());
   int m = static_cast<int>(A.size(0));
   int n = static_cast<int>(A.size(1));
   int row_stride = static_cast<int>(A.stride(0));
@@ -263,7 +263,7 @@ void blas_impl_cublas<T>::gemv(T alpha, const_matrix_view A,
   cublasOperation_t op = CUBLAS_OP_T;
   if (row_stride == 1 && col_stride > 1) {
     op = CUBLAS_OP_N;
-    lda = row_stride;
+    lda = col_stride;
   } else if (row_stride > 1 && col_stride == 1) {
     lda = row_stride;
     std::swap(m, n);
@@ -279,6 +279,62 @@ void blas_impl_cublas<T>::gemv(T alpha, const_matrix_view A,
     MATHPRIM_INTERNAL_CUBLAS_CHECK(cublasDgemv(handle, op, m, n, &alpha,
                                                A.data(), lda, x.data(), inc_x,
                                                &beta, y.data(), inc_y));
+  } else {
+    static_assert(!std::is_same_v<T, T>, "Unsupported type");
+  }
+}
+
+template <typename T>
+void blas_impl_cublas<T>::gemm(T alpha, const_matrix_view A,
+                               const_matrix_view B, T beta, matrix_view C) {
+  internal::check_mm_shapes(A.shape(), B.shape(), C.shape());
+
+  int m = static_cast<int>(C.size(0));
+  int n = static_cast<int>(C.size(1));
+  int k = static_cast<int>(B.size(0));
+  // we do the gemm in column-major order, that is a transposed view
+  // in row-major order
+  int lda = static_cast<int>(A.stride(1));
+  int ldb = static_cast<int>(B.stride(1));
+  int ldc = static_cast<int>(C.stride(1));
+  auto *handle = internal::cublas_context::instance().handle();
+  cublasOperation_t opA = CUBLAS_OP_T;
+  cublasOperation_t opB = CUBLAS_OP_T;
+
+  if (C.stride(0) > 1) {
+    MATHPRIM_ASSERT(C.stride(1) == 1 && "Invalid matrix view for GEMM");
+    // C.T <- alpha * B.T * A.T + beta * C.T
+    gemm(alpha, B.transpose(0, 1), A.transpose(0, 1), beta, C.transpose(0, 1));
+    return;
+  }
+
+  if (A.stride(0) > 1) {
+    MATHPRIM_ASSERT(A.stride(1) == 1 && "Invalid matrix view for GEMM");
+    lda = static_cast<int>(A.stride(0));
+    opA = CUBLAS_OP_N;
+  }
+  if (B.stride(0) > 1) {
+    MATHPRIM_ASSERT(B.stride(1) == 1 && "Invalid matrix view for GEMM");
+    ldb = static_cast<int>(B.stride(0));
+    opB = CUBLAS_OP_N;
+  }
+
+  if constexpr (std::is_same_v<T, float>) {
+    // MATHPRIM_INTERNAL_CUBLAS_CHECK(cublasSgemm(handle, opA, opB, m, n, k,
+    //                                            &alpha, A.data(), lda,
+    //                                            B.data(), ldb, &beta,
+    //                                            C.data(), ldc));
+    MATHPRIM_INTERNAL_CUBLAS_CHECK(cublasSgemm(handle, opB, opA, n, m, k,
+                                               &alpha, B.data(), ldb, A.data(),
+                                               lda, &beta, C.data(), ldc));
+  } else if constexpr (std::is_same_v<T, double>) {
+    // MATHPRIM_INTERNAL_CUBLAS_CHECK(cublasDgemm(handle, opA, opB, m, n, k,
+    //                                            &alpha, A.data(), lda,
+    //                                            B.data(), ldb, &beta,
+    //                                            C.data(), ldc));
+    MATHPRIM_INTERNAL_CUBLAS_CHECK(cublasDgemm(handle, opB, opA, n, m, k,
+                                               &alpha, B.data(), ldb, A.data(),
+                                               lda, &beta, C.data(), ldc));
   } else {
     static_assert(!std::is_same_v<T, T>, "Unsupported type");
   }

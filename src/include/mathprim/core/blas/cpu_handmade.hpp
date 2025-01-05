@@ -4,6 +4,7 @@
 
 #include "mathprim/core/defines.hpp"
 #include "mathprim/core/utils/common.hpp"
+#include "utils.hpp"
 
 namespace mathprim {
 namespace blas {
@@ -124,6 +125,8 @@ template <typename T>
 void blas_impl_cpu_handmade<T>::gemv(T alpha, const_matrix_view A,
                                      const_vector_view x, T beta,
                                      vector_view y) {
+  internal::check_mv_shapes(A.shape(), x.shape(), y.shape());
+
   index_t m = A.shape(0);
   index_t n = A.shape(1);
   // Optional: Add a configurable threshold for large matrices
@@ -148,6 +151,7 @@ template <typename T>
 void blas_impl_cpu_handmade<T>::gemm(T alpha, const_matrix_view A,
                                      const_matrix_view B, T beta,
                                      matrix_view C) {
+  internal::check_mm_shapes(A.shape(), B.shape(), C.shape());
   index_t m = A.shape(0);
   index_t n = B.shape(1);
   index_t k = A.shape(1);

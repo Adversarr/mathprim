@@ -11,6 +11,7 @@
 #include "mathprim/core/blas/cpu_handmade.hpp"  // IWYU pragma: export
 #include "mathprim/core/defines.hpp"
 #include "mathprim/core/utils/common.hpp"
+#include "utils.hpp"
 
 namespace mathprim {
 namespace blas {
@@ -195,6 +196,8 @@ template <typename T> T blas_impl_cpu_blas<T>::amax(const_vector_view x) {
 template <typename T>
 void blas_impl_cpu_blas<T>::gemv(T alpha, const_matrix_view A,
                                  const_vector_view x, T beta, vector_view y) {
+  internal::check_mv_shapes(A.shape(), x.shape(), y.shape());
+
   CBLAS_INT m = A.size(0);
   CBLAS_INT n = A.size(1);
   CBLAS_INT row_stride = A.stride(0);
@@ -232,6 +235,8 @@ void blas_impl_cpu_blas<T>::gemv(T alpha, const_matrix_view A,
 template <typename T>
 void blas_impl_cpu_blas<T>::gemm(T alpha, const_matrix_view A,
                                  const_matrix_view B, T beta, matrix_view C) {
+  internal::check_mm_shapes(A.shape(), B.shape(), C.shape());
+
   CBLAS_INT m = C.size(0);
   CBLAS_INT n = C.size(1);
   CBLAS_INT k = A.size(1);

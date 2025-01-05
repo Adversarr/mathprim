@@ -102,5 +102,44 @@ int main() {
     }
   }
 
+  {
+    constexpr index_t m = 3, n = 4, k = 5;
+    auto a = mathprim::make_buffer<float>(m, k);
+    auto b = mathprim::make_buffer<float>(k, n);
+    auto c = mathprim::make_buffer<float>(m, n);
+
+    auto a_view = a.view(), b_view = b.view(), c_view = c.view();
+    for (auto [i, j] : a.shape()) {
+      a_view(i, j) = i * k + j;
+    }
+    for (auto [i, j] : b.shape()) {
+      b_view(i, j) = i * n + j;
+    }
+    memset(c, 0);
+    blas::gemm(1.0f, a_view.as_const(), b_view.as_const(), 0.0f, c_view);
+    auto c_gt = mathprim::make_buffer<float>(m, n);
+    auto c_gt_view = c_gt.view();
+    blas::blas_impl_cpu_handmade<float>::gemm(1.0f, a_view.as_const(),
+                                              b_view.as_const(), 0.0f, c_gt_view);
+    for (auto [i, j] : c.shape()) {
+      MATHPRIM_EQUAL(c_view(i, j), c_gt_view(i, j));
+      std::cout << i << ", " << j << ": " << c_view(i, j)  << std::endl;
+    }
+    using blas_ = blas::blas_impl_cpu_blas<float>;
+    memset(c, 0);
+    blas_::gemm(1.0f, b_view.transpose(), a_view.transpose(), 0.0f,
+                c_view.transpose());
+    for (auto [i, j] : c.shape()) {
+      MATHPRIM_EQUAL(c_view(i, j), c_gt_view(i, j));
+    }
+
+    try {
+      blas_::gemm(1.0f, a_view.as_const(), b_view.as_const(), 0.0f,
+                  c_view.transpose());
+    } catch (const std::exception& e) {
+      std::cerr << e.what() << std::endl;
+    }
+  }
+
   return 0;
 }

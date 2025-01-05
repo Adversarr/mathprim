@@ -75,7 +75,7 @@ template <> struct parfor<par::cuda> {
   static void for_each_indexed(basic_buffer_view<T, N, dev> buffer, Fn fn) {
     run(dim_t{buffer.shape()}, [fn, buffer] MATHPRIM_DEVICE(const dim_t &idx) {
       const dim<N> downgraded_idx{idx};
-      fn(downgraded_idx, buffer(idx));
+      fn(downgraded_idx, buffer(downgraded_idx));
     });
   }
 
