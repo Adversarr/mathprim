@@ -170,6 +170,7 @@ enum class device_t {
 
 enum class par {
   seq,     ///< No parallelism.
+  std,     ///< Standard C++ parallelism.
   openmp,  ///< OpenMP. for cpu backend only
   cuda,    ///< CUDA.   for cuda backend only
 };

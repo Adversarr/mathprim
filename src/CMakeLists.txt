@@ -5,14 +5,14 @@ if(MATHPRIM_ENABLE_WARNINGS)
   target_compile_options(mathprim INTERFACE -Wall)
 endif()
 
-if (MATHPRIM_ENABLE_EIGEN)
+if(MATHPRIM_ENABLE_EIGEN)
   find_package(Eigen3 REQUIRED)
   message(STATUS "Enabling Eigen")
   target_link_libraries(mathprim INTERFACE Eigen3::Eigen)
   target_compile_definitions(mathprim INTERFACE MATHPRIM_ENABLE_EIGEN)
 endif()
 
-if (MATHPRIM_ENABLE_BLAS)
+if(MATHPRIM_ENABLE_BLAS)
   find_package(BLAS REQUIRED)
   message(STATUS "Enabling BLAS")
 
@@ -20,7 +20,7 @@ if (MATHPRIM_ENABLE_BLAS)
   target_compile_definitions(mathprim INTERFACE MATHPRIM_ENABLE_BLAS)
 endif()
 
-if (MATHPRIM_ENABLE_CUDA)
+if(MATHPRIM_ENABLE_CUDA)
   find_package(CUDAToolkit REQUIRED)
   message(STATUS "Enabling CUDA")
 
@@ -28,4 +28,12 @@ if (MATHPRIM_ENABLE_CUDA)
   target_compile_definitions(mathprim INTERFACE MATHPRIM_ENABLE_CUDA)
   target_compile_options(mathprim INTERFACE $<$<COMPILE_LANGUAGE:CUDA>:--extended-lambda>)
   target_compile_options(mathprim INTERFACE $<$<COMPILE_LANGUAGE:CUDA>:--expt-relaxed-constexpr>)
+endif()
+
+if(MATHPRIM_ENABLE_OPENMP)
+  find_package(OpenMP REQUIRED)
+  message(STATUS "Enabling OpenMP")
+
+  target_link_libraries(mathprim INTERFACE OpenMP::OpenMP_CXX)
+  target_compile_definitions(mathprim INTERFACE MATHPRIM_ENABLE_OPENMP)
 endif()

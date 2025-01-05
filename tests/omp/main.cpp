@@ -3,6 +3,7 @@
 #include <mathprim/core/parallel/openmp.hpp>
 #include <mathprim/supports/stringify.hpp>
 #include <mutex>
+#include <thread>
 using namespace mathprim;
 
 int main() {
@@ -40,6 +41,13 @@ int main() {
     }
     std::cout << row << std::endl;
   }
+
+  parfor<par::std>::run(
+      grid_dim, block_dim, [&mtx](dim_t grid_id, dim_t block_id) {
+        std::lock_guard<std::mutex> lock(mtx);
+        std::cout << "Grid ID: " << grid_id << ", Block ID: " << block_id
+                  << "Thread ID: " << std::this_thread::get_id() << std::endl;
+      });
 
   return 0;
 }

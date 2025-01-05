@@ -1,7 +1,8 @@
 #pragma once
 #include "mathprim/core/dim.hpp"
 #include "mathprim/core/utils/common.hpp"
-
+#include "mathprim/core/parallel/std.hpp"
+#include "mathprim/core/parallel/sequential.hpp"
 namespace mathprim {
 
 template <par parallel> struct parfor {
