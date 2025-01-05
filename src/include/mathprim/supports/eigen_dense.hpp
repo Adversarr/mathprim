@@ -75,7 +75,7 @@ static constexpr Eigen::AlignmentType continuous_buffer_alignment_v
 
 template <int rows = Eigen::Dynamic, int cols = Eigen::Dynamic, typename T,
           device_t dev>
-Eigen::Map<internal::eigen_type<T, rows, cols>,
+MATHPRIM_PRIMFUNC Eigen::Map<internal::eigen_type<T, rows, cols>,
            continuous_buffer_alignment_v<T, dev, rows, cols>>
 cmap(basic_buffer_view<T, 2, dev> view) {
   MATHPRIM_ASSERT(view.is_contiguous());
@@ -92,7 +92,7 @@ cmap(basic_buffer_view<T, 2, dev> view) {
 
 template <int rows = Eigen::Dynamic, int cols = Eigen::Dynamic, typename T,
           device_t dev>
-Eigen::Map<internal::eigen_type<T, rows, cols>,
+MATHPRIM_PRIMFUNC Eigen::Map<internal::eigen_type<T, rows, cols>,
            continuous_buffer_alignment_v<T, dev, rows, cols>,
            Eigen::Stride<Eigen::Dynamic, Eigen::Dynamic>>
 map(basic_buffer_view<T, 2, dev> view) {
@@ -113,7 +113,7 @@ map(basic_buffer_view<T, 2, dev> view) {
 template <int rows = Eigen::Dynamic, typename T, device_t dev>
 Eigen::Map<internal::eigen_type<T, rows, 1>,
            continuous_buffer_alignment_v<T, dev, rows, 1>>
-cmap(basic_buffer_view<T, 1, dev> view) {
+MATHPRIM_PRIMFUNC cmap(basic_buffer_view<T, 1, dev> view) {
   MATHPRIM_ASSERT(view.is_contiguous());
   const int dyn_rows = view.shape(0);
   if constexpr (rows != Eigen::Dynamic) {
@@ -123,7 +123,7 @@ cmap(basic_buffer_view<T, 1, dev> view) {
 }
 
 template <int rows = Eigen::Dynamic, typename T, device_t dev>
-Eigen::Map<internal::eigen_type<T, rows, 1>,
+MATHPRIM_PRIMFUNC Eigen::Map<internal::eigen_type<T, rows, 1>,
            continuous_buffer_alignment_v<T, dev, rows, 1>,
            Eigen::InnerStride<Eigen::Dynamic>>
 map(basic_buffer_view<T, 1, dev> view) {

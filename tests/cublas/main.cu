@@ -1,19 +1,20 @@
 #define MATHPRIM_VERBOSE_MALLOC 1
 #define MATHPRIM_CPU_BLAS blas
-#include "mathprim/core/blas.hpp"
-#include "mathprim/core/blas/cublas.cuh"
+#include <math.h>
+
 #include <mathprim/core/backends/cuda.cuh>
 #include <mathprim/core/common.hpp>
 #include <mathprim/supports/stringify.hpp>
 
-#include <math.h>
+#include "mathprim/core/blas.hpp"
+#include "mathprim/core/blas/cublas.cuh"
 
 using namespace mathprim;
 static constexpr index_t N = 24;
 
-#define MATHPRIM_EQUAL(a, b)                                                   \
-  if (::abs((a) - (b)) > 1e-6) {                                               \
-    printf("Error " #a "=%f " #b "=%f\n", (a), (b));                           \
+#define MATHPRIM_EQUAL(a, b)                         \
+  if (::abs((a) - (b)) > 1e-6) {                     \
+    printf("Error " #a "=%f " #b "=%f\n", (a), (b)); \
   }
 // } else {                                                                     \
   //   printf("Success " #a "=%f " #b "=%f\n", (a), (b));                         \
@@ -74,14 +75,15 @@ int main() {
 
   setup_x<<<grid_dim, block_dim>>>(x_view);
   setup_y<<<grid_dim, block_dim>>>(y_view);
+  using blas_ = blas::blas_impl_cublas<float>;
 
-  blas::scal(2.0f, x_view);
+  blas_::scal(2.0f, x_view);
   check1<<<grid_dim, block_dim>>>(x_view);
 
-  blas::axpy(1.0f, y_view.as_const(), x_view);
+  blas_::axpy(1.0f, y_view.as_const(), x_view);
   check2<<<grid_dim, block_dim>>>(x_view);
 
-  blas::copy(y_view, x_view.as_const());
+  blas_::copy(y_view, x_view.as_const());
   check2<<<grid_dim, block_dim>>>(y_view);
 
   const index_t rows = 4, cols = 6;
@@ -89,7 +91,7 @@ int main() {
   auto a_view = a.view();
   auto a_1d = a_view.flatten();
 
-  blas::copy(a_1d, y_view.as_const());
+  blas_::copy(a_1d, y_view.as_const());
   // for (auto [i, j] : a.shape()) {
   //   MATHPRIM_EQUAL(a_view(i, j), 2.0f * (i * cols + j) + N - (i * cols +
   //   j));
@@ -108,7 +110,7 @@ int main() {
   memset(b, 0);
   auto b_view = b.view(), c_view = c.view();
   ones_<<<cols, 1>>>(c_view);
-  blas::gemv(1.0f, a_view.as_const(), c.view().as_const(), 0.0f, b_view);
+  blas_::gemv(1.0f, a_view.as_const(), c.view().as_const(), 0.0f, b_view);
   check5<<<rows, 1>>>(b_view);
   // for (auto i : b_view.shape()) {
   //   MATHPRIM_EQUAL(b_view(i), 6.0f);

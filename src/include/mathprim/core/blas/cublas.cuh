@@ -1,10 +1,9 @@
 #pragma once
+#include "mathprim/core/utils/cuda_utils.cuh"
+
 #include <cublas_v2.h>
 #include <sstream>
 
-#include "basic_blas.hpp"
-#include "helper_macros.hpp"
-#include "mathprim/core/utils/cuda_utils.cuh"
 #include "mathprim/core/defines.hpp"
 
 namespace mathprim {
@@ -47,7 +46,7 @@ void check_status(cublasStatus_t status, const char *file, int line,
   mathprim::blas::internal::check_status((expr), __FILE__, __LINE__, #expr)
 
 } // namespace internal
-template <typename T> struct backend_blas<T, blas_cuda_cublas, device_t::cuda> {
+template <typename T> struct blas_impl_cublas {
   static constexpr device_t dev = device_t::cuda;
   using vector_view = basic_buffer_view<T, 1, dev>;
   using matrix_view = basic_buffer_view<T, 2, dev>;
@@ -84,16 +83,12 @@ template <typename T> struct backend_blas<T, blas_cuda_cublas, device_t::cuda> {
 
 } // namespace blas
 
-template <> struct blas_select_fallback<device_t::cuda> {
-  using type = blas_cuda_cublas;
-};
-
 } // namespace mathprim
 
 namespace mathprim::blas {
 
 template <typename T>
-MATHPRIM_BACKEND_BLAS_COPY_IMPL(T, blas_cuda_cublas, device_t::cuda) {
+void blas_impl_cublas<T>::copy(vector_view dst, const_vector_view src) {
   internal::cublas_context::instance();
   auto &ctx = internal::cublas_context::instance();
   auto *handle = ctx.handle();
@@ -113,8 +108,7 @@ MATHPRIM_BACKEND_BLAS_COPY_IMPL(T, blas_cuda_cublas, device_t::cuda) {
   }
 }
 
-template <typename T>
-MATHPRIM_BACKEND_BLAS_SCAL_IMPL(T, blas_cuda_cublas, device_t::cuda) {
+template <typename T> void blas_impl_cublas<T>::scal(T alpha, vector_view x) {
   static_assert(!std::is_const_v<T>, "T must be non-const");
   auto *handle = internal::cublas_context::instance().handle();
   auto n = static_cast<int>(x.size(0));
@@ -131,7 +125,7 @@ MATHPRIM_BACKEND_BLAS_SCAL_IMPL(T, blas_cuda_cublas, device_t::cuda) {
   }
 }
 template <typename T>
-MATHPRIM_BACKEND_BLAS_SWAP_IMPL(T, blas_cuda_cublas, device_t::cuda) {
+void blas_impl_cublas<T>::swap(vector_view x, vector_view y) {
   internal::cublas_context::instance();
   auto &ctx = internal::cublas_context::instance();
   auto *handle = ctx.handle();
@@ -152,7 +146,7 @@ MATHPRIM_BACKEND_BLAS_SWAP_IMPL(T, blas_cuda_cublas, device_t::cuda) {
 }
 
 template <typename T>
-MATHPRIM_BACKEND_BLAS_AXPY_IMPL(T, blas_cuda_cublas, device_t::cuda) {
+void blas_impl_cublas<T>::axpy(T alpha, const_vector_view x, vector_view y) {
   internal::cublas_context::instance();
   auto &ctx = internal::cublas_context::instance();
   auto *handle = ctx.handle();
@@ -173,7 +167,7 @@ MATHPRIM_BACKEND_BLAS_AXPY_IMPL(T, blas_cuda_cublas, device_t::cuda) {
 }
 
 template <typename T>
-MATHPRIM_BACKEND_BLAS_DOT_IMPL(T, blas_cuda_cublas, device_t::cuda) {
+T blas_impl_cublas<T>::dot(const_vector_view x, const_vector_view y) {
   internal::cublas_context::instance();
   auto &ctx = internal::cublas_context::instance();
   auto *handle = ctx.handle();
@@ -195,8 +189,7 @@ MATHPRIM_BACKEND_BLAS_DOT_IMPL(T, blas_cuda_cublas, device_t::cuda) {
   return result;
 }
 
-template <typename T>
-MATHPRIM_BACKEND_BLAS_NORM_IMPL(T, blas_cuda_cublas, device_t::cuda) {
+template <typename T> T blas_impl_cublas<T>::norm(const_vector_view x) {
   internal::cublas_context::instance();
   auto &ctx = internal::cublas_context::instance();
   auto *handle = ctx.handle();
@@ -216,8 +209,7 @@ MATHPRIM_BACKEND_BLAS_NORM_IMPL(T, blas_cuda_cublas, device_t::cuda) {
   return result;
 }
 
-template <typename T>
-MATHPRIM_BACKEND_BLAS_ASUM_IMPL(T, blas_cuda_cublas, device_t::cuda) {
+template <typename T> T blas_impl_cublas<T>::asum(const_vector_view x) {
   internal::cublas_context::instance();
   auto &ctx = internal::cublas_context::instance();
   auto *handle = ctx.handle();
@@ -258,7 +250,8 @@ MATHPRIM_BACKEND_BLAS_ASUM_IMPL(T, blas_cuda_cublas, device_t::cuda) {
 // }
 
 template <typename T>
-MATHPRIM_BACKEND_BLAS_GEMV_IMPL(T, blas_cuda_cublas, device_t::cuda) {
+void blas_impl_cublas<T>::gemv(T alpha, const_matrix_view A,
+                               const_vector_view x, T beta, vector_view y) {
   int m = static_cast<int>(A.size(0));
   int n = static_cast<int>(A.size(1));
   int row_stride = static_cast<int>(A.stride(0));

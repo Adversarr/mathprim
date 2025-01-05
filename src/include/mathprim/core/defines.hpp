@@ -35,7 +35,7 @@
 #  define MATHPRIM_CPU_BLAS handmade
 #endif
 #define MATHPRIM_INTERNAL_CPU_BLAS_FALLBACK \
-  MATHPRIM_CONCAT(blas_cpu_, MATHPRIM_CPU_BLAS)
+  MATHPRIM_CONCAT(blas_impl_cpu_, MATHPRIM_CPU_BLAS)
 
 ///////////////////////////////////////////////////////////////////////////////
 /// Feature detection
@@ -181,8 +181,16 @@ enum class par {
   }
 // NOLINTEND
 
-MATHPRIM_INTERNAL_DECLARE_ERROR(memcpy_error, invalid_argument);
+MATHPRIM_INTERNAL_DECLARE_ERROR(memcpy_error, runtime_error);
 #undef MATHPRIM_INTERNAL_DECLARE_ERROR
+
+#define MATHPRIM_INTERNAL_CUDA_ASSERT(cond, msg)                        \
+  do {                                                                  \
+    if (!(cond)) {                                                      \
+      printf("%s:%d::CUDA assertion(" #cond ") failed: %s\n", __FILE__, \
+             __LINE__, msg);                                            \
+    }                                                                   \
+  } while (0)
 
 ///////////////////////////////////////////////////////////////////////////////
 /// Forward Declarations.
@@ -191,11 +199,11 @@ MATHPRIM_INTERNAL_DECLARE_ERROR(memcpy_error, invalid_argument);
 // TODO: should we use a simpler approach for blas
 
 /// @brief BLAS backend
-struct blas_base {};
-struct blas_cpu_handmade : public blas_base {};
-struct blas_cpu_blas : public blas_base {};
-struct blas_cpu_eigen : public blas_base {};
-struct blas_cuda_cublas : public blas_base {};
+namespace blas {
+template <typename T> struct blas_impl_cpu_handmade;
+template <typename T> struct blas_impl_cpu_blas;
+template <typename T> struct blas_impl_cpu_eigen;
+}  // namespace blas
 
 /**
  * @brief Dimensionality type for general buffers.
@@ -232,15 +240,24 @@ template <par parallel> struct parfor;
 /// BLAS
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief BLAS backend selection fallback, do not use this to select backend.
-template <device_t dev> struct blas_select_fallback;
+template <typename T, device_t dev> struct blas_select_fallback;
+
+template <typename T> struct blas_select_fallback<T, device_t::cpu> {
+  using type = blas::MATHPRIM_INTERNAL_CPU_BLAS_FALLBACK<T>;
+};
+
+template <typename T> struct blas_select_fallback<T, device_t::cuda> {
+  using type = blas::blas_impl_cpu_handmade<T>;
+};
+
 
 /// @brief BLAS backend selection (for user selection)
-template <device_t dev> struct blas_select {
-  using type = typename blas_select_fallback<dev>::type;
+template <typename T, device_t dev> struct blas_select {
+  using type = typename blas_select_fallback<T, dev>::type;
 };
 
 /// @brief BLAS backend selection (shortcut)
-template <device_t dev> using blas_select_t = typename blas_select<dev>::type;
+template <typename T, device_t dev> using blas_select_t = typename blas_select<T, dev>::type;
 
 ///////////////////////////////////////////////////////////////////////////////
 /// Aliases.

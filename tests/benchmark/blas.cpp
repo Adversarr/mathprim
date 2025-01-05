@@ -1,3 +1,4 @@
+#include "mathprim/core/blas/cpu_eigen.hpp"
 #include <benchmark/benchmark.h>
 
 #include <mathprim/core/blas.hpp>
@@ -14,7 +15,7 @@ static void BM_axpy_handmade(benchmark::State& state) {
   memset(y, 0);
 
   for (auto _ : state) {
-    blas::axpy(1.0f, x.view().as_const(), y.view());
+    blas::blas_impl_cpu_handmade<float>::axpy(1.0f, x.view().as_const(), y.view());
   }
 }
 
@@ -23,11 +24,9 @@ static void BM_axpy_eigen(benchmark::State& state) {
   auto y = make_buffer<float>(static_cast<index_t>(state.range(0)));
   memset(x, 0);
   memset(y, 0);
-  auto xv = eigen_support::cmap(x.view());
-  auto yv = eigen_support::cmap(y.view());
 
   for (auto _ : state) {
-    yv += xv * 1.0f;
+    blas::blas_impl_cpu_eigen<float>::axpy(1.0f, x.view(), y.view());
   }
 }
 
@@ -38,7 +37,7 @@ static void BM_axpy_blas(benchmark::State& state) {
   memset(y, 0);
 
   for (auto _ : state) {
-    blas::axpy<float, device_t::cpu, blas_cpu_blas>(1.0f, x.view().as_const(), y.view());
+    blas::blas_impl_cpu_blas<float>::axpy(1.0f, x.view().as_const(), y.view());
   }
 }
 
@@ -53,7 +52,7 @@ static void BM_gemv_handmade(benchmark::State& state) {
   auto x_view = x.view().as_const();
   auto y_view = y.view();
   for (auto _ : state) {
-    blas::gemv(1.0f, a_view, x_view, 1.0f, y_view);
+    blas::blas_impl_cpu_handmade<float>::gemv(1.0f, a_view, x_view, 1.0f, y_view);
   }
 }
 
@@ -69,7 +68,7 @@ static void BM_gemm_handmade(benchmark::State& state) {
   auto  c_view = C.view();
 
   for (auto _ : state) {
-    blas::gemm(1.0f, a_view, b_view, 1.0f, c_view);
+    blas::blas_impl_cpu_handmade<float>::gemm(1.0f, a_view, b_view, 1.0f, c_view);
   }
 }
 
@@ -80,12 +79,8 @@ static void BM_gemv_eigen(benchmark::State& state) {
   memset(A, 0);
   memset(x, 0);
   memset(y, 0);
-  auto a_view = eigen_support::cmap(A.view());
-  auto x_view = eigen_support::cmap(x.view());
-  auto y_view = eigen_support::map(y.view());
-
   for (auto _ : state) {
-    y_view += a_view * x_view;
+    blas::blas_impl_cpu_eigen<float>::gemv(1.0f, A.view(), x.view(), 1.0f, y.view());
   }
 }
 
@@ -96,12 +91,11 @@ static void BM_gemm_eigen(benchmark::State& state) {
   memset(A, 0);
   memset(B, 0);
   memset(C, 0);
-  auto a_view = eigen_support::cmap(A.view());
-  auto b_view = eigen_support::cmap(B.view());
-  auto c_view = eigen_support::map(C.view());
-
+  auto a_view = A.view().as_const();
+  auto b_view = B.view().as_const();
+  auto c_view = C.view();
   for (auto _ : state) {
-    c_view += a_view * b_view;
+    blas::blas_impl_cpu_eigen<float>::gemm(1.0f, a_view, b_view, 1.0f, c_view);
   }
 }
 
@@ -117,7 +111,7 @@ static void BM_gemv_blas(benchmark::State& state) {
   auto y_view = y.view();
 
   for (auto _ : state) {
-    blas::gemv<float, device_t::cpu, blas_cpu_blas>(1.0f, a_view, x_view, 1.0f, y_view);
+    blas::blas_impl_cpu_blas<float>::gemv(1.0f, a_view, x_view, 1.0f, y_view);
   }
 }
 
@@ -133,7 +127,7 @@ static void BM_gemm_blas(benchmark::State& state) {
   auto c_view = C.view();
 
   for (auto _ : state) {
-    blas::gemm<float, device_t::cpu, blas_cpu_blas>(1.0f, a_view, b_view, 1.0f, c_view);
+    blas::blas_impl_cpu_blas<float>::gemm(1.0f, a_view, b_view, 1.0f, c_view);
   }
 }
 

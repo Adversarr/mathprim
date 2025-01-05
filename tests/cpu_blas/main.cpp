@@ -3,8 +3,8 @@
 #define MATHPRIM_VERBOSE_MALLOC 1
 #define MATHPRIM_CPU_BLAS blas
 #include "mathprim/core/blas.hpp"
-#include "mathprim/core/blas/cpu_blas.hpp"
 #include "mathprim/core/blas/cpu_handmade.hpp"
+#include "mathprim/core/blas/cpu_blas.hpp"
 #include "mathprim/core/buffer.hpp"
 #include "mathprim/core/buffer_view.hpp"
 #include "mathprim/core/defines.hpp"

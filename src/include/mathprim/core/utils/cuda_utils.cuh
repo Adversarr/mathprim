@@ -1,4 +1,8 @@
 #pragma once
+#ifndef MATHPRIM_ENABLE_CUDA
+#error "This file should only be included when CUDA is enabled."
+#endif
+
 #include <cuda_runtime.h>
 
 #include <cstdio>

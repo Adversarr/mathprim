@@ -2,16 +2,13 @@
 
 #include <cmath>
 
-#include "basic_blas.hpp"
-#include "helper_macros.hpp"
 #include "mathprim/core/defines.hpp"
 #include "mathprim/core/utils/common.hpp"
 
 namespace mathprim {
 namespace blas {
 
-template <typename T>
-struct backend_blas<T, blas_cpu_handmade, device_t::cpu> {
+template <typename T> struct blas_impl_cpu_handmade {
   static constexpr device_t dev = device_t::cpu;
   using vector_view = basic_buffer_view<T, 1, dev>;
   using matrix_view = basic_buffer_view<T, 2, dev>;
@@ -48,18 +45,12 @@ struct backend_blas<T, blas_cpu_handmade, device_t::cpu> {
 
 }  // namespace blas
 
-// Set default fallback.
-template <>
-struct blas_select_fallback<device_t::cpu> {
-  using type = mathprim::MATHPRIM_INTERNAL_CPU_BLAS_FALLBACK;
-};
-
 }  // namespace mathprim
 
 namespace mathprim::blas {
 
 template <typename T>
-MATHPRIM_BACKEND_BLAS_COPY_IMPL(T, blas_cpu_handmade, device_t::cpu) {
+void blas_impl_cpu_handmade<T>::copy(vector_view dst, const_vector_view src) {
   index_t n = dst.numel();
   for (index_t i = 0; i < n; i++) {
     dst(i) = src(i);
@@ -67,7 +58,7 @@ MATHPRIM_BACKEND_BLAS_COPY_IMPL(T, blas_cpu_handmade, device_t::cpu) {
 }
 
 template <typename T>
-MATHPRIM_BACKEND_BLAS_SCAL_IMPL(T, blas_cpu_handmade, device_t::cpu) {
+void blas_impl_cpu_handmade<T>::scal(T alpha, vector_view x) {
   index_t n = x.numel();
   for (index_t i = 0; i < n; i++) {
     x(i) *= alpha;
@@ -75,7 +66,7 @@ MATHPRIM_BACKEND_BLAS_SCAL_IMPL(T, blas_cpu_handmade, device_t::cpu) {
 }
 
 template <typename T>
-MATHPRIM_BACKEND_BLAS_SWAP_IMPL(T, blas_cpu_handmade, device_t::cpu) {
+void blas_impl_cpu_handmade<T>::swap(vector_view x, vector_view y) {
   index_t n = x.numel();
   for (index_t i = 0; i < n; i++) {
     ::std::swap(x(i), y(i));
@@ -83,7 +74,8 @@ MATHPRIM_BACKEND_BLAS_SWAP_IMPL(T, blas_cpu_handmade, device_t::cpu) {
 }
 
 template <typename T>
-MATHPRIM_BACKEND_BLAS_AXPY_IMPL(T, blas_cpu_handmade, device_t::cpu) {
+void blas_impl_cpu_handmade<T>::axpy(T alpha, const_vector_view x,
+                                     vector_view y) {
   index_t n = x.numel();
   for (index_t i = 0; i < n; i++) {
     y(i) += alpha * x(i);
@@ -91,7 +83,7 @@ MATHPRIM_BACKEND_BLAS_AXPY_IMPL(T, blas_cpu_handmade, device_t::cpu) {
 }
 
 template <typename T>
-MATHPRIM_BACKEND_BLAS_DOT_IMPL(T, blas_cpu_handmade, device_t::cpu) {
+T blas_impl_cpu_handmade<T>::dot(const_vector_view x, const_vector_view y) {
   T v = 0;
   index_t n = x.numel();
   for (index_t i = 0; i < n; i++) {
@@ -100,8 +92,7 @@ MATHPRIM_BACKEND_BLAS_DOT_IMPL(T, blas_cpu_handmade, device_t::cpu) {
   return v;
 }
 
-template <typename T>
-MATHPRIM_BACKEND_BLAS_NORM_IMPL(T, blas_cpu_handmade, device_t::cpu) {
+template <typename T> T blas_impl_cpu_handmade<T>::norm(const_vector_view x) {
   T v = 0;
   index_t n = x.numel();
   for (index_t i = 0; i < n; i++) {
@@ -110,8 +101,7 @@ MATHPRIM_BACKEND_BLAS_NORM_IMPL(T, blas_cpu_handmade, device_t::cpu) {
   return std::sqrt(v);
 }
 
-template <typename T>
-MATHPRIM_BACKEND_BLAS_ASUM_IMPL(T, blas_cpu_handmade, device_t::cpu) {
+template <typename T> T blas_impl_cpu_handmade<T>::asum(const_vector_view x) {
   T v = 0;
   index_t n = x.numel();
   for (index_t i = 0; i < n; i++) {
@@ -120,8 +110,7 @@ MATHPRIM_BACKEND_BLAS_ASUM_IMPL(T, blas_cpu_handmade, device_t::cpu) {
   return v;
 }
 
-template <typename T>
-MATHPRIM_BACKEND_BLAS_AMAX_IMPL(T, blas_cpu_handmade, device_t::cpu) {
+template <typename T> T blas_impl_cpu_handmade<T>::amax(const_vector_view x) {
   T v = 0;
   index_t n = x.numel();
   for (index_t i = 0; i < n; i++) {
@@ -132,13 +121,16 @@ MATHPRIM_BACKEND_BLAS_AMAX_IMPL(T, blas_cpu_handmade, device_t::cpu) {
 }
 
 template <typename T>
-MATHPRIM_BACKEND_BLAS_GEMV_IMPL(T, blas_cpu_handmade, device_t::cpu) {
+void blas_impl_cpu_handmade<T>::gemv(T alpha, const_matrix_view A,
+                                     const_vector_view x, T beta,
+                                     vector_view y) {
   index_t m = A.shape(0);
   index_t n = A.shape(1);
   // Optional: Add a configurable threshold for large matrices
   constexpr index_t threshold = 20;
   if (m * n > threshold) {
-    // For better performance on large matrices, consider using a more optimized BLAS library like OpenBLAS or Intel MKL.
+    // For better performance on large matrices, consider using a more optimized
+    // BLAS library like OpenBLAS or Intel MKL.
     MATHPRIM_WARN_ONCE("cpu_handmade gemv is not optimized for large matrices");
   }
   MATHPRIM_ASSERT(x.shape(0) == n);
@@ -153,7 +145,9 @@ MATHPRIM_BACKEND_BLAS_GEMV_IMPL(T, blas_cpu_handmade, device_t::cpu) {
 }
 
 template <typename T>
-MATHPRIM_BACKEND_BLAS_GEMM_IMPL(T, blas_cpu_handmade, device_t::cpu) {
+void blas_impl_cpu_handmade<T>::gemm(T alpha, const_matrix_view A,
+                                     const_matrix_view B, T beta,
+                                     matrix_view C) {
   index_t m = A.shape(0);
   index_t n = B.shape(1);
   index_t k = A.shape(1);
@@ -161,8 +155,9 @@ MATHPRIM_BACKEND_BLAS_GEMM_IMPL(T, blas_cpu_handmade, device_t::cpu) {
   MATHPRIM_ASSERT(C.shape(1) == n);
 
   // Warning: cpu_handmade gemm is not optimized for large matrices.
-  // This implementation is intended for small matrices due to its simplicity and lack of optimizations.
-  // For better performance with large matrices, consider using a more optimized BLAS library such as OpenBLAS or Intel MKL.
+  // This implementation is intended for small matrices due to its simplicity
+  // and lack of optimizations. For better performance with large matrices,
+  // consider using a more optimized BLAS library such as OpenBLAS or Intel MKL.
   MATHPRIM_WARN_ONCE("cpu_handmade gemm is not optimized for large matrices");
   for (index_t i = 0; i < m; i++) {
     for (index_t j = 0; j < n; j++) {
@@ -188,7 +183,7 @@ MATHPRIM_BACKEND_BLAS_GEMM_IMPL(T, blas_cpu_handmade, device_t::cpu) {
 }
 
 template <typename T>
-MATHPRIM_BACKEND_BLAS_EMUL_IMPL(T, blas_cpu_handmade, device_t::cpu) {
+void blas_impl_cpu_handmade<T>::emul(const_vector_view x, vector_view y) {
   index_t n = x.numel();
   for (index_t i = 0; i < n; i++) {
     y(i) *= x(i);
@@ -196,7 +191,7 @@ MATHPRIM_BACKEND_BLAS_EMUL_IMPL(T, blas_cpu_handmade, device_t::cpu) {
 }
 
 template <typename T>
-MATHPRIM_BACKEND_BLAS_EDIV_IMPL(T, blas_cpu_handmade, device_t::cpu) {
+void blas_impl_cpu_handmade<T>::ediv(const_vector_view x, vector_view y) {
   index_t n = x.numel();
   for (index_t i = 0; i < n; i++) {
     y(i) /= x(i);

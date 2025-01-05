@@ -28,7 +28,8 @@ inline dim<N> determine_reshape_shape(const dim<M> &from, const dim<N> &to) {
         throw reshape_error("Only one dimension can be -1.");
       }
 #else
-      MATHPRIM_ASSERT(keep_dim_dim < 0 && "Only one dimension can be -1.");
+      MATHPRIM_INTERNAL_CUDA_ASSERT(keep_dim_dim < 0,
+                                    "Only one dimension can be -1.");
 #endif
 
       keep_dim_dim = i;
@@ -48,8 +49,8 @@ inline dim<N> determine_reshape_shape(const dim<M> &from, const dim<N> &to) {
     throw reshape_error("Total number of elements must be the same.");
   }
 #else
-  MATHPRIM_ASSERT(total_to == total_from
-                  && "Total number of elements must be the same.");
+  MATHPRIM_INTERNAL_CUDA_ASSERT(total_to == total_from,
+                                "Total number of elements must be the same.");
 #endif
   return new_shape;
 }
@@ -243,6 +244,23 @@ public:
 
   // TODO:
   // 1. subview
+
+  template <index_t batch_dim>
+  MATHPRIM_PRIMFUNC basic_buffer_view<T, N, dev> subview(index_t start = 0,
+                                                         index_t end = 0,
+                                                         index_t step = 1) {
+    if (end <= 0) {
+      end += shape_[batch_dim];
+    }
+    MATHPRIM_ASSERT(start >= 0 && start < shape_[batch_dim]);
+    MATHPRIM_ASSERT(end >= 0 && end <= shape_[batch_dim]);
+    MATHPRIM_ASSERT(end - start > step && step > 0);
+    dim<N> sshape = shape_;
+    dim<N> sstride = stride_;
+    sshape[batch_dim] = (end - start) / step;
+    sstride[batch_dim] *= step;
+    return {sshape, sstride, (data_ + stride_[batch_dim] * start), dyn_dev_};
+  }
 
   template <index_t batch_dim = 0>
   MATHPRIM_PRIMFUNC basic_buffer_view<T, N - 1, dev> slice(

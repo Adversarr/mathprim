@@ -1,12 +1,13 @@
 #pragma once
+#ifndef MATHPRIM_ENABLE_BLAS
+#  error "BLAS is not enabled."
+#endif
 
 #include <cblas.h>
 
 #include <cmath>
 #include <type_traits>
 
-#include "basic_blas.hpp"
-#include "helper_macros.hpp"
 #include "mathprim/core/blas/cpu_handmade.hpp"  // IWYU pragma: export
 #include "mathprim/core/defines.hpp"
 #include "mathprim/core/utils/common.hpp"
@@ -21,10 +22,9 @@ constexpr CBLAS_TRANSPOSE invert(CBLAS_TRANSPOSE from) {
 
 }  // namespace internal
 
-template <typename T>
-struct backend_blas<T, blas_cpu_blas, device_t::cpu> {
+template <typename T> struct blas_impl_cpu_blas {
   static constexpr device_t dev = device_t::cpu;
-  using blas_unsupported = backend_blas<T, blas_cpu_handmade, dev>;
+  using blas_unsupported = blas_impl_cpu_handmade<T>;
   using vector_view = basic_buffer_view<T, 1, dev>;
   using matrix_view = basic_buffer_view<T, 2, dev>;
   using const_vector_view = basic_buffer_view<const T, 1, dev>;
@@ -65,7 +65,7 @@ struct backend_blas<T, blas_cpu_blas, device_t::cpu> {
 namespace mathprim::blas {
 
 template <typename T>
-MATHPRIM_BACKEND_BLAS_COPY_IMPL(T, blas_cpu_blas, device_t::cpu) {
+void blas_impl_cpu_blas<T>::copy(vector_view dst, const_vector_view src) {
   CBLAS_INT inc_x = dst.stride(-1);
   CBLAS_INT inc_y = src.stride(-1);
   CBLAS_INT numel = dst.numel();
@@ -79,8 +79,7 @@ MATHPRIM_BACKEND_BLAS_COPY_IMPL(T, blas_cpu_blas, device_t::cpu) {
   }
 }
 
-template <typename T>
-MATHPRIM_BACKEND_BLAS_SCAL_IMPL(T, blas_cpu_blas, device_t::cpu) {
+template <typename T> void blas_impl_cpu_blas<T>::scal(T alpha, vector_view x) {
   CBLAS_INT inc_x = x.stride(-1);
   CBLAS_INT numel = x.numel();
   T* x_data = x.data();
@@ -96,7 +95,7 @@ MATHPRIM_BACKEND_BLAS_SCAL_IMPL(T, blas_cpu_blas, device_t::cpu) {
 }
 
 template <typename T>
-MATHPRIM_BACKEND_BLAS_SWAP_IMPL(T, blas_cpu_blas, device_t::cpu) {
+void blas_impl_cpu_blas<T>::swap(vector_view x, vector_view y) {
   CBLAS_INT inc_x = x.stride(-1);
   CBLAS_INT inc_y = y.stride(-1);
   CBLAS_INT numel = x.numel();
@@ -114,7 +113,7 @@ MATHPRIM_BACKEND_BLAS_SWAP_IMPL(T, blas_cpu_blas, device_t::cpu) {
 }
 
 template <typename T>
-MATHPRIM_BACKEND_BLAS_AXPY_IMPL(T, blas_cpu_blas, device_t::cpu) {
+void blas_impl_cpu_blas<T>::axpy(T alpha, const_vector_view x, vector_view y) {
   CBLAS_INT inc_x = x.stride(-1);
   CBLAS_INT inc_y = y.stride(-1);
   CBLAS_INT numel = x.numel();
@@ -132,7 +131,7 @@ MATHPRIM_BACKEND_BLAS_AXPY_IMPL(T, blas_cpu_blas, device_t::cpu) {
 }
 
 template <typename T>
-MATHPRIM_BACKEND_BLAS_DOT_IMPL(T, blas_cpu_blas, device_t::cpu) {
+void blas_impl_cpu_blas<T>::emul(const_vector_view x, vector_view y) {
   T v = 0;
   CBLAS_INT inc_x = x.stride(-1);
   CBLAS_INT inc_y = y.stride(-1);
@@ -151,8 +150,7 @@ MATHPRIM_BACKEND_BLAS_DOT_IMPL(T, blas_cpu_blas, device_t::cpu) {
   return v;
 }
 
-template <typename T>
-MATHPRIM_BACKEND_BLAS_NORM_IMPL(T, blas_cpu_blas, device_t::cpu) {
+template <typename T> T blas_impl_cpu_blas<T>::norm(const_vector_view x) {
   T v = 0;
   CBLAS_INT inc_x = x.stride(-1);
   if constexpr (std::is_same_v<T, float>) {
@@ -166,8 +164,7 @@ MATHPRIM_BACKEND_BLAS_NORM_IMPL(T, blas_cpu_blas, device_t::cpu) {
   return v;
 }
 
-template <typename T>
-MATHPRIM_BACKEND_BLAS_ASUM_IMPL(T, blas_cpu_blas, device_t::cpu) {
+template <typename T> T blas_impl_cpu_blas<T>::asum(const_vector_view x) {
   T v = 0;
   CBLAS_INT inc_x = x.stride(-1);
   if constexpr (std::is_same_v<T, float>) {
@@ -181,8 +178,7 @@ MATHPRIM_BACKEND_BLAS_ASUM_IMPL(T, blas_cpu_blas, device_t::cpu) {
   return v;
 }
 
-template <typename T>
-MATHPRIM_BACKEND_BLAS_AMAX_IMPL(T, blas_cpu_blas, device_t::cpu) {
+template <typename T> T blas_impl_cpu_blas<T>::amax(const_vector_view x) {
   T v = 0;
   CBLAS_INT inc_x = x.stride(-1);
   if constexpr (std::is_same_v<T, float>) {
@@ -197,7 +193,8 @@ MATHPRIM_BACKEND_BLAS_AMAX_IMPL(T, blas_cpu_blas, device_t::cpu) {
 }
 
 template <typename T>
-MATHPRIM_BACKEND_BLAS_GEMV_IMPL(T, blas_cpu_blas, device_t::cpu) {
+void blas_impl_cpu_blas<T>::gemv(T alpha, const_matrix_view A,
+                                 const_vector_view x, T beta, vector_view y) {
   CBLAS_INT m = A.size(0);
   CBLAS_INT n = A.size(1);
   CBLAS_INT row_stride = A.stride(0);
@@ -233,7 +230,8 @@ MATHPRIM_BACKEND_BLAS_GEMV_IMPL(T, blas_cpu_blas, device_t::cpu) {
 }
 
 template <typename T>
-MATHPRIM_BACKEND_BLAS_GEMM_IMPL(T, blas_cpu_blas, device_t::cpu) {
+void blas_impl_cpu_blas<T>::gemm(T alpha, const_matrix_view A,
+                                 const_matrix_view B, T beta, matrix_view C) {
   CBLAS_INT m = C.size(0);
   CBLAS_INT n = C.size(1);
   CBLAS_INT k = A.size(1);
