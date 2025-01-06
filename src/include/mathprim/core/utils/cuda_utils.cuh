@@ -36,19 +36,21 @@ MATHPRIM_PRIMFUNC dim3 to_cuda_dim(const dim<1> &dim) {
 }
 
 MATHPRIM_PRIMFUNC dim3 to_cuda_dim(const dim<2> &dim) {
-  return {static_cast<unsigned int>(dim.x_), static_cast<unsigned int>(dim.y_),
-          1};
+  return {static_cast<unsigned int>(dim.x_),
+          static_cast<unsigned int>(internal::to_valid_size(dim.y_)), 1};
 }
 
 MATHPRIM_PRIMFUNC dim3 to_cuda_dim(const dim<3> &dim) {
-  return {static_cast<unsigned int>(dim.x_), static_cast<unsigned int>(dim.y_),
-          static_cast<unsigned int>(dim.z_)};
+  return {static_cast<unsigned int>(dim.x_), 
+          static_cast<unsigned int>(internal::to_valid_size(dim.y_)),
+          static_cast<unsigned int>(internal::to_valid_size(dim.z_))};
 }
 
-MATHPRIM_PRIMFUNC dim3 to_cuda_dim(const dim<4> &dim) {
-  // NOTE: We ignore the 4th dimension.
-  return {static_cast<unsigned int>(dim.x_), static_cast<unsigned int>(dim.y_),
-          static_cast<unsigned int>(dim.z_)};
-}
+// We do not provide a conversion for dim<4> because it is unsafe to ignore the
+// 4th dimension.
+// MATHPRIM_PRIMFUNC dim3 to_cuda_dim(const dim<4> &dim) {
+//   return {static_cast<unsigned int>(dim.x_), static_cast<unsigned int>(dim.y_),
+//           static_cast<unsigned int>(dim.z_)};
+// }
 
 } // namespace mathprim

@@ -181,13 +181,13 @@ public:
 
   // if your buffer_view contains only one element, this function can help you
   // access the element directly.
-  MATHPRIM_PRIMFUNC reference operator*() noexcept {
+  MATHPRIM_PRIMFUNC reference operator*() const noexcept {
     MATHPRIM_ASSERT(data_ != nullptr && "Buffer is not valid.");
     return *data_;
   }
 
   // direct access to data, ignores stride
-  MATHPRIM_PRIMFUNC reference operator[](index_t i) noexcept {
+  MATHPRIM_PRIMFUNC reference operator[](index_t i) const noexcept {
     MATHPRIM_ASSERT(data_ != nullptr && "Buffer is not valid.");
     MATHPRIM_ASSERT(is_contiguous() && "Buffer is not contiguous.");
     MATHPRIM_ASSERT(i >= 0 && i < numel());

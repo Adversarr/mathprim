@@ -11,14 +11,16 @@
 namespace mathprim {
 
 template <> struct parallel_backend_impl<par::openmp> {
-  template <typename Fn>
-  static void foreach_index(const dim_t& grid_dim, const dim_t& block_dim,
+  template <typename Fn, index_t N>
+  static void foreach_index(const dim<N>& grid_dim, const dim<N>& block_dim,
                             Fn fn) {
-    index_t total = grid_dim.numel();
-#pragma omp parallel for schedule(static)
+    const index_t total = grid_dim.numel();
+    const index_t threads = static_cast<index_t>(omp_get_max_threads());
+    const index_t chunk_size = total / threads;
+#pragma omp parallel for schedule(static, chunk_size)
     for (index_t i = 0; i < total; ++i) {
-      dim_t sub_id = ind2sub(grid_dim, i);
-      for (auto block_id : block_dim) {
+      const dim<N> sub_id = ind2sub(grid_dim, i);
+      for (const dim<N> block_id : block_dim) {
         fn(sub_id, block_id);
       }
     }

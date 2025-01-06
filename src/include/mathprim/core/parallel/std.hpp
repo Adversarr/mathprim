@@ -11,8 +11,8 @@ namespace mathprim {
 
 template <> struct parallel_backend_impl<par::std> {
   // TODO: Use a thread pool to avoid creating threads every time.
-  template <typename Fn>
-  static void foreach_index(const dim_t& grid_dim, const dim_t& block_dim,
+  template <typename Fn, index_t N>
+  static void foreach_index(const dim<N>& grid_dim, const dim<N>& block_dim,
                             Fn fn) {
     index_t total = grid_dim.numel();
     index_t max_threads = std::thread::hardware_concurrency();
@@ -20,7 +20,7 @@ template <> struct parallel_backend_impl<par::std> {
 
     auto worker = [&](index_t start, index_t end) {
       for (index_t i = start; i < end; ++i) {
-        dim_t sub_id = ind2sub(grid_dim, i);
+        const dim<N> sub_id = ind2sub(grid_dim, i);
         for (auto block_id : block_dim) {
           fn(sub_id, block_id);
         }
