@@ -27,6 +27,21 @@ inline void assert_success(cudaError_t status) noexcept {
 }
 } // namespace backend::cuda::internal
 
+template <index_t N> MATHPRIM_PRIMFUNC dim<N> from_cuda_dim(const dim3 &d);
+
+template <> MATHPRIM_PRIMFUNC dim<1> from_cuda_dim(const dim3 &d) {
+  return dim<1>{static_cast<index_t>(d.x)};
+}
+
+template <> MATHPRIM_PRIMFUNC dim<2> from_cuda_dim(const dim3 &d) {
+  return dim<2>{static_cast<index_t>(d.x), static_cast<index_t>(d.y)};
+}
+
+template <> MATHPRIM_PRIMFUNC dim<3> from_cuda_dim(const dim3 &d) {
+  return dim<3>{static_cast<index_t>(d.x), static_cast<index_t>(d.y),
+                static_cast<index_t>(d.z)};
+}
+
 MATHPRIM_PRIMFUNC dim3 to_cuda_dim(index_t dim) {
   return {static_cast<unsigned int>(dim), 1, 1};
 }

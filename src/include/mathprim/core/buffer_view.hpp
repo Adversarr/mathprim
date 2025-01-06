@@ -17,7 +17,8 @@ public:
 namespace internal {
 
 template <index_t M, index_t N>
-MATHPRIM_PRIMFUNC dim<N> determine_reshape_shape(const dim<M> &from, const dim<N> &to) {
+MATHPRIM_PRIMFUNC dim<N> determine_reshape_shape(const dim<M> &from,
+                                                 const dim<N> &to) {
   dim<N> new_shape = to;
   index_t total_to = 1;
   index_t keep_dim_dim = -1;
@@ -290,8 +291,8 @@ public:
     return view<1>(dim<1>{numel()});
   }
 
-  MATHPRIM_PRIMFUNC basic_buffer_view<T, N, dev> transpose(index_t i = N-1,
-                                                           index_t j = N-2) {
+  MATHPRIM_PRIMFUNC basic_buffer_view<T, N, dev> transpose(index_t i = N - 1,
+                                                           index_t j = N - 2) {
     dim<N> new_shape = shape_, new_stride = stride_;
     if (i < 0) {
       i += N;
@@ -327,6 +328,17 @@ private:
   T *data_;
   device_t dyn_dev_;  // TODO: EBO if necessary
 };
+
+template <typename T, index_t N, device_t dev>
+void copy(basic_buffer_view<T, N, dev> dst,
+          basic_buffer_view<const T, N, dev> src) {
+  static_assert(dev != device_t::dynamic, "Device must be specified.");
+  if (dst.shape() != src.shape()) {
+    throw shape_error("Cannot copy buffer with different shapes.");
+  }
+
+  buffer_backend_traits<dev>::template view_copy<T, N>(dst, src);
+}
 
 template <typename T, index_t N, device_t dev>
 basic_buffer_view<T, N, dev> basic_buffer<T, N, dev>::view() {

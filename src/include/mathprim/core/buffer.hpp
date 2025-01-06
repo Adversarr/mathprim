@@ -1,7 +1,6 @@
 #pragma once
 #include <type_traits>
 
-#include "mathprim/core/backends/cpu.hpp"  // IWYU pragma: export
 #include "mathprim/core/defines.hpp"
 #include "mathprim/core/dim.hpp"
 

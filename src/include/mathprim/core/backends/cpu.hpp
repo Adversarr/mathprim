@@ -4,6 +4,7 @@
 #include <cstring>
 #include <new>
 
+#include "mathprim/core/buffer_view.hpp"
 #include "mathprim/core/defines.hpp"
 
 namespace mathprim {
@@ -65,6 +66,19 @@ template <> struct buffer_backend_traits<device_t::cpu> {
   static void memcpy_device_to_device(void* dst, const void* src,
                                       size_t mem_in_bytes) noexcept {
     ::memcpy(dst, src, mem_in_bytes);
+  }
+
+  template <typename T, index_t N>
+  static void view_copy(
+      basic_buffer_view<T, N, device_t::cpu> dst,
+      basic_buffer_view<const T, N, device_t::cpu> src) noexcept {
+    if (dst.is_contiguous() and src.is_contiguous()) {
+      ::memcpy(dst.data(), src.data(), src.numel() * sizeof(T));
+    } else {
+      for (const dim<N>& idx : dst.shape()) {
+        dst(idx) = src(idx);
+      }
+    }
   }
 };
 

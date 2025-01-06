@@ -20,10 +20,11 @@ int main() {
 
   // start with a buffer.
   auto buf = make_buffer<float>(16);  // 16 elements.
-  parfor<par::openmp>::for_each_indexed(buf.view(),
-                                        [](const dim<1>& idx, float& val) {
-                                          val = idx[0];
-                                        });
+  using par_ = parfor<par::openmp>;
+  auto view = buf.view();
+  par_::for_each_indexed(view, [](const dim<1>& idx, float& val) {
+    val = idx[0];
+  });
 
   auto bv = buf.view();
   for (float& i : bv) {

@@ -22,14 +22,14 @@ template <par parallel> struct parfor {
 
   template <typename Fn, typename T, index_t N, device_t dev>
   static void for_each(basic_buffer_view<T, N, dev> buffer, Fn fn) {
-    run<Fn, N>(buffer.shape(), [fn, buffer](const dim<N>& idx) {
+    run(buffer.shape(), [fn, buffer](const dim<N>& idx) {
       fn(buffer(idx));
     });
   }
 
   template <typename Fn, typename T, index_t N, device_t dev>
   static void for_each_indexed(basic_buffer_view<T, N, dev> buffer, Fn fn) {
-    run<Fn, N>(buffer.shape(), [fn, buffer](const dim<N>& idx) {
+    parfor::run(buffer.shape(), [fn, buffer](const dim<N>& idx) {
       fn(idx, buffer(idx));
     });
   }

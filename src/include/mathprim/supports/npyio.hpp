@@ -8,7 +8,11 @@ namespace mathprim::numpy {
 // TODO: Implementation
 template <typename T, index_t N>
 void write(std::ofstream& file,
-           const basic_buffer<T, N, device_t::cpu>& buffer);
+           const basic_buffer<T, N, device_t::cpu>& buffer) {
+    // Write the header
+    // Write the data
+    
+           }
 
 // TODO: Implementation
 template <typename T>
