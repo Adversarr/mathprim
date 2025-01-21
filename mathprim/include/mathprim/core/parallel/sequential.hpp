@@ -5,7 +5,10 @@
 
 namespace mathprim {
 
-template <> struct parallel_backend_impl<par::seq> {
+namespace par {
+
+class seq {
+public:
   template <typename Fn, index_t N>
   static void foreach_index(const dim<N>& grid_dim, const dim<N>& block_dim,
                             Fn fn) {
@@ -16,6 +19,7 @@ template <> struct parallel_backend_impl<par::seq> {
     }
   }
 };
+}  // namespace par
 
 using parfor_seq = parfor<par::seq>;
 

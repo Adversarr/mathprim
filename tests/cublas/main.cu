@@ -4,8 +4,8 @@
 #include <math.h>
 
 #include <mathprim/core/backends/cuda.cuh>
-#include <mathprim/core/parallel/cuda.cuh>
 #include <mathprim/core/common.hpp>
+#include <mathprim/core/parallel/cuda.cuh>
 #include <mathprim/supports/stringify.hpp>
 
 #include "mathprim/core/blas.hpp"
@@ -14,9 +14,9 @@
 using namespace mathprim;
 static constexpr index_t N = 24;
 
-#define MATHPRIM_EQUAL(a, b)                         \
-  if (::abs((a) - (b)) > 1e-6) {                     \
-    printf("Error " #a "=%f " #b "=%f\n", (a), (b)); \
+#define MATHPRIM_EQUAL(a, b)                                                   \
+  if (::abs((a) - (b)) > 1e-6) {                                               \
+    printf("Error " #a "=%f " #b "=%f\n", (a), (b));                           \
   }
 
 __global__ void setup_x(f32_buffer_view<1, device_t::cuda> x) {
@@ -116,7 +116,8 @@ int main() {
   parfor_::for_each(b_view, [] __device__(float &x) { x = 1.0f; });
 
   blas_::gemv(1.0f, a_t.as_const(), b.view().as_const(), 0.0f, c.view());
-  parfor_::for_each(c_view, [] __device__(float &x) { MATHPRIM_EQUAL(x, 4.0f); });
+  parfor_::for_each(c_view,
+                    [] __device__(float &x) { MATHPRIM_EQUAL(x, 4.0f); });
 
   {
     auto d = mathprim::make_buffer<float, device_t::cuda>(rows, rows);
@@ -124,7 +125,8 @@ int main() {
     memset(d, 0);
     // d <- a * a_t
     blas_::gemm(1.0f, a_view, a_t, 0.0f, d_view);
-    parfor_::for_each(d_view, [] __device__(float &x) { MATHPRIM_EQUAL(x, 6.0f); });
+    parfor_::for_each(d_view,
+                      [] __device__(float &x) { MATHPRIM_EQUAL(x, 6.0f); });
   }
 
   {
@@ -151,7 +153,7 @@ int main() {
     memset(c, 0);
     blas_::gemm(1.0f, a_view.as_const(), b_view.as_const(), 0.0f, c_view);
     auto c_gt = mathprim::make_buffer<float>(m, n);
-    
+
     memset(c, 0);
     blas_::gemm(1.0f, b_view.transpose(), a_view.transpose(), 0.0f,
                 c_view.transpose());
@@ -163,7 +165,7 @@ int main() {
     try {
       blas_::gemm(1.0f, a_view.as_const(), b_view.as_const(), 0.0f,
                   c_view.transpose());
-    } catch (const std::exception& e) {
+    } catch (const std::exception &e) {
       std::cerr << e.what() << std::endl;
     }
   }

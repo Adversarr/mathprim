@@ -1,6 +1,6 @@
 ---
-  ColumnLimit: 80
   BasedOnStyle: Google
+  ColumnLimit: 120
   AccessModifierOffset: -2
   AlignTrailingComments: true
   AllowAllParametersOfDeclarationOnNextLine: false
@@ -19,7 +19,7 @@
   AllowShortBlocksOnASingleLine: Never
   AllowShortCaseLabelsOnASingleLine: false
   AllowShortEnumsOnASingleLine: false
-  AllowShortFunctionsOnASingleLine: Inline
+  AllowShortFunctionsOnASingleLine: Never
   AllowShortIfStatementsOnASingleLine: Never
   AllowShortLambdasOnASingleLine: Empty
   AllowShortLoopsOnASingleLine: false

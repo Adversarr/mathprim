@@ -8,63 +8,66 @@ namespace mathprim {
 namespace internal {
 template <typename Fn>
 __global__ void do_work(Fn fn, dim_t grid_dim, dim_t block_dim) {
-  dim_t grid_id = {static_cast<index_t>(blockIdx.x),
-                   static_cast<index_t>(blockIdx.y),
-                   static_cast<index_t>(blockIdx.z)};
-  dim_t block_id = {static_cast<index_t>(threadIdx.x),
-                    static_cast<index_t>(threadIdx.y),
-                    static_cast<index_t>(threadIdx.z)};
+  dim_t block_id = {static_cast<index_t>(blockIdx.x),
+                    static_cast<index_t>(blockIdx.y),
+                    static_cast<index_t>(blockIdx.z)};
+  dim_t thread_id = {static_cast<index_t>(threadIdx.x),
+                     static_cast<index_t>(threadIdx.y),
+                     static_cast<index_t>(threadIdx.z)};
 
-  for (index_t grid_w = 0; grid_w < internal::to_valid_size(grid_dim.w_);
+  for (index_t grid_w = 0; grid_w < internal::to_valid_index(grid_dim.w_);
        ++grid_w) {
-    for (index_t block_w = 0; block_w < internal::to_valid_size(block_dim.w_);
+    for (index_t block_w = 0; block_w < internal::to_valid_index(block_dim.w_);
          ++block_w) {
-      grid_id.w_ = grid_w;
-      block_id.w_ = block_w;
+      block_id.w_ = grid_w;
+      thread_id.w_ = block_w;
 
-      fn(grid_id, block_id);
+      fn(block_id, thread_id);
     }
   }
 }
 
 template <typename Fn>
 void foreach_index(const dim_t &grid_dim, const dim_t &block_dim, Fn fn) {
-  dim3 grid{static_cast<unsigned int>(to_valid_size(grid_dim.x_)),
-            static_cast<unsigned int>(to_valid_size(grid_dim.y_)),
-            static_cast<unsigned int>(to_valid_size(grid_dim.z_))};
-  dim3 block{static_cast<unsigned int>(to_valid_size(block_dim.x_)),
-             static_cast<unsigned int>(to_valid_size(block_dim.y_)),
-             static_cast<unsigned int>(to_valid_size(block_dim.z_))};
+  dim3 grid{static_cast<unsigned int>(to_valid_index(grid_dim.x_)),
+            static_cast<unsigned int>(to_valid_index(grid_dim.y_)),
+            static_cast<unsigned int>(to_valid_index(grid_dim.z_))};
+  dim3 block{static_cast<unsigned int>(to_valid_index(block_dim.x_)),
+             static_cast<unsigned int>(to_valid_index(block_dim.y_)),
+             static_cast<unsigned int>(to_valid_index(block_dim.z_))};
   do_work<<<grid, block>>>(fn, grid_dim, block_dim);
 }
 
 template <typename Fn> __global__ void do_work_cuda_supported_1d(Fn fn) {
-  dim<1> grid_id{static_cast<index_t>(blockIdx.x)};
   dim<1> block_id{static_cast<index_t>(blockIdx.x)};
-  fn(grid_id, block_id);
+  dim<1> thread_id{static_cast<index_t>(threadIdx.x)};
+  fn(block_id, thread_id);
 }
 
 template <typename Fn> __global__ void do_work_cuda_supported_2d(Fn fn) {
-  dim<2> grid_id{static_cast<index_t>(blockIdx.x),
-                 static_cast<index_t>(blockIdx.y)};
-  dim<2> block_id{static_cast<index_t>(threadIdx.x),
-                  static_cast<index_t>(threadIdx.y)};
-  fn(grid_id, block_id);
+  dim<2> block_id{static_cast<index_t>(blockIdx.x),
+                  static_cast<index_t>(blockIdx.y)};
+  dim<2> thread_id{static_cast<index_t>(threadIdx.x),
+                   static_cast<index_t>(threadIdx.y)};
+  fn(block_id, thread_id);
 }
 
 template <typename Fn> __global__ void do_work_cuda_supported_3d(Fn fn) {
-  dim<3> grid_id{static_cast<index_t>(blockIdx.x),
-                 static_cast<index_t>(blockIdx.y),
-                 static_cast<index_t>(blockIdx.z)};
-  dim<3> block_id{static_cast<index_t>(threadIdx.x),
-                  static_cast<index_t>(threadIdx.y),
-                  static_cast<index_t>(threadIdx.z)};
-  fn(grid_id, block_id);
+  dim<3> block_id{static_cast<index_t>(blockIdx.x),
+                  static_cast<index_t>(blockIdx.y),
+                  static_cast<index_t>(blockIdx.z)};
+  dim<3> thread_id{static_cast<index_t>(threadIdx.x),
+                   static_cast<index_t>(threadIdx.y),
+                   static_cast<index_t>(threadIdx.z)};
+  fn(block_id, thread_id);
 }
 
 } // namespace internal
 
-template <> struct parallel_backend_impl<par::cuda> {
+namespace par {
+
+class cuda {
+public:
   template <typename Fn>
   static void foreach_index(const dim_t &grid_dim, const dim_t &block_dim,
                             Fn fn) {
@@ -96,11 +99,13 @@ template <> struct parallel_backend_impl<par::cuda> {
   }
 };
 
+} // namespace par
+
 template <> struct parfor<par::cuda> {
-  using impl_type = parallel_backend_impl<par::cuda>;
-  template <typename Fn>
-  static void run(const dim_t &grid_dim, const dim_t &block_dim, Fn fn) {
-    impl_type::foreach_index(grid_dim, block_dim, fn);
+  using impl = ::mathprim::par::cuda;
+  template <typename Fn, index_t N>
+  static void run(const dim<N> &grid_dim, const dim<N> &block_dim, Fn fn) {
+    impl::foreach_index(grid_dim, block_dim, fn);
   }
 
   template <typename Fn> static void run(const dim_t &grid_dim, Fn fn) {
@@ -111,6 +116,7 @@ template <> struct parfor<par::cuda> {
 
   template <typename Fn, typename T, index_t N, device_t dev>
   static void for_each(basic_buffer_view<T, N, dev> buffer, Fn fn) {
+    // TODO: We assume block size is 1 for now
     run(dim_t{buffer.shape()}, [fn, buffer] MATHPRIM_DEVICE(const dim_t &idx) {
       const dim<N> downgraded_idx{idx};
       fn(buffer(downgraded_idx));
@@ -119,6 +125,7 @@ template <> struct parfor<par::cuda> {
 
   template <typename Fn, typename T, index_t N, device_t dev>
   static void for_each_indexed(basic_buffer_view<T, N, dev> buffer, Fn fn) {
+    // TODO: We assume block size is 1 for now
     run(dim_t{buffer.shape()}, [fn, buffer] MATHPRIM_DEVICE(const dim_t &idx) {
       const dim<N> downgraded_idx{idx};
       fn(downgraded_idx, buffer(downgraded_idx));

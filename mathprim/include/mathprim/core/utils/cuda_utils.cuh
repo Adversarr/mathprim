@@ -10,7 +10,20 @@
 
 #include "mathprim/core/dim.hpp"
 
+#ifndef MATHPRIM_DEFAULT_BLOCK_SIZE_1D
+#define MATHPRIM_DEFAULT_BLOCK_SIZE_1D 64
+#endif
+
+#ifndef MATHPRIM_DEFAULT_BLOCK_SIZE_2D
+#define MATHPRIM_DEFAULT_BLOCK_SIZE_2D 8
+#endif
+
+#ifndef MATHPRIM_DEFAULT_BLOCK_SIZE_3D
+#define MATHPRIM_DEFAULT_BLOCK_SIZE_3D 4
+#endif
+
 namespace mathprim {
+
 namespace backend::cuda::internal {
 template <typename Exception> void check_success(cudaError_t status) {
   if (status != cudaSuccess) {
@@ -52,20 +65,13 @@ MATHPRIM_PRIMFUNC dim3 to_cuda_dim(const dim<1> &dim) {
 
 MATHPRIM_PRIMFUNC dim3 to_cuda_dim(const dim<2> &dim) {
   return {static_cast<unsigned int>(dim.x_),
-          static_cast<unsigned int>(internal::to_valid_size(dim.y_)), 1};
+          static_cast<unsigned int>(internal::to_valid_index(dim.y_)), 1};
 }
 
 MATHPRIM_PRIMFUNC dim3 to_cuda_dim(const dim<3> &dim) {
-  return {static_cast<unsigned int>(dim.x_), 
-          static_cast<unsigned int>(internal::to_valid_size(dim.y_)),
-          static_cast<unsigned int>(internal::to_valid_size(dim.z_))};
+  return {static_cast<unsigned int>(dim.x_),
+          static_cast<unsigned int>(internal::to_valid_index(dim.y_)),
+          static_cast<unsigned int>(internal::to_valid_index(dim.z_))};
 }
-
-// We do not provide a conversion for dim<4> because it is unsafe to ignore the
-// 4th dimension.
-// MATHPRIM_PRIMFUNC dim3 to_cuda_dim(const dim<4> &dim) {
-//   return {static_cast<unsigned int>(dim.x_), static_cast<unsigned int>(dim.y_),
-//           static_cast<unsigned int>(dim.z_)};
-// }
 
 } // namespace mathprim

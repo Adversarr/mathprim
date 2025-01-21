@@ -8,7 +8,7 @@
 
 using namespace mathprim;
 
-template <typename Flt, par p>
+template <typename Flt, class p>
 static void BM_par_for_norm(benchmark::State& state) {
   index_t n = static_cast<index_t>(state.range(0));
   auto buffer = make_buffer<Flt>(n, 3);
@@ -33,7 +33,7 @@ static void BM_par_for_norm_omp(benchmark::State& state) {
   for (auto _ : state) {
     auto view = buffer.view();
     index_t chunk_size = n / omp_get_max_threads();
-    #pragma omp parallel for schedule(static, chunk_size)
+#pragma omp parallel for schedule(static, chunk_size)
     for (index_t i = 0; i < n; ++i) {
       float norm = 0;
       auto buf_i = view.data() + i * 3;
@@ -70,17 +70,18 @@ BENCHMARK_TEMPLATE(BM_par_for_norm, double, par::std)
     ->RangeMultiplier(2)
     ->Range(min_size, max_size);
 
-template <typename Flt, par p>
+template <typename Flt, class p>
 static void BM_par_axpy(benchmark::State& state) {
   index_t n = static_cast<index_t>(state.range(0));
   auto buffer_x = make_buffer<Flt>(n);
   auto buffer_y = make_buffer<Flt>(n);
   Flt a = 2.0;
   for (auto _ : state) {
-    mathprim::parfor<p>::run(dim_t{n}, [x = buffer_x.view(), y = buffer_y.view(), a](dim_t ii) {
-      index_t i = ii[0];
-      y[i] += a * x[i];
-    });
+    mathprim::parfor<p>::run(
+        dim_t{n}, [x = buffer_x.view(), y = buffer_y.view(), a](dim_t ii) {
+          index_t i = ii[0];
+          y[i] += a * x[i];
+        });
   }
 }
 

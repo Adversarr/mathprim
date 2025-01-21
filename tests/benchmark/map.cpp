@@ -3,9 +3,9 @@
 #include <mathprim/supports/eigen_dense.hpp>
 
 using namespace mathprim;
-static void BM_Eigen_VectorMap(benchmark::State& state) {
-  auto buffer
-      = make_buffer<float>(static_cast<index_t>(state.range(0)), 3);  // nx3
+static void BM_Eigen_VectorMap(benchmark::State &state) {
+  auto buffer =
+      make_buffer<float>(static_cast<index_t>(state.range(0)), 3); // nx3
   auto view = buffer.view();
   for (auto [i, j] : view.shape()) {
     view(i, j) = i * 3 + j;
@@ -19,9 +19,9 @@ static void BM_Eigen_VectorMap(benchmark::State& state) {
   }
 }
 
-static void BM_Eigen_VectorMapNaive(benchmark::State& state) {
-  auto buffer
-      = make_buffer<float>(static_cast<index_t>(state.range(0)), 3);  // nx3
+static void BM_Eigen_VectorMapNaive(benchmark::State &state) {
+  auto buffer =
+      make_buffer<float>(static_cast<index_t>(state.range(0)), 3); // nx3
   auto view = buffer.view();
   for (auto [i, j] : view.shape()) {
     view(i, j) = i * 3 + j;
@@ -35,9 +35,9 @@ static void BM_Eigen_VectorMapNaive(benchmark::State& state) {
   }
 }
 
-static void BM_Eigen_MatrixMap(benchmark::State& state) {
-  auto buffer
-      = make_buffer<float>(static_cast<index_t>(state.range(0)), 4, 4);  // nx16
+static void BM_Eigen_MatrixMap(benchmark::State &state) {
+  auto buffer =
+      make_buffer<float>(static_cast<index_t>(state.range(0)), 4, 4); // nx16
   auto view = buffer.view();
   for (auto [i, j, k] : view.shape()) {
     view(i, j, k) = i * 16 + j * 4 + k;
@@ -51,9 +51,9 @@ static void BM_Eigen_MatrixMap(benchmark::State& state) {
   }
 }
 
-static void BM_Eigen_MatrixMapNaive(benchmark::State& state) {
-  auto buffer
-      = make_buffer<float>(static_cast<index_t>(state.range(0)), 16);  // nx16
+static void BM_Eigen_MatrixMapNaive(benchmark::State &state) {
+  auto buffer =
+      make_buffer<float>(static_cast<index_t>(state.range(0)), 16); // nx16
   auto view = buffer.view();
   for (auto [i, j] : view.shape()) {
     view(i, j) = i * 16 + j;
@@ -69,7 +69,6 @@ static void BM_Eigen_MatrixMapNaive(benchmark::State& state) {
 
 BENCHMARK(BM_Eigen_MatrixMap)->Range(8, 8 << 16);
 BENCHMARK(BM_Eigen_MatrixMapNaive)->Range(8, 8 << 16);
-
 
 BENCHMARK(BM_Eigen_VectorMap)->Range(8, 8 << 16);
 BENCHMARK(BM_Eigen_VectorMapNaive)->Range(8, 8 << 16);

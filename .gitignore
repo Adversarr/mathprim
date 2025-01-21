@@ -4,3 +4,14 @@ compile_commands.json
 out
 .idea
 cmake-build*
+
+# Python
+.mypy_cache
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+*.swp
+*.swo
+*.bak
+*.log

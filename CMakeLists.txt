@@ -56,7 +56,7 @@ if(MATHPRIM_BUILD_TESTS_CUDA)
   enable_language(CUDA)
 endif()
 
-add_subdirectory(src)
+add_subdirectory(mathprim)
 
 if(MATHPRIM_BUILD_TESTS)
   enable_testing()

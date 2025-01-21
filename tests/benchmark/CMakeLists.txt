@@ -9,3 +9,9 @@ target_link_libraries(BM_blas PRIVATE benchmark::benchmark mathprim Eigen3::Eige
 
 add_executable(BM_par par.cpp)
 target_link_libraries(BM_par PRIVATE benchmark::benchmark mathprim)
+
+
+if(MATHPRIM_BUILD_TESTS_CUDA)
+  add_executable(BM_cupar par.cu)
+  target_link_libraries(BM_cupar PRIVATE benchmark::benchmark mathprim)
+endif()

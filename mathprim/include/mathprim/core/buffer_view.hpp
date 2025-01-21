@@ -39,7 +39,7 @@ MATHPRIM_PRIMFUNC dim<N> determine_reshape_shape(const dim<M> &from,
     }
   }
 
-  index_t total_from = from.numel();  // from is a valid shape.
+  const auto total_from = from.numel();  // from is a valid shape.
   if (keep_dim_dim >= 0) {
     new_shape[keep_dim_dim] = total_from / total_to;
     total_to *= new_shape[keep_dim_dim];
@@ -198,7 +198,7 @@ public:
   // subscripting.
   MATHPRIM_PRIMFUNC reference operator()(const dim<N> &index) const noexcept {
     MATHPRIM_ASSERT(data_ != nullptr);
-    check_in_bounds(shape_, index);
+    MATHPRIM_ASSERT(is_in_bound(shape_, index));
     size_t offset = sub2ind(stride_, index);
     return data_[offset];
   }

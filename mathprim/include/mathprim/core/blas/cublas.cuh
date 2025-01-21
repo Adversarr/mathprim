@@ -31,8 +31,8 @@ private:
   cublasHandle_t handle_;
 };
 
-void check_status(cublasStatus_t status, const char *file, int line,
-                  const char *expr) {
+inline void check_status(cublasStatus_t status, const char *file, int line,
+                         const char *expr) {
   if (status != CUBLAS_STATUS_SUCCESS) {
     std::ostringstream oss;
     oss << "CUBLAS error at " << file << ":" << line << ": " << expr << " "
