@@ -6,10 +6,10 @@ namespace mathprim::blas {
 // Assumption:
 // template <typename T>
 // struct blas_impl {
-//   using vector_view = basic_buffer_view<T, 1, dev>;
-//   using matrix_view = basic_buffer_view<T, 2, dev>;
-//   using const_vector_view = basic_buffer_view<const T, 1, dev>;
-//   using const_matrix_view = basic_buffer_view<const T, 2, dev>;
+//   using vector_view = basic_view<T, 1, dev>;
+//   using matrix_view = basic_view<T, 2, dev>;
+//   using const_vector_view = basic_view<const T, 1, dev>;
+//   using const_matrix_view = basic_view<const T, 2, dev>;
 //   // Level 1
 //   static void copy(vector_view dst, const_vector_view src);
 //   static void scal(T alpha, vector_view x);
@@ -36,32 +36,32 @@ namespace mathprim::blas {
 // };
 
 template <typename T, device_t dev, typename blas_impl = blas_select_t<T, dev>>
-void copy(basic_buffer_view<T, 1, dev> dst,
-          basic_buffer_view<const T, 1, dev> src, blas_impl = {}) {
+void copy(basic_view<T, 1, dev> dst,
+          basic_view<const T, 1, dev> src, blas_impl = {}) {
   blas_impl::copy(dst, src);
 };
 
 template <typename T, device_t dev, typename blas_impl = blas_select_t<T, dev>>
-void scal(T alpha, basic_buffer_view<T, 1, dev> x, blas_impl = {}) {
+void scal(T alpha, basic_view<T, 1, dev> x, blas_impl = {}) {
   blas_impl::scal(alpha, x);
 };
 
 template <typename T, device_t dev, typename blas_impl = blas_select_t<T, dev>>
-void swap(basic_buffer_view<T, 1, dev> x, basic_buffer_view<T, 1, dev> y,
+void swap(basic_view<T, 1, dev> x, basic_view<T, 1, dev> y,
           blas_impl = {}) {
   blas_impl::swap(x, y);
 };
 
 template <typename T, device_t dev, typename blas_impl = blas_select_t<T, dev>>
-void axpy(T alpha, basic_buffer_view<const T, 1, dev> x,
-          basic_buffer_view<T, 1, dev> y, blas_impl = {}) {
+void axpy(T alpha, basic_view<const T, 1, dev> x,
+          basic_view<T, 1, dev> y, blas_impl = {}) {
   blas_impl::axpy(alpha, x, y);
 };
 
 template <typename T, device_t dev, typename blas_impl = blas_select_t<T, dev>>
-void gemv(T alpha, basic_buffer_view<const T, 2, dev> A,
-          basic_buffer_view<const T, 1, dev> x, T beta,
-          basic_buffer_view<T, 1, dev> y, blas_impl = {}) {
+void gemv(T alpha, basic_view<const T, 2, dev> A,
+          basic_view<const T, 1, dev> x, T beta,
+          basic_view<T, 1, dev> y, blas_impl = {}) {
   // check valid.
   index_t rows = A.size(0), cols = A.size(1);
   index_t lda = A.stride(0), lda_t = A.stride(1);
@@ -81,9 +81,9 @@ void gemv(T alpha, basic_buffer_view<const T, 2, dev> A,
 };
 
 template <typename T, device_t dev, typename blas_impl = blas_select_t<T, dev>>
-void gemm(T alpha, basic_buffer_view<const T, 2, dev> A,
-          basic_buffer_view<const T, 2, dev> B, T beta,
-          basic_buffer_view<T, 2, dev> C, blas_impl = {}) {
+void gemm(T alpha, basic_view<const T, 2, dev> A,
+          basic_view<const T, 2, dev> B, T beta,
+          basic_view<T, 2, dev> C, blas_impl = {}) {
   index_t m = C.size(0), n = C.size(1), m2 = A.size(0), n2 = B.size(1);
   index_t k = A.size(1), k2 = B.size(0);
   index_t lda = A.stride(0), lda_t = A.stride(1);
@@ -112,13 +112,13 @@ void gemm(T alpha, basic_buffer_view<const T, 2, dev> A,
 };
 
 template <typename T, device_t dev, typename blas_impl = blas_select_t<T, dev>>
-void emul(basic_buffer_view<const T, 1, dev> x, basic_buffer_view<T, 1, dev> y,
+void emul(basic_view<const T, 1, dev> x, basic_view<T, 1, dev> y,
           blas_impl = {}) {
   blas_impl::emul(x, y);
 };
 
 template <typename T, device_t dev, typename blas_impl = blas_select_t<T, dev>>
-void ediv(basic_buffer_view<const T, 1, dev> x, basic_buffer_view<T, 1, dev> y,
+void ediv(basic_view<const T, 1, dev> x, basic_view<T, 1, dev> y,
           blas_impl = {}) {
   blas_impl::ediv(x, y);
 };

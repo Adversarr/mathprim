@@ -1,4 +1,7 @@
 #pragma once
+#ifndef MATHPRIM_ENABLE_CUDA
+#  error "This file should be included only when cuda is enabled."
+#endif
 
 #include <cuda_runtime.h>
 
@@ -35,31 +38,8 @@ inline void free(void *ptr) noexcept {
   assert_success(cudaFree(ptr));
 }
 
-template <typename T, index_t N, typename = std::enable_if_t<N <= 3>>
-__global__ void
-view_copy_impl(basic_buffer_view<T, N, device_t::cuda> dst,
-               basic_buffer_view<const T, N, device_t::cuda> src) {
-  const dim<N> idx = from_cuda_dim<N>(dim3(blockIdx));
-  dst(idx) = src(idx); // no check is required.
-}
-
-template <typename T>
-__global__ void
-view_copy_impl4(basic_buffer_view<T, 4, device_t::cuda> dst,
-                basic_buffer_view<const T, 4, device_t::cuda> src) {
-  const dim<3> idx = from_cuda_dim<3>(dim3(blockIdx));
-  const index_t w = ::mathprim::internal::to_valid_index(dst.shape(3));
-
-  MATHPRIM_PRAGMA_UNROLL
-  for (index_t i = 0; i < w; ++i) {
-    dim<4> idx4{idx.x_, idx.y_, idx.z_, i};
-    dst(idx4) = src(idx4); // no check is required.
-  }
-}
-
-} // namespace internal
-
-} // namespace backend::cuda
+}  // namespace internal
+}  // namespace backend::cuda
 
 template <> struct buffer_backend_traits<device_t::cuda> {
   static constexpr size_t alloc_alignment = 128;
@@ -68,7 +48,9 @@ template <> struct buffer_backend_traits<device_t::cuda> {
     return backend::cuda::internal::alloc(size);
   }
 
-  static void free(void *ptr) noexcept { backend::cuda::internal::free(ptr); }
+  static void free(void *ptr) noexcept {
+    backend::cuda::internal::free(ptr);
+  }
 
   static void memset(void *ptr, int value, size_t size) noexcept {
     backend::cuda::internal::assert_success(cudaMemset(ptr, value, size));
@@ -99,18 +81,15 @@ template <> struct buffer_backend_traits<device_t::cuda> {
   }
 
   template <typename T, index_t N>
-  static void
-  view_copy(basic_buffer_view<T, N, device_t::cuda> dst,
-            basic_buffer_view<const T, N, device_t::cuda> src) noexcept {
+  static void view_copy(basic_view<T, N, device_t::cuda> dst, basic_view<const T, N, device_t::cuda> src) noexcept {
     // TODO: blockDim=1 is not efficient for large N.
-    if constexpr (N == 4) {
-      dim3 grid = to_cuda_dim(dst.shape().xyz());
-      backend::cuda::internal::view_copy_impl4<<<grid, 1>>>(dst, src);
-    } else {
-      dim3 grid = to_cuda_dim(dst.shape());
-      backend::cuda::internal::view_copy_impl<<<grid, 1>>>(dst, src);
-    };
+    if (!dst.contiguous() || !src.contiguous()) {
+      throw std::invalid_argument{"view_copy: dst and src must be contiguous"};
+    }
+
+    MATHPRIM_ASSERT(dst.size() == src.size());
+    cudaMemcpy(dst.data(), src.data(), dst.size() * sizeof(T));
   }
 };
 
-} // namespace mathprim
+}  // namespace mathprim

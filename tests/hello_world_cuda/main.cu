@@ -33,8 +33,7 @@ __global__ void print_value(const_f32_buffer_view<3, device_t::cuda> bv) {
   }
 }
 
-__global__ void check_parallel_assignment(
-    const_f32_buffer_view<4, device_t::cuda> bv) {
+__global__ void check_parallel_assignment(const_f32_buffer_view<4, device_t::cuda> bv) {
   int x = blockIdx.x, y = blockIdx.y, z = blockIdx.z;
   auto [X, Y, Z, W] = bv.shape();
   if (x < X && y < Y && z < Z) {
@@ -68,17 +67,20 @@ int main() {
 
   auto buffer2 = make_buffer<float, 4, device_t::cuda>(dim_t{4, 3, 2, 1});
 
-  parfor_cuda::run(
-      dim_t(4, 3, 2, 1), dim_t(1),
-      [bv = buffer2.view()] __device__(dim_t grid_id, dim_t /* block_id */) {
-        bv(grid_id) = grid_id.x_ * 3 * 2 * 1 + grid_id.y_ * 2 * 1
-                      + grid_id.z_ * 1 + grid_id.w_;
-      });
+  parfor_cuda::run(dim_t(4, 3, 2, 1), dim_t(1), [bv = buffer2.view()] __device__(dim_t grid_id, dim_t /* block_id */) {
+    bv(grid_id) = grid_id.x_ * 3 * 2 * 1 + grid_id.y_ * 2 * 1 + grid_id.z_ * 1 + grid_id.w_;
+  });
 
-  parfor_cuda::for_each_indexed(buffer2.view(), [] __device__(auto idx,
-                                                              auto value) {
+  parfor_cuda::for_each_indexed(buffer2.view(), [] __device__(auto idx, auto value) {
     assert(value == idx.x_ * 3 * 2 * 1 + idx.y_ * 2 * 1 + idx.z_ * 1 + idx.w_);
   });
+
+  parfor_cuda::vmap(
+      [] __device__(auto v1, auto v2) {
+        printf("v1.shape=(%d, %d)\n", v1.shape(0), v1.shape(1));
+        printf("v2.shape=(%d, %d, %d)\n", v2.shape(0), v2.shape(1), v2.shape(2));
+      },
+      make_vmap_arg(buffer.view()), make_vmap_arg<2>(buffer2.view()));
 
   check_parallel_assignment<<<dim3(4, 3, 2), dim3(1)>>>(buffer2.view());
 

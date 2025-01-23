@@ -54,7 +54,7 @@ std::ostream& operator<<(std::ostream& os, const basic_buffer<T, N, dev>& buffer
 }
 
 template <typename T, index_t N, device_t dev>
-std::ostream& operator<<(std::ostream& os, const basic_buffer_view<T, N, dev>& view) {
+std::ostream& operator<<(std::ostream& os, const basic_view<T, N, dev>& view) {
   os << "view(" << static_cast<const void*>(view.data());
   os << ", shape=(";
   for (index_t i = 0; i < N; ++i) {
@@ -83,7 +83,7 @@ std::string to_string(const dim<N>& dim) {
 }
 
 template <typename T, index_t N, device_t dev>
-std::string to_string(const basic_buffer_view<T, N, dev>& view) {
+std::string to_string(const basic_view<T, N, dev>& view) {
   std::ostringstream os;
   os << view;
   return os.str();

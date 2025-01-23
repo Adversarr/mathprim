@@ -26,10 +26,10 @@ constexpr CBLAS_TRANSPOSE invert(CBLAS_TRANSPOSE from) {
 template <typename T> struct blas_impl_cpu_blas {
   static constexpr device_t dev = device_t::cpu;
   using blas_unsupported = blas_impl_cpu_handmade<T>;
-  using vector_view = basic_buffer_view<T, 1, dev>;
-  using matrix_view = basic_buffer_view<T, 2, dev>;
-  using const_vector_view = basic_buffer_view<const T, 1, dev>;
-  using const_matrix_view = basic_buffer_view<const T, 2, dev>;
+  using vector_view = basic_view<T, 1, dev>;
+  using matrix_view = basic_view<T, 2, dev>;
+  using const_vector_view = basic_view<const T, 1, dev>;
+  using const_matrix_view = basic_view<const T, 2, dev>;
 
   // Level 1
   static void copy(vector_view dst, const_vector_view src);

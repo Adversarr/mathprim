@@ -5,16 +5,16 @@
 #include <vector>
 
 #include "mathprim/core/dim.hpp"
-#include "mathprim/core/parallel.hpp"  // IWYU pragma: export
+#include "mathprim/core/parallel.hpp" // IWYU pragma: export
 
 namespace mathprim {
 
 namespace par {
-class std {
+class stl {
 public:
   // TODO: Use a thread pool to avoid creating threads every time.
   template <typename Fn, index_t N>
-  static void foreach_index(const dim<N>& grid_dim, const dim<N>& block_dim,
+  static void foreach_index(const dim<N> &grid_dim, const dim<N> &block_dim,
                             Fn fn) {
     index_t total = grid_dim.numel();
     index_t max_threads = ::std::thread::hardware_concurrency();
@@ -29,20 +29,18 @@ public:
       }
     };
 
-    ::std::vector<::std::thread> threads;
+    std::vector<::std::thread> threads;
     for (index_t t = 0; t < max_threads; ++t) {
       index_t start = t * chunk_size;
       index_t end = ::std::min(start + chunk_size, total);
       threads.emplace_back(worker, start, end);
     }
 
-    for (auto& thread : threads) {
+    for (auto &thread : threads) {
       thread.join();
     }
   }
 };
-}  // namespace par
+} // namespace par
 
-using parfor_openmp = parfor<par::openmp>;
-
-}  // namespace mathprim
+} // namespace mathprim

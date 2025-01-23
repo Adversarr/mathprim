@@ -47,10 +47,10 @@ inline void check_status(cublasStatus_t status, const char *file, int line,
 } // namespace internal
 template <typename T> struct blas_impl_cublas {
   static constexpr device_t dev = device_t::cuda;
-  using vector_view = basic_buffer_view<T, 1, dev>;
-  using matrix_view = basic_buffer_view<T, 2, dev>;
-  using const_vector_view = basic_buffer_view<const T, 1, dev>;
-  using const_matrix_view = basic_buffer_view<const T, 2, dev>;
+  using vector_view = basic_view<T, 1, dev>;
+  using matrix_view = basic_view<T, 2, dev>;
+  using const_vector_view = basic_view<const T, 1, dev>;
+  using const_matrix_view = basic_view<const T, 2, dev>;
 
   // Level 1
   static void copy(vector_view dst, const_vector_view src);

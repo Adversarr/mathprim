@@ -1,6 +1,7 @@
 #include <iostream>
 #include <mathprim/core/parallel.hpp>
 #include <mathprim/core/parallel/openmp.hpp>
+#include <mathprim/core/parallel/stl.hpp>
 #include <mathprim/supports/stringify.hpp>
 #include <mutex>
 #include <thread>
@@ -19,15 +20,14 @@ int main() {
       });
 
   // start with a buffer.
-  auto buf = make_buffer<float>(16);  // 16 elements.
+  auto buf = make_buffer<float>(16); // 16 elements.
   using par_ = parfor<par::openmp>;
   auto view = buf.view();
-  par_::for_each_indexed(view, [](const dim<1>& idx, float& val) {
-    val = idx[0];
-  });
+  par_::for_each_indexed(view,
+                         [](const dim<1> &idx, float &val) { val = idx[0]; });
 
   auto bv = buf.view();
-  for (float& i : bv) {
+  for (float &i : bv) {
     std::cout << i << " ";
   }
   std::cout << std::endl;
@@ -43,12 +43,21 @@ int main() {
     std::cout << row << std::endl;
   }
 
-  parfor<par::std>::run(
+  parfor<par::stl>::run(
       grid_dim, block_dim, [&mtx](dim_t grid_id, dim_t block_id) {
         std::lock_guard<std::mutex> lock(mtx);
         std::cout << "Grid ID: " << grid_id << ", Block ID: " << block_id
                   << "Thread ID: " << std::this_thread::get_id() << std::endl;
       });
+
+  using par_ = parfor<par::openmp>;
+
+
+  par_::vmap([&mtx](auto a, auto b) {
+    std::lock_guard<std::mutex> lock(mtx);
+    std::cout << a << " ";
+    std::cout << b << std::endl;
+  }, buf2.view(), buf2.view());
 
   return 0;
 }

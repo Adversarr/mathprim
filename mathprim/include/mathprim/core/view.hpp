@@ -25,7 +25,7 @@ MATHPRIM_PRIMFUNC dim<N> determine_reshape_shape(const dim<M> &from,
   for (index_t i = 0; i < N; i++) {
     if (to[i] == -1) {
 #ifndef __CUDA_ARCH__
-      if (!(keep_dim_dim >= 0)) {
+      if (keep_dim_dim >= 0) {
         throw reshape_error("Only one dimension can be -1.");
       }
 #else
@@ -65,7 +65,7 @@ template <typename T> MATHPRIM_PRIMFUNC void swap_(T &a, T &b) {
 }  // namespace internal
 
 // General template for buffer view.
-template <typename T, index_t N, device_t dev> class basic_buffer_view final {
+template <typename T, index_t N, device_t dev> class basic_view final {
 public:
   using value_type = T;
   using const_type = std::add_const_t<T>;
@@ -73,25 +73,25 @@ public:
   using const_reference = const T &;
   using pointer = T *;
   using const_pointer = const T *;
-  using iterator = basic_buffer_view_iterator<T, N, dev>;
-  using const_iterator = basic_buffer_view_iterator<const T, N, dev>;
+  using iterator = basic_view_iterator<T, N, dev>;
+  using const_iterator = basic_view_iterator<const T, N, dev>;
 
   ///////////////////////////////////////////////////////////////////////////////
   /// Constructors
   ///////////////////////////////////////////////////////////////////////////////
 
   // default
-  MATHPRIM_PRIMFUNC basic_buffer_view() noexcept : data_{nullptr} {}
+  MATHPRIM_PRIMFUNC basic_view() noexcept : data_{nullptr} {}
 
-  MATHPRIM_PRIMFUNC basic_buffer_view(const dim<N> &shape,
+  MATHPRIM_PRIMFUNC basic_view(const dim<N> &shape,
                                       pointer data) noexcept :
-      basic_buffer_view(shape, make_default_stride(shape), data, dev) {}
+      basic_view(shape, make_default_stride(shape), data, dev) {}
 
-  MATHPRIM_PRIMFUNC basic_buffer_view(const dim<N> &shape, pointer data,
+  MATHPRIM_PRIMFUNC basic_view(const dim<N> &shape, pointer data,
                                       device_t dyn_dev) noexcept :
-      basic_buffer_view(shape, make_default_stride(shape), data, dyn_dev) {}
+      basic_view(shape, make_default_stride(shape), data, dyn_dev) {}
 
-  MATHPRIM_PRIMFUNC basic_buffer_view(const dim<N> &shape, const dim<N> &stride,
+  MATHPRIM_PRIMFUNC basic_view(const dim<N> &shape, const dim<N> &stride,
                                       pointer data, device_t dyn_dev) noexcept :
       shape_(shape), stride_(stride), data_(data), dyn_dev_(dyn_dev) {
     MATHPRIM_ASSERT(dyn_dev != device_t::dynamic
@@ -101,9 +101,9 @@ public:
   }
 
   template <typename T2, index_t N2, device_t dev2>
-  MATHPRIM_PRIMFUNC basic_buffer_view(  // NOLINT
-      basic_buffer_view<T2, N2, dev2> other) noexcept :
-      basic_buffer_view(dim<N>(other.shape()), dim<N>(other.stride()),
+  MATHPRIM_PRIMFUNC basic_view(  // NOLINT
+      basic_view<T2, N2, dev2> other) noexcept :
+      basic_view(dim<N>(other.shape()), dim<N>(other.stride()),
                         other.data(), other.device()) {
     // Although the constructor of dim<N> will test it, we this assert here to
     // make sure.
@@ -212,42 +212,42 @@ public:
 
   // Reshape the buffer view.
   template <index_t M>
-  MATHPRIM_PRIMFUNC basic_buffer_view<T, M, dev> view(const dim<M> &new_shape) {
+  MATHPRIM_PRIMFUNC basic_view<T, M, dev> view(const dim<M> &new_shape) {
     dim<M> target_shape = internal::determine_reshape_shape(shape_, new_shape);
-    return basic_buffer_view<T, M, dev>(target_shape, data_, dyn_dev_);
+    return basic_view<T, M, dev>(target_shape, data_, dyn_dev_);
   }
 
   template <index_t M>
-  MATHPRIM_PRIMFUNC basic_buffer_view<const T, M, dev> view(
+  MATHPRIM_PRIMFUNC basic_view<const T, M, dev> view(
       const dim<M> &new_shape) const {
     dim<M> target_shape = internal::determine_reshape_shape(shape_, new_shape);
-    return basic_buffer_view<T, M, dev>(target_shape, data_, dyn_dev_);
+    return basic_view<T, M, dev>(target_shape, data_, dyn_dev_);
   }
 
-  template <index_t M> MATHPRIM_PRIMFUNC basic_buffer_view<T, M, dev> view() {
+  template <index_t M> MATHPRIM_PRIMFUNC basic_view<T, M, dev> view() {
     dim<M> target_shape{1};  // Initialize to 1, nodim...
     for (index_t i = 1; i < M; i++) {
       target_shape[i] = shape_[N - M + i];
     }
     target_shape[0] = numel() / target_shape.numel();
-    return basic_buffer_view<T, M, dev>(target_shape, data_, dyn_dev_);
+    return basic_view<T, M, dev>(target_shape, data_, dyn_dev_);
   }
 
   template <index_t M>
-  MATHPRIM_PRIMFUNC basic_buffer_view<const T, M, dev> view() const {
+  MATHPRIM_PRIMFUNC basic_view<const T, M, dev> view() const {
     dim<M> target_shape{1};  // Initialize to 1, nodim...
     for (index_t i = 1; i < M; i++) {
       target_shape[i] = shape_[N - M + i];
     }
     target_shape[0] = numel() / target_shape.numel();
-    return basic_buffer_view<T, M, dev>(target_shape, data_, dyn_dev_);
+    return basic_view<T, M, dev>(target_shape, data_, dyn_dev_);
   }
 
   // TODO:
   // 1. subview
 
   template <index_t batch_dim>
-  MATHPRIM_PRIMFUNC basic_buffer_view<T, N, dev> subview(index_t start = 0,
+  MATHPRIM_PRIMFUNC basic_view<T, N, dev> subview(index_t start = 0,
                                                          index_t end = 0,
                                                          index_t step = 1) {
     if (end <= 0) {
@@ -264,7 +264,7 @@ public:
   }
 
   template <index_t batch_dim = 0>
-  MATHPRIM_PRIMFUNC basic_buffer_view<T, N - 1, dev> slice(
+  MATHPRIM_PRIMFUNC basic_view<T, N - 1, dev> slice(
       index_t i) const noexcept {
     MATHPRIM_ASSERT(i >= 0 && i < shape_[batch_dim]);
     dim<N - 1> sshape;
@@ -283,15 +283,15 @@ public:
     return {sshape, sstride, (data_ + stride_[batch_dim] * i), dyn_dev_};
   }
 
-  MATHPRIM_PRIMFUNC basic_buffer_view<T, 1, dev> flatten() {
+  MATHPRIM_PRIMFUNC basic_view<T, 1, dev> flatten() {
     return view<1>(dim<1>{numel()});
   }
 
-  MATHPRIM_PRIMFUNC basic_buffer_view<const T, 1, dev> flatten() const {
+  MATHPRIM_PRIMFUNC basic_view<const T, 1, dev> flatten() const {
     return view<1>(dim<1>{numel()});
   }
 
-  MATHPRIM_PRIMFUNC basic_buffer_view<T, N, dev> transpose(index_t i = N - 1,
+  MATHPRIM_PRIMFUNC basic_view<T, N, dev> transpose(index_t i = N - 1,
                                                            index_t j = N - 2) {
     dim<N> new_shape = shape_, new_stride = stride_;
     if (i < 0) {
@@ -302,24 +302,24 @@ public:
     }
     internal::swap_(new_shape[i], new_shape[j]);
     internal::swap_(new_stride[i], new_stride[j]);
-    return basic_buffer_view<T, N, dev>(new_shape, new_stride, data_, dyn_dev_);
+    return basic_view<T, N, dev>(new_shape, new_stride, data_, dyn_dev_);
   }
 
   template <device_t new_dev>
-  MATHPRIM_PRIMFUNC basic_buffer_view<T, N, new_dev> as() {
+  MATHPRIM_PRIMFUNC basic_view<T, N, new_dev> as() {
     MATHPRIM_ASSERT(dyn_dev_ == new_dev);
-    return basic_buffer_view<T, N, new_dev>(shape_, stride_, data_, new_dev);
+    return basic_view<T, N, new_dev>(shape_, stride_, data_, new_dev);
   }
 
   template <device_t new_dev>
-  MATHPRIM_PRIMFUNC basic_buffer_view<const T, N, new_dev> as() const {
+  MATHPRIM_PRIMFUNC basic_view<const T, N, new_dev> as() const {
     MATHPRIM_ASSERT(dyn_dev_ == new_dev);
-    return basic_buffer_view<const T, N, new_dev>(shape_, stride_, data_,
+    return basic_view<const T, N, new_dev>(shape_, stride_, data_,
                                                   new_dev);
   }
 
-  MATHPRIM_PRIMFUNC basic_buffer_view<const T, N, dev> as_const() const {
-    return basic_buffer_view<const T, N, dev>(shape_, stride_, data_, dyn_dev_);
+  MATHPRIM_PRIMFUNC basic_view<const T, N, dev> as_const() const {
+    return basic_view<const T, N, dev>(shape_, stride_, data_, dyn_dev_);
   }
 
 private:
@@ -330,8 +330,8 @@ private:
 };
 
 template <typename T, index_t N, device_t dev>
-void copy(basic_buffer_view<T, N, dev> dst,
-          basic_buffer_view<const T, N, dev> src) {
+void copy(basic_view<T, N, dev> dst,
+          basic_view<const T, N, dev> src) {
   static_assert(dev != device_t::dynamic, "Device must be specified.");
   if (dst.shape() != src.shape()) {
     throw shape_error("Cannot copy buffer with different shapes.");
@@ -341,138 +341,240 @@ void copy(basic_buffer_view<T, N, dev> dst,
 }
 
 template <typename T, index_t N, device_t dev>
-basic_buffer_view<T, N, dev> basic_buffer<T, N, dev>::view() {
-  return basic_buffer_view<T, N, dev>(shape_, stride_, data_, device_);
+basic_view<T, N, dev> basic_buffer<T, N, dev>::view() {
+  return basic_view<T, N, dev>(shape_, stride_, data_, device_);
 }
 
 template <typename T, index_t N, device_t dev>
-basic_buffer_view<const T, N, dev> basic_buffer<T, N, dev>::view() const {
-  return basic_buffer_view<const T, N, dev>(shape_, stride_, data_, device_);
+basic_view<const T, N, dev> basic_buffer<T, N, dev>::view() const {
+  return basic_view<const T, N, dev>(shape_, stride_, data_, device_);
 }
 
 template <typename T, index_t N, device_t dev>
-basic_buffer_view_iterator<T, N, dev> basic_buffer<T, N, dev>::begin() {
-  return basic_buffer_view_iterator<T, N, dev>(*this, 0);
+basic_view_iterator<T, N, dev> basic_buffer<T, N, dev>::begin() {
+  return basic_view_iterator<T, N, dev>(*this, 0);
 }
 
 template <typename T, index_t N, device_t dev>
-basic_buffer_view_iterator<const T, N, dev> basic_buffer<T, N, dev>::begin()
+basic_view_iterator<const T, N, dev> basic_buffer<T, N, dev>::begin()
     const {
-  return basic_buffer_view_iterator<const T, N, dev>(*this, 0);
+  return basic_view_iterator<const T, N, dev>(*this, 0);
 }
 
 template <typename T, index_t N, device_t dev>
-basic_buffer_view_iterator<T, N, dev> basic_buffer<T, N, dev>::end() {
-  return basic_buffer_view_iterator<T, N, dev>(*this, size());
+basic_view_iterator<T, N, dev> basic_buffer<T, N, dev>::end() {
+  return basic_view_iterator<T, N, dev>(*this, size());
 }
 
 template <typename T, index_t N, device_t dev>
-basic_buffer_view_iterator<const T, N, dev> basic_buffer<T, N, dev>::end()
+basic_view_iterator<const T, N, dev> basic_buffer<T, N, dev>::end()
     const {
-  return basic_buffer_view_iterator<const T, N, dev>(*this, size());
+  return basic_view_iterator<const T, N, dev>(*this, size());
 }
 
 template <typename T, index_t N, device_t dev>
-class basic_buffer_view_iterator {
+class basic_view_iterator {
 public:
   // NOTE: currently we do not allow you to use the iterator on the device.
-  MATHPRIM_FORCE_INLINE basic_buffer_view_iterator(
-      basic_buffer_view<T, N, dev> view, index_t index) :
+  MATHPRIM_FORCE_INLINE basic_view_iterator(basic_view<T, N, dev> view, index_t index) noexcept :
       view_(view), current_(index) {}
 
-  MATHPRIM_FORCE_INLINE basic_buffer_view_iterator(
-      const basic_buffer_view_iterator<T, N, dev> &other)
-      = default;
+  MATHPRIM_FORCE_INLINE basic_view_iterator(
+      const basic_view_iterator<T, N, dev> &other) = default;
+
+  MATHPRIM_FORCE_INLINE basic_view_iterator(
+      basic_view_iterator<T, N, dev> &&other) noexcept = default;
+
+  MATHPRIM_FORCE_INLINE basic_view_iterator &operator++() noexcept {
+    ++current_;
+    return *this;
+  }
+
+  MATHPRIM_FORCE_INLINE basic_view_iterator operator++(int) noexcept {
+    basic_view_iterator tmp = *this;
+    ++(*this);
+    return tmp;
+  }
+
+  MATHPRIM_FORCE_INLINE basic_view_iterator &operator--() noexcept {
+    --current_;
+    return *this;
+  }
+
+  MATHPRIM_FORCE_INLINE basic_view_iterator operator--(int) noexcept {
+    basic_view_iterator tmp = *this;
+    --(*this);
+    return tmp;
+  }
+
+  MATHPRIM_FORCE_INLINE basic_view_iterator &operator+=(index_t n) noexcept {
+    current_ += n;
+    return *this;
+  }
+
+  MATHPRIM_FORCE_INLINE basic_view_iterator &operator-=(index_t n) noexcept {
+    current_ -= n;
+    return *this;
+  }
+
+  MATHPRIM_FORCE_INLINE basic_view_iterator operator+(index_t n) const noexcept {
+    basic_view_iterator tmp = *this;
+    tmp += n;
+    return tmp;
+  }
+
+  MATHPRIM_FORCE_INLINE basic_view_iterator operator-(index_t n) const noexcept {
+    basic_view_iterator tmp = *this;
+    tmp -= n;
+    return tmp;
+  }
+
+  MATHPRIM_FORCE_INLINE index_t operator-(const basic_view_iterator &other) const noexcept {
+    return current_ - other.current_;
+  }
+
+  MATHPRIM_FORCE_INLINE bool operator==(
+      const basic_view_iterator &other) const noexcept {
+    return current_ == other.current_;
+  }
+
+  MATHPRIM_FORCE_INLINE bool operator!=(
+      const basic_view_iterator &other) const noexcept {
+    return !(*this == other);
+  }
+
+  MATHPRIM_FORCE_INLINE bool operator<(
+      const basic_view_iterator &other) const noexcept {
+    return current_ < other.current_;
+  }
+
+  MATHPRIM_FORCE_INLINE bool operator<=(
+      const basic_view_iterator &other) const noexcept {
+    return current_ <= other.current_;
+  }
+
+  MATHPRIM_FORCE_INLINE bool operator>(
+      const basic_view_iterator &other) const noexcept {
+    return current_ > other.current_;
+  }
+
+  MATHPRIM_FORCE_INLINE bool operator>=(
+      const basic_view_iterator &other) const noexcept {
+    return current_ >= other.current_;
+  }
 
   MATHPRIM_FORCE_INLINE
-  basic_buffer_view<T, N - 1, dev> operator*() const {
+  basic_view<T, N - 1, dev> operator*() const noexcept {
     return view_.template slice<0>(current_);
   }
 
-  MATHPRIM_FORCE_INLINE basic_buffer_view_iterator &operator++() {
-    ++current_;
-    return *this;
-  }
-
-  MATHPRIM_FORCE_INLINE basic_buffer_view_iterator operator++(int) {
-    basic_buffer_view_iterator tmp = *this;
-    ++(*this);
-    return tmp;
-  }
-
-  MATHPRIM_FORCE_INLINE basic_buffer_view_iterator &operator--() {
-    --current_;
-    return *this;
-  }
-
-  MATHPRIM_FORCE_INLINE basic_buffer_view_iterator operator--(int) {
-    basic_buffer_view_iterator tmp = *this;
-    --(*this);
-    return tmp;
-  }
-
-  MATHPRIM_FORCE_INLINE bool operator==(
-      const basic_buffer_view_iterator &other) const {
-    return current_ == other.current_;
-  }
-
-  MATHPRIM_FORCE_INLINE bool operator!=(
-      const basic_buffer_view_iterator &other) const {
-    return !(*this == other);
+  MATHPRIM_FORCE_INLINE basic_view<T, N - 1, dev> operator[](index_t n) const noexcept {
+    return *(*this + n);
   }
 
 private:
-  basic_buffer_view<T, N, dev> view_;
+  basic_view<T, N, dev> view_;
   index_t current_;
 };
-
 template <typename T, device_t dev>
-class basic_buffer_view_iterator<T, 1, dev> {
+class basic_view_iterator<T, 1, dev> {
 public:
-  MATHPRIM_FORCE_INLINE basic_buffer_view_iterator(
-      basic_buffer_view<T, 1, dev> view, index_t index) :
+  MATHPRIM_FORCE_INLINE basic_view_iterator(
+      basic_view<T, 1, dev> view, index_t index) noexcept :
       view_(view), current_(index) {}
 
-  MATHPRIM_FORCE_INLINE basic_buffer_view_iterator(
-      const basic_buffer_view_iterator<T, 1, dev> &other)
-      = default;
+  MATHPRIM_FORCE_INLINE basic_view_iterator(
+      const basic_view_iterator<T, 1, dev> &other) = default;
 
-  MATHPRIM_FORCE_INLINE T &operator*() const { return view_.data()[current_]; }
+  MATHPRIM_FORCE_INLINE basic_view_iterator(
+      basic_view_iterator<T, 1, dev> &&other) noexcept = default;
 
-  MATHPRIM_FORCE_INLINE basic_buffer_view_iterator &operator++() {
+  MATHPRIM_FORCE_INLINE basic_view_iterator &operator++() noexcept {
     ++current_;
     return *this;
   }
 
-  MATHPRIM_FORCE_INLINE basic_buffer_view_iterator operator++(int) {
-    basic_buffer_view_iterator tmp = *this;
+  MATHPRIM_FORCE_INLINE basic_view_iterator operator++(int) noexcept {
+    basic_view_iterator tmp = *this;
     ++(*this);
     return tmp;
   }
 
-  MATHPRIM_FORCE_INLINE basic_buffer_view_iterator &operator--() {
+  MATHPRIM_FORCE_INLINE basic_view_iterator &operator--() noexcept {
     --current_;
     return *this;
   }
 
-  MATHPRIM_FORCE_INLINE basic_buffer_view_iterator operator--(int) {
-    basic_buffer_view_iterator tmp = *this;
+  MATHPRIM_FORCE_INLINE basic_view_iterator operator--(int) noexcept {
+    basic_view_iterator tmp = *this;
     --(*this);
     return tmp;
   }
 
+  MATHPRIM_FORCE_INLINE basic_view_iterator &operator+=(index_t n) noexcept {
+    current_ += n;
+    return *this;
+  }
+
+  MATHPRIM_FORCE_INLINE basic_view_iterator &operator-=(index_t n) noexcept {
+    current_ -= n;
+    return *this;
+  }
+
+  MATHPRIM_FORCE_INLINE basic_view_iterator operator+(index_t n) const noexcept {
+    basic_view_iterator tmp = *this;
+    tmp += n;
+    return tmp;
+  }
+
+  MATHPRIM_FORCE_INLINE basic_view_iterator operator-(index_t n) const noexcept {
+    basic_view_iterator tmp = *this;
+    tmp -= n;
+    return tmp;
+  }
+
+  MATHPRIM_FORCE_INLINE index_t operator-(const basic_view_iterator &other) const noexcept {
+    return current_ - other.current_;
+  }
+
   MATHPRIM_FORCE_INLINE bool operator==(
-      const basic_buffer_view_iterator &other) const {
+      const basic_view_iterator &other) const noexcept {
     return current_ == other.current_;
   }
 
   MATHPRIM_FORCE_INLINE bool operator!=(
-      const basic_buffer_view_iterator &other) const {
+      const basic_view_iterator &other) const noexcept {
     return !(*this == other);
   }
 
+  MATHPRIM_FORCE_INLINE bool operator<(
+      const basic_view_iterator &other) const noexcept {
+    return current_ < other.current_;
+  }
+
+  MATHPRIM_FORCE_INLINE bool operator<=(
+      const basic_view_iterator &other) const noexcept {
+    return current_ <= other.current_;
+  }
+
+  MATHPRIM_FORCE_INLINE bool operator>(
+      const basic_view_iterator &other) const noexcept {
+    return current_ > other.current_;
+  }
+
+  MATHPRIM_FORCE_INLINE bool operator>=(
+      const basic_view_iterator &other) const noexcept {
+    return current_ >= other.current_;
+  }
+
+  MATHPRIM_FORCE_INLINE T &operator*() const noexcept { return view_(current_); }
+
+  MATHPRIM_FORCE_INLINE T &operator[](index_t n) const noexcept {
+    return *(*this + n);
+  }
+
 private:
-  basic_buffer_view<T, 1, dev> view_;
+  basic_view<T, 1, dev> view_;
   index_t current_;
 };
 

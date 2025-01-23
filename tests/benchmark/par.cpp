@@ -5,11 +5,12 @@
 #include <mathprim/core/common.hpp>
 #include <mathprim/core/parallel.hpp>
 #include <mathprim/core/parallel/openmp.hpp>
+#include <mathprim/core/parallel/stl.hpp>
 
 using namespace mathprim;
 
 template <typename Flt, class p>
-static void BM_par_for_norm(benchmark::State& state) {
+static void BM_par_for_norm(benchmark::State &state) {
   index_t n = static_cast<index_t>(state.range(0));
   auto buffer = make_buffer<Flt>(n, 3);
 
@@ -26,7 +27,7 @@ static void BM_par_for_norm(benchmark::State& state) {
 }
 
 template <typename Flt>
-static void BM_par_for_norm_omp(benchmark::State& state) {
+static void BM_par_for_norm_omp(benchmark::State &state) {
   index_t n = static_cast<index_t>(state.range(0));
   auto buffer = make_buffer<Flt>(n, 3);
 
@@ -57,7 +58,7 @@ BENCHMARK(BM_par_for_norm_omp<float>)
 BENCHMARK_TEMPLATE(BM_par_for_norm, float, par::openmp)
     ->RangeMultiplier(2)
     ->Range(min_size, max_size);
-BENCHMARK_TEMPLATE(BM_par_for_norm, float, par::std)
+BENCHMARK_TEMPLATE(BM_par_for_norm, float, par::stl)
     ->RangeMultiplier(2)
     ->Range(min_size, max_size);
 BENCHMARK_TEMPLATE(BM_par_for_norm, double, par::seq)
@@ -66,12 +67,12 @@ BENCHMARK_TEMPLATE(BM_par_for_norm, double, par::seq)
 BENCHMARK_TEMPLATE(BM_par_for_norm, double, par::openmp)
     ->RangeMultiplier(2)
     ->Range(min_size, max_size);
-BENCHMARK_TEMPLATE(BM_par_for_norm, double, par::std)
+BENCHMARK_TEMPLATE(BM_par_for_norm, double, par::stl)
     ->RangeMultiplier(2)
     ->Range(min_size, max_size);
 
 template <typename Flt, class p>
-static void BM_par_axpy(benchmark::State& state) {
+static void BM_par_axpy(benchmark::State &state) {
   index_t n = static_cast<index_t>(state.range(0));
   auto buffer_x = make_buffer<Flt>(n);
   auto buffer_y = make_buffer<Flt>(n);
@@ -85,7 +86,7 @@ static void BM_par_axpy(benchmark::State& state) {
   }
 }
 
-template <typename Flt> static void BM_axpy_blas_blas(benchmark::State& state) {
+template <typename Flt> static void BM_axpy_blas_blas(benchmark::State &state) {
   index_t n = static_cast<index_t>(state.range(0));
   auto buffer_x = make_buffer<Flt>(n);
   auto buffer_y = make_buffer<Flt>(n);
@@ -102,7 +103,7 @@ BENCHMARK_TEMPLATE(BM_par_axpy, float, par::seq)
 BENCHMARK_TEMPLATE(BM_par_axpy, float, par::openmp)
     ->RangeMultiplier(2)
     ->Range(min_size, max_size);
-BENCHMARK_TEMPLATE(BM_par_axpy, float, par::std)
+BENCHMARK_TEMPLATE(BM_par_axpy, float, par::stl)
     ->RangeMultiplier(2)
     ->Range(min_size, max_size);
 BENCHMARK_TEMPLATE(BM_par_axpy, double, par::seq)
@@ -111,7 +112,7 @@ BENCHMARK_TEMPLATE(BM_par_axpy, double, par::seq)
 BENCHMARK_TEMPLATE(BM_par_axpy, double, par::openmp)
     ->RangeMultiplier(2)
     ->Range(min_size, max_size);
-BENCHMARK_TEMPLATE(BM_par_axpy, double, par::std)
+BENCHMARK_TEMPLATE(BM_par_axpy, double, par::stl)
     ->RangeMultiplier(2)
     ->Range(min_size, max_size);
 BENCHMARK_TEMPLATE(BM_axpy_blas_blas, float)

@@ -1,6 +1,6 @@
 #include <iostream>
 #include <mathprim/core/buffer.hpp>
-#include <mathprim/core/buffer_view.hpp>
+#include <mathprim/core/view.hpp>
 #include <mathprim/supports/eigen_dense.hpp>
 #include <mathprim/supports/stringify.hpp>
 
@@ -49,5 +49,6 @@ int main() {
 
   // this should assert because the shape is not the same.
   // auto map_to_matrix3 = eigen_support::map<3, 4>(mv.as_const());
+
   return 0;
 }

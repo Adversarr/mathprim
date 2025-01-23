@@ -5,32 +5,37 @@
 using namespace mathprim;
 static void BM_Eigen_VectorMap(benchmark::State &state) {
   auto buffer =
-      make_buffer<float>(static_cast<index_t>(state.range(0)), 3); // nx3
+      make_buffer<float>(static_cast<index_t>(state.range(0)), 4); // nx4
   auto view = buffer.view();
   for (auto [i, j] : view.shape()) {
-    view(i, j) = i * 3 + j;
+    view(i, j) = i * 4 + j;
   }
+
   for (auto _ : state) {
     for (auto v : view) {
-      auto map = eigen_support::cmap<3>(v.as_const());
+      auto map = eigen_support::cmap<4>(v.as_const());
       float norm = map.norm();
       benchmark::DoNotOptimize(norm);
+      Eigen::Vector4f v2 = map * 2;
+      benchmark::DoNotOptimize(v2);
     }
   }
 }
 
 static void BM_Eigen_VectorMapNaive(benchmark::State &state) {
   auto buffer =
-      make_buffer<float>(static_cast<index_t>(state.range(0)), 3); // nx3
+      make_buffer<float>(static_cast<index_t>(state.range(0)), 4); // nx4
   auto view = buffer.view();
   for (auto [i, j] : view.shape()) {
-    view(i, j) = i * 3 + j;
+    view(i, j) = i * 4 + j;
   }
   for (auto _ : state) {
     for (index_t i = 0; i < view.shape()[0]; ++i) {
-      auto map = Eigen::Map<Eigen::Vector3f>(view.data() + i * 3);
+      auto map = Eigen::Map<Eigen::Vector4f>(view.data() + i * 4);
       float norm = map.norm();
       benchmark::DoNotOptimize(norm);
+      Eigen::Vector4f v = map * 2;
+      benchmark::DoNotOptimize(v);
     }
   }
 }
@@ -43,8 +48,8 @@ static void BM_Eigen_MatrixMap(benchmark::State &state) {
     view(i, j, k) = i * 16 + j * 4 + k;
   }
   for (auto _ : state) {
-    for (auto v : view) {
-      auto map = eigen_support::cmap<4, 4>(v.as_const());
+    for (auto v : view.as_const()) {
+      auto map = eigen_support::cmap<4, 4>(v);
       float norm = map.norm();
       benchmark::DoNotOptimize(norm);
     }
@@ -60,7 +65,7 @@ static void BM_Eigen_MatrixMapNaive(benchmark::State &state) {
   }
   for (auto _ : state) {
     for (index_t i = 0; i < view.shape()[0]; ++i) {
-      auto map = Eigen::Map<Eigen::Matrix<float, 4, 4>>(view.data() + i * 16);
+      auto map = Eigen::Map<const Eigen::Matrix4f>(view.data() + i * 16);
       float norm = map.norm();
       benchmark::DoNotOptimize(norm);
     }

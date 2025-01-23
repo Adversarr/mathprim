@@ -6,7 +6,7 @@
 #include "mathprim/core/blas/cpu_handmade.hpp"
 #include "mathprim/core/blas/cpu_blas.hpp"
 #include "mathprim/core/buffer.hpp"
-#include "mathprim/core/buffer_view.hpp"
+#include "mathprim/core/view.hpp"
 #include "mathprim/core/defines.hpp"
 #include "mathprim/supports/stringify.hpp"
 

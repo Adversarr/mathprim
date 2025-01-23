@@ -54,8 +54,8 @@ template <> struct dim<1> {
   constexpr explicit MATHPRIM_PRIMFUNC dim(const dim<3> &d) noexcept;
   constexpr explicit MATHPRIM_PRIMFUNC dim(const dim<4> &d) noexcept;
 
-  MATHPRIM_COPY(dim, default);
-  MATHPRIM_MOVE(dim, default);
+  MATHPRIM_INTERNAL_COPY(dim, default);
+  MATHPRIM_INTERNAL_MOVE(dim, default);
 
   constexpr MATHPRIM_PRIMFUNC index_t numel() const noexcept {
     return internal::to_valid_index(x_);
@@ -67,11 +67,13 @@ template <> struct dim<1> {
 
   constexpr MATHPRIM_PRIMFUNC index_t size(index_t i) const noexcept {
     MATHPRIM_ASSERT(i == 0);
+    MATHPRIM_INTERNAL_MAYBE_UNUSED(i);
     return x_;
   }
 
   constexpr MATHPRIM_PRIMFUNC index_t &operator[](index_t i) noexcept {
     MATHPRIM_ASSERT(i == 0);
+    MATHPRIM_INTERNAL_MAYBE_UNUSED(i);
     return x_;
   }
 
@@ -93,8 +95,8 @@ template <> struct dim<2> {
 
   MATHPRIM_PRIMFUNC dim(index_t x, index_t y) noexcept : x_(x), y_(y) {}
 
-  MATHPRIM_COPY(dim, default);
-  MATHPRIM_MOVE(dim, default);
+  MATHPRIM_INTERNAL_COPY(dim, default);
+  MATHPRIM_INTERNAL_MOVE(dim, default);
 
   explicit MATHPRIM_PRIMFUNC dim(const dim<1> &d) noexcept
       : x_(d.x_), y_(no_dim) {}
@@ -148,8 +150,8 @@ template <> struct dim<3> {
   MATHPRIM_PRIMFUNC dim(index_t x, index_t y, index_t z) noexcept
       : x_(x), y_(y), z_(z) {}
 
-  MATHPRIM_COPY(dim, default);
-  MATHPRIM_MOVE(dim, default);
+  MATHPRIM_INTERNAL_COPY(dim, default);
+  MATHPRIM_INTERNAL_MOVE(dim, default);
 
   // construct from lower dimensions
   explicit MATHPRIM_PRIMFUNC dim(const dim<1> &d) noexcept
@@ -236,8 +238,8 @@ template <> struct dim<4> {
   MATHPRIM_PRIMFUNC dim(index_t x, index_t y, index_t z, index_t w)
       : x_(x), y_(y), z_(z), w_(w) {}
 
-  MATHPRIM_COPY(dim, default);
-  MATHPRIM_MOVE(dim, default);
+  MATHPRIM_INTERNAL_COPY(dim, default);
+  MATHPRIM_INTERNAL_MOVE(dim, default);
 
   // common functionalities.
   MATHPRIM_PRIMFUNC index_t numel() const noexcept {
@@ -539,11 +541,10 @@ MATHPRIM_PRIMFUNC dim<4> ind2sub(const dim<4> &shape, index_t index) {
 ///////////////////////////////////////////////////////////////////////////////
 template <index_t N> class dim_iterator final {
 public:
-  MATHPRIM_PRIMFUNC dim_iterator(const dim<N> &start, const dim<N> &end)
+  MATHPRIM_PRIMFUNC dim_iterator(const dim<N> &start, const dim<N> &end) noexcept
       : current_(start), shape_(end) {}
 
-  MATHPRIM_PRIMFUNC dim_iterator &operator++() {
-    MATHPRIM_PRAGMA_UNROLL
+  MATHPRIM_PRIMFUNC dim_iterator &operator++() noexcept {
     for (index_t i = N - 1; i > 0; --i) {
       if (shape_[i] == no_dim) {
         continue;
@@ -557,19 +558,19 @@ public:
     return *this;
   }
 
-  MATHPRIM_PRIMFUNC dim_iterator operator++(int) {
+  MATHPRIM_PRIMFUNC dim_iterator operator++(int) noexcept {
     dim_iterator tmp = *this;
     ++(*this);
     return tmp;
   }
 
-  MATHPRIM_PRIMFUNC const dim<N> &operator*() const { return current_; }
+  MATHPRIM_PRIMFUNC const dim<N> &operator*() const noexcept { return current_; }
 
-  MATHPRIM_PRIMFUNC bool operator!=(const dim_iterator &other) const {
+  MATHPRIM_PRIMFUNC bool operator!=(const dim_iterator &other) const noexcept {
     return current_ != other.current_;
   }
 
-  MATHPRIM_PRIMFUNC bool operator==(const dim_iterator &other) const {
+  MATHPRIM_PRIMFUNC bool operator==(const dim_iterator &other) const noexcept {
     return current_ == other.current_;
   }
 
@@ -595,13 +596,18 @@ template <index_t N>
 MATHPRIM_PRIMFUNC dim<N> merge(const dim<N> &a, const dim<N> &b,
                                const dim<N> &a_shape) {
   dim<N> output;
-#ifdef __CUDA_ARCH__
-  _Pragma("unroll")
-#else
-  MATHPRIM_PRAGMA_UNROLL
-#endif
   for (index_t i = 0; i < N; ++i) {
     output[i] = a[i] * a_shape[i] + b[i];
+  }
+  return output;
+}
+
+template <index_t N>
+MATHPRIM_PRIMFUNC dim<N> ceil_div(const dim<N> &a, const dim<N> &b) {
+  dim<N> output;
+  MATHPRIM_ASSERT(a.ndim() == b.ndim());
+  for (index_t i = 0; i < a.ndim(); ++i) {
+    output[i] = a[i] / b[i];
   }
   return output;
 }

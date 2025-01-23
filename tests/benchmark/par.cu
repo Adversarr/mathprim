@@ -5,7 +5,7 @@
 #include "mathprim/core/parallel/cuda.cuh"
 
 #include "mathprim/core/buffer.hpp"
-#include "mathprim/core/buffer_view.hpp"
+#include "mathprim/core/view.hpp"
 #include "mathprim/core/parallel.hpp"
 
 using namespace mathprim;
