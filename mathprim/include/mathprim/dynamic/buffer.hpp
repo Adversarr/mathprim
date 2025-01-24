@@ -1,8 +1,8 @@
 #pragma once
+#include "mathprim/core/backends/cpu.hpp"  // IWYU pragma: export
 #include "mathprim/core/buffer.hpp"
-#include "mathprim/core/backends/cpu.hpp"
 #ifdef MATHPRIM_ENABLE_CUDA
-#include "mathprim/core/backends/cuda.cuh"
+#  include "mathprim/core/backends/cuda.cuh"
 #endif
 
 namespace mathprim {
@@ -20,12 +20,16 @@ basic_buffer_ptr<T, N, device_t::dynamic> make_buffer_ptr(const dim<N>& shape, d
     auto buffer = ::mathprim::make_buffer<T, N, device_t::cpu>(shape);
     return std::make_unique<basic_buffer<T, N, device_t::dynamic>>(std::move(buffer));
   } else if (device == device_t::cuda) {
+#ifdef MATHPRIM_ENABLE_CUDA
     auto buffer = ::mathprim::make_buffer<T, N, device_t::cuda>(shape);
     return std::make_unique<basic_buffer<T, N, device_t::dynamic>>(std::move(buffer));
+#else
+    throw std::invalid_argument("CUDA is not enabled.");
+#endif
   } else {
     throw std::invalid_argument("invalid device value.");
   }
 }
 
-}
-}
+}  // namespace dynamic
+}  // namespace mathprim

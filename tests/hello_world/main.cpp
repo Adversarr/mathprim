@@ -1,4 +1,3 @@
-#include <cstring>
 #include <iostream>
 #include <mathprim/core/common.hpp>
 #include <mathprim/core/view_from/stl_vector.hpp>
