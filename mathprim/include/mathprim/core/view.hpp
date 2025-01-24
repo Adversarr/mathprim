@@ -321,8 +321,8 @@ public:
   }
 
 private:
-  dim<N> shape_;
-  dim<N> stride_;
+  const dim<N> shape_;
+  const dim<N> stride_;
   T *data_;
   device_t dyn_dev_;  // TODO: EBO if necessary
 };

@@ -6,7 +6,7 @@ namespace mathprim {
 
 template <typename T, index_t N, device_t dev, index_t batch_dim> struct vmap_arg {
   const basic_view<T, N, dev> view_;
-  MATHPRIM_PRIMFUNC vmap_arg(const basic_view<T, N, dev> &view) : view_(view) {}
+  MATHPRIM_PRIMFUNC explicit vmap_arg(const basic_view<T, N, dev> &view) : view_(view) {}
 
   MATHPRIM_PRIMFUNC auto operator[](index_t i) const noexcept {
     return (view_.template slice<batch_dim>(i));
@@ -19,7 +19,7 @@ template <typename T, index_t N, device_t dev, index_t batch_dim> struct vmap_ar
 
 template <typename T, device_t dev, index_t batch_dim> struct vmap_arg<T, 1, dev, batch_dim> {
   const basic_view<T, 1, dev> view_;
-  MATHPRIM_PRIMFUNC vmap_arg(const basic_view<T, 1, dev> &view) : view_(view) {}
+  MATHPRIM_PRIMFUNC explicit vmap_arg(const basic_view<T, 1, dev> &view) : view_(view) {}
 
   MATHPRIM_PRIMFUNC T &operator[](index_t i) const noexcept {
     return (view_.template slice<batch_dim>(i));
@@ -32,12 +32,12 @@ template <typename T, device_t dev, index_t batch_dim> struct vmap_arg<T, 1, dev
 
 template <index_t batch_dim = 0, typename T, index_t N, device_t dev>
 MATHPRIM_PRIMFUNC vmap_arg<T, N, dev, batch_dim> make_vmap_arg(basic_view<T, N, dev> view) {
-  return {view};
+  return vmap_arg<T, N, dev, batch_dim>(view);
 }
 
 template <index_t batch_dim, typename T, index_t N, device_t dev>
 MATHPRIM_PRIMFUNC vmap_arg<T, N, dev, batch_dim> make_vmap_arg(vmap_arg<T, N, dev, batch_dim> arg) {
-  return arg;
+  return vmap_arg<T, N, dev, batch_dim>(arg);
 }
 
 template <class par_impl> struct parfor {
