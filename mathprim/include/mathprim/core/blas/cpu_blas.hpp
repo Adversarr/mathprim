@@ -3,7 +3,13 @@
 #  error "BLAS is not enabled."
 #endif
 
+#ifdef MATHPRIM_BLAS_VENDOR_APPLE
+#include <Accelerate/Accelerate.h>
+#define CBLAS_INT CBLAS_INDEX
+#define CBLAS_LAYOUT CBLAS_ORDER
+#else
 #include <cblas.h>
+#endif
 
 #include <cmath>
 #include <type_traits>
