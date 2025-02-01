@@ -2,7 +2,7 @@ add_library(mathprim INTERFACE)
 target_include_directories(mathprim INTERFACE ${CMAKE_CURRENT_LIST_DIR}/include)
 
 if(MATHPRIM_ENABLE_WARNINGS)
-  target_compile_options(mathprim INTERFACE -Wall)
+  target_compile_options(mathprim INTERFACE -Wall -Wextra -Wpedantic)
 endif()
 
 if(MATHPRIM_ENABLE_EIGEN)
@@ -17,6 +17,7 @@ if(MATHPRIM_ENABLE_BLAS)
     # Prefer to use Accelerate framework on macOS
     set(BLA_VENDOR "Apple")
     target_compile_definitions(mathprim INTERFACE MATHPRIM_BLAS_VENDOR_APPLE)
+    target_compile_definitions(mathprim INTERFACE ACCELERATE_NEW_LAPACK)
   else()
     set(BLA_VENDOR "OpenBLAS")
     target_compile_definitions(mathprim INTERFACE MATHPRIM_BLAS_VENDOR_OPENBLAS)

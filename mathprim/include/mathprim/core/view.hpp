@@ -250,7 +250,7 @@ struct dimension_iterator {
   view_type view;
   index_t current;
 
-  MATHPRIM_PRIMFUNC dimension_iterator(const view_type &view, index_t current) : current(current), view(view) {}
+  MATHPRIM_PRIMFUNC dimension_iterator(const view_type &view, index_t current) : view(view), current(current) {}
 
   MATHPRIM_PRIMFUNC reference operator*() const noexcept {
     return view[current];
