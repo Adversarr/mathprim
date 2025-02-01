@@ -17,10 +17,13 @@ if(MATHPRIM_ENABLE_BLAS)
     # Prefer to use Accelerate framework on macOS
     set(BLA_VENDOR "Apple")
     target_compile_definitions(mathprim INTERFACE MATHPRIM_BLAS_VENDOR_APPLE)
+  else()
+    set(BLA_VENDOR "OpenBLAS")
+    target_compile_definitions(mathprim INTERFACE MATHPRIM_BLAS_VENDOR_OPENBLAS)
   endif()
 
   find_package(BLAS REQUIRED)
-  message(STATUS "Enabling BLAS")
+  message(STATUS "Enabling BLAS: ${BLAS_LIBRARIES} ${BLA_VENDOR}")
 
   target_link_libraries(mathprim INTERFACE ${BLAS_LIBRARIES})
   target_compile_definitions(mathprim INTERFACE MATHPRIM_ENABLE_BLAS)

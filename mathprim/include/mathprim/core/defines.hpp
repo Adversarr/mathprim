@@ -218,11 +218,19 @@ public:
 class cpu : public basic_device<cpu> {
 public:
   void *malloc_impl(size_t size) const {
-    return std::aligned_alloc(MATHPRIM_BACKEND_CPU_ALIGNMENT, size);
+#if defined(_MSC_VER)
+      return _aligned_malloc(size, MATHPRIM_BACKEND_CPU_ALIGNMENT);
+#else
+      return std::aligned_alloc(MATHPRIM_BACKEND_CPU_ALIGNMENT, size);
+#endif
   }
 
   void free_impl(void *ptr) const noexcept {
+#if defined(_MSC_VER)
+      _aligned_free(ptr);
+#else
     std::free(ptr);
+#endif
   }
 
   void memset_impl(void *ptr, int value, size_t size) const {

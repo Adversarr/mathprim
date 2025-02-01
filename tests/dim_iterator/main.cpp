@@ -105,11 +105,12 @@ GTEST_TEST(buffer, creation) {
       for (int j = 0; j < 3; ++j) {
         for (int k = 0; k < 2; ++k) {
           buf.data()[i * 6 + j * 2 + k] = i * 6 + j * 2 + k + 1;
-          ASSERT_EQ(view(i, j, k), i * 6 + j * 2 + k + 1);
+          EXPECT_EQ(view(i, j, k), i * 6 + j * 2 + k + 1);
         }
       }
     }
-    for (auto vi : view) {
+
+    for (const auto &vi : view) {
       for (int j = 0; j < 3; ++j) {
         for (int k = 0; k < 2; ++k) {
           ASSERT_EQ(view(0, j, k), j * 2 + k + 1);
@@ -124,7 +125,7 @@ GTEST_TEST(blas, handmade) {
   auto buf = make_buffer<float>(make_dynamic_shape(4, 3, 2));
   float p[24];
   for (int i = 0; i < 24; ++i) {
-    p[i] = i + 1;
+    p[i] = static_cast<float>(i + 1);
   }
 
   blas::cpu_handmade<float> b;
@@ -153,12 +154,12 @@ GTEST_TEST(blas, handmade) {
     auto matrix2 = make_buffer<float>(make_dynamic_shape(3, 2));
     for (int i = 0; i < 4; ++i) {
       for (int j = 0; j < 3; ++j) {
-        matrix.view()(i, j) = i + j;
+        matrix.view()(i, j) = float(i + j);
       }
     }
     for (int i = 0; i < 3; ++i) {
       for (int j = 0; j < 2; ++j) {
-        matrix2.view()(i, j) = i * 2 + j;
+        matrix2.view()(i, j) = float(i * 2 + j);
       }
     }
 

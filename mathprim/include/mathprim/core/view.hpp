@@ -115,6 +115,11 @@ public:
   MATHPRIM_PRIMFUNC basic_view(pointer data, const sshape &shape, const sstride &stride) noexcept :
       shape_(shape), stride_(stride), data_(data) {}
 
+  MATHPRIM_PRIMFUNC basic_view(const basic_view &) noexcept = default;
+  MATHPRIM_PRIMFUNC basic_view(basic_view &&) noexcept = default;
+  MATHPRIM_PRIMFUNC basic_view &operator=(const basic_view &) noexcept = delete;
+  MATHPRIM_PRIMFUNC basic_view &operator=(basic_view &&) noexcept = delete;
+
   ///////////////////////////////////////////////////////////////////////////////
   /// Meta data
   ///////////////////////////////////////////////////////////////////////////////
@@ -242,8 +247,8 @@ struct dimension_iterator {
   using pointer = value_type *;
   using difference_type = index_t;
   using iterator_category = std::random_access_iterator_tag;
-  index_t current;
   view_type view;
+  index_t current;
 
   MATHPRIM_PRIMFUNC dimension_iterator(const view_type &view, index_t current) : current(current), view(view) {}
 

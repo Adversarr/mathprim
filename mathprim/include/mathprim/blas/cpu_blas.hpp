@@ -10,8 +10,16 @@
 #  define CBLAS_INT CBLAS_INDEX
 #  define CBLAS_LAYOUT CBLAS_ORDER
 #else
+#ifdef MATHPRIM_BLAS_VENDOR_OPENBLAS
+#  include <openblas/cblas.h>
+#ifndef CBLAS_INT
+#  define CBLAS_INT blasint
+#endif
+#else
 #  include <cblas.h>
 #endif
+#endif
+
 
 #include <cmath>
 #include <type_traits>
@@ -26,7 +34,7 @@ constexpr CBLAS_TRANSPOSE invert(CBLAS_TRANSPOSE from) {
 }
 
 template <typename Scalar, typename sshape, typename sstride, typename device>
-constexpr CBLAS_INDEX vec_stride(basic_view<Scalar, sshape, sstride, device> view) {
+constexpr CBLAS_INT vec_stride(basic_view<Scalar, sshape, sstride, device> view) {
   return view.stride(-1) / static_cast<index_t>(sizeof(Scalar));
 }
 

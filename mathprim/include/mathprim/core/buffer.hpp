@@ -159,4 +159,9 @@ basic_buffer<T, sshape, internal::default_stride_t<T, sshape>, dev> make_buffer(
   return basic_buffer<T, sshape, internal::default_stride_t<T, sshape>, dev>(ptr, shape);
 }
 
+template <typename T, typename dev = device::cpu, typename ... Integers, typename = std::enable_if_t<(std::is_integral_v<Integers> && ...)>>
+basic_buffer<T, dynamic_shape<sizeof...(Integers)>, internal::default_stride_t<T, dynamic_shape<sizeof...(Integers)>>, dev> make_buffer(Integers... shape) {
+  return make_buffer<T, dev>(dynamic_shape<sizeof...(Integers)>{shape...});
+}
+
 }  // namespace mathprim
