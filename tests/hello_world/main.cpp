@@ -60,5 +60,8 @@ int main() {
     printf("view3(%d, %d) = %f\n", i, j, view3(i, j));
   }
 
+
+  using ip = index_pack<keep_dim, 3, 2>;
+  make_default_stride<int>(ip());
   return 0;
 }

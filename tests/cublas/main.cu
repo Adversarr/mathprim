@@ -166,7 +166,7 @@ int main() {
       blas_::gemm(1.0f, a_view.as_const(), b_view.as_const(), 0.0f,
                   c_view.transpose());
     } catch (const std::exception &e) {
-      std::cerr << e.what() << std::endl;
+      std::cerr << "This should throw: " << e.what() << std::endl;
     }
   }
 

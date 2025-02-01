@@ -149,12 +149,12 @@ static void BM_gemm_blas(benchmark::State& state) {
   }
 }
 
-BENCHMARK(BM_gemv_handmade)->Range(8, 8 << 10);
-BENCHMARK(BM_gemv_eigen)->Range(8, 8 << 10);
-BENCHMARK(BM_gemv_blas)->Range(8, 8 << 10);
-BENCHMARK(BM_gemm_handmade)->Range(8, 8 << 7);
-BENCHMARK(BM_gemm_eigen)->Range(8, 8 << 7);
-BENCHMARK(BM_gemm_blas)->Range(8, 8 << 7);
+// BENCHMARK(BM_gemv_handmade)->Range(8, 8 << 10);
+// BENCHMARK(BM_gemv_eigen)->Range(8, 8 << 10);
+// BENCHMARK(BM_gemv_blas)->Range(8, 8 << 10);
+// BENCHMARK(BM_gemm_handmade)->Range(8, 8 << 7);
+// BENCHMARK(BM_gemm_eigen)->Range(8, 8 << 7);
+// BENCHMARK(BM_gemm_blas)->Range(8, 8 << 7);
 
 BENCHMARK(BM_axpy_handmade)->Range(8, 8 << 14);
 BENCHMARK(BM_axpy_eigen)->Range(8, 8 << 14);

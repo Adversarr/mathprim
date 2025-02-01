@@ -1,9 +1,10 @@
 #pragma once
+#include <cublas_v2.h>
+
+#include <sstream>
+
 #include "mathprim/core/utils/cuda_utils.cuh"
 #include "utils.hpp"
-
-#include <cublas_v2.h>
-#include <sstream>
 
 namespace mathprim {
 
@@ -11,16 +12,32 @@ namespace blas {
 
 namespace internal {
 
+inline void check_status(cublasStatus_t status, const char *file, int line, const char *expr) {
+  if (status != CUBLAS_STATUS_SUCCESS) {
+    std::ostringstream oss;
+    oss << "CUBLAS error at " << file << ":" << line << ": " << expr << " " << cublasGetStatusName(status);
+    throw std::runtime_error(oss.str());
+  }
+}
+
+#define MATHPRIM_INTERNAL_CUBLAS_CHECK(expr) ::mathprim::blas::internal::check_status((expr), __FILE__, __LINE__, #expr)
+
 class cublas_context final {
 public:
-  cublas_context() { cublasCreate(&handle_); }
-  ~cublas_context() { cublasDestroy(handle_); }
+  cublas_context() {
+    MATHPRIM_INTERNAL_CUBLAS_CHECK(cublasCreate(&handle_));
+  }
+  ~cublas_context() {
+    MATHPRIM_INTERNAL_CUBLAS_CHECK(cublasDestroy(handle_));
+  }
   cublas_context(const cublas_context &) = delete;
   cublas_context &operator=(const cublas_context &) = delete;
   cublas_context(cublas_context &&) = delete;
   cublas_context &operator=(cublas_context &&) = delete;
 
-  cublasHandle_t handle() const { return handle_; }
+  cublasHandle_t handle() const {
+    return handle_;
+  }
 
   static cublas_context &instance() {
     static cublas_context ctx;
@@ -31,20 +48,7 @@ private:
   cublasHandle_t handle_;
 };
 
-inline void check_status(cublasStatus_t status, const char *file, int line,
-                         const char *expr) {
-  if (status != CUBLAS_STATUS_SUCCESS) {
-    std::ostringstream oss;
-    oss << "CUBLAS error at " << file << ":" << line << ": " << expr << " "
-        << cublasGetStatusName(status);
-    throw std::runtime_error(oss.str());
-  }
-}
-
-#define MATHPRIM_INTERNAL_CUBLAS_CHECK(expr)                                   \
-  mathprim::blas::internal::check_status((expr), __FILE__, __LINE__, #expr)
-
-} // namespace internal
+}  // namespace internal
 template <typename T> struct blas_impl_cublas {
   static constexpr device_t dev = device_t::cuda;
   using vector_view = basic_view<T, 1, dev>;
@@ -65,13 +69,11 @@ template <typename T> struct blas_impl_cublas {
 
   // Level 2
   // y <- alpha * A * x + beta * y
-  static void gemv(T alpha, const_matrix_view A, const_vector_view x, T beta,
-                   vector_view y);
+  static void gemv(T alpha, const_matrix_view A, const_vector_view x, T beta, vector_view y);
 
   // Level 3
   // C <- alpha * A * B + beta * C
-  static void gemm(T alpha, const_matrix_view A, const_matrix_view B, T beta,
-                   matrix_view C);
+  static void gemm(T alpha, const_matrix_view A, const_matrix_view B, T beta, matrix_view C);
 
   // element-wise operatons
   // y = x * y
@@ -80,15 +82,13 @@ template <typename T> struct blas_impl_cublas {
   static void ediv(const_vector_view x, vector_view y);
 };
 
-} // namespace blas
+}  // namespace blas
 
-} // namespace mathprim
+}  // namespace mathprim
 
 namespace mathprim::blas {
 
-template <typename T>
-void blas_impl_cublas<T>::copy(vector_view dst, const_vector_view src) {
-  internal::cublas_context::instance();
+template <typename T> void blas_impl_cublas<T>::copy(vector_view dst, const_vector_view src) {
   auto &ctx = internal::cublas_context::instance();
   auto *handle = ctx.handle();
   auto n = static_cast<int>(src.size(0));
@@ -97,11 +97,9 @@ void blas_impl_cublas<T>::copy(vector_view dst, const_vector_view src) {
   auto incx = src.stride(0);
   auto incy = dst.stride(0);
   if constexpr (std::is_same_v<T, float>) {
-    MATHPRIM_INTERNAL_CUBLAS_CHECK(
-        cublasScopy(handle, n, src_ptr, incx, dst_ptr, incy));
+    MATHPRIM_INTERNAL_CUBLAS_CHECK(cublasScopy(handle, n, src_ptr, incx, dst_ptr, incy));
   } else if constexpr (std::is_same_v<T, double>) {
-    MATHPRIM_INTERNAL_CUBLAS_CHECK(
-        cublasDcopy(handle, n, src_ptr, incx, dst_ptr, incy));
+    MATHPRIM_INTERNAL_CUBLAS_CHECK(cublasDcopy(handle, n, src_ptr, incx, dst_ptr, incy));
   } else {
     static_assert(!std::is_same_v<T, T>, "Unsupported type");
   }
@@ -114,18 +112,14 @@ template <typename T> void blas_impl_cublas<T>::scal(T alpha, vector_view x) {
   T *x_ptr = x.data();
   index_t incx = x.stride(0);
   if constexpr (std::is_same_v<T, float>) {
-    MATHPRIM_INTERNAL_CUBLAS_CHECK(
-        cublasSscal_v2(handle, n, &alpha, x_ptr, incx));
+    MATHPRIM_INTERNAL_CUBLAS_CHECK(cublasSscal_v2(handle, n, &alpha, x_ptr, incx));
   } else if constexpr (std::is_same_v<T, double>) {
-    MATHPRIM_INTERNAL_CUBLAS_CHECK(
-        cublasDscal_v2(handle, n, &alpha, x_ptr, incx));
+    MATHPRIM_INTERNAL_CUBLAS_CHECK(cublasDscal_v2(handle, n, &alpha, x_ptr, incx));
   } else {
     static_assert(!std::is_same_v<T, T>, "Unsupported type");
   }
 }
-template <typename T>
-void blas_impl_cublas<T>::swap(vector_view x, vector_view y) {
-  internal::cublas_context::instance();
+template <typename T> void blas_impl_cublas<T>::swap(vector_view x, vector_view y) {
   auto &ctx = internal::cublas_context::instance();
   auto *handle = ctx.handle();
   auto n = static_cast<int>(x.size(0));
@@ -134,19 +128,15 @@ void blas_impl_cublas<T>::swap(vector_view x, vector_view y) {
   auto incx = x.stride(0);
   auto incy = y.stride(0);
   if constexpr (std::is_same_v<T, float>) {
-    MATHPRIM_INTERNAL_CUBLAS_CHECK(
-        cublasSswap(handle, n, x_ptr, incx, y_ptr, incy));
+    MATHPRIM_INTERNAL_CUBLAS_CHECK(cublasSswap(handle, n, x_ptr, incx, y_ptr, incy));
   } else if constexpr (std::is_same_v<T, double>) {
-    MATHPRIM_INTERNAL_CUBLAS_CHECK(
-        cublasDswap(handle, n, x_ptr, incx, y_ptr, incy));
+    MATHPRIM_INTERNAL_CUBLAS_CHECK(cublasDswap(handle, n, x_ptr, incx, y_ptr, incy));
   } else {
     static_assert(!std::is_same_v<T, T>, "Unsupported type");
   }
 }
 
-template <typename T>
-void blas_impl_cublas<T>::axpy(T alpha, const_vector_view x, vector_view y) {
-  internal::cublas_context::instance();
+template <typename T> void blas_impl_cublas<T>::axpy(T alpha, const_vector_view x, vector_view y) {
   auto &ctx = internal::cublas_context::instance();
   auto *handle = ctx.handle();
   auto n = static_cast<int>(y.size(0));
@@ -155,18 +145,15 @@ void blas_impl_cublas<T>::axpy(T alpha, const_vector_view x, vector_view y) {
   auto incx = x.stride(0);
   auto incy = y.stride(0);
   if constexpr (std::is_same_v<T, float>) {
-    MATHPRIM_INTERNAL_CUBLAS_CHECK(
-        cublasSaxpy(handle, n, &alpha, x_ptr, incx, y_ptr, incy));
+    MATHPRIM_INTERNAL_CUBLAS_CHECK(cublasSaxpy(handle, n, &alpha, x_ptr, incx, y_ptr, incy));
   } else if constexpr (std::is_same_v<T, double>) {
-    MATHPRIM_INTERNAL_CUBLAS_CHECK(
-        cublasDaxpy(handle, n, &alpha, x_ptr, incx, y_ptr, incy));
+    MATHPRIM_INTERNAL_CUBLAS_CHECK(cublasDaxpy(handle, n, &alpha, x_ptr, incx, y_ptr, incy));
   } else {
     static_assert(!std::is_same_v<T, T>, "Unsupported type");
   }
 }
 
-template <typename T>
-T blas_impl_cublas<T>::dot(const_vector_view x, const_vector_view y) {
+template <typename T> T blas_impl_cublas<T>::dot(const_vector_view x, const_vector_view y) {
   internal::cublas_context::instance();
   auto &ctx = internal::cublas_context::instance();
   auto *handle = ctx.handle();
@@ -177,11 +164,9 @@ T blas_impl_cublas<T>::dot(const_vector_view x, const_vector_view y) {
   auto incy = y.stride(0);
   T result;
   if constexpr (std::is_same_v<T, float>) {
-    MATHPRIM_INTERNAL_CUBLAS_CHECK(
-        cublasSdot(handle, n, x_ptr, incx, y_ptr, incy, &result));
+    MATHPRIM_INTERNAL_CUBLAS_CHECK(cublasSdot(handle, n, x_ptr, incx, y_ptr, incy, &result));
   } else if constexpr (std::is_same_v<T, double>) {
-    MATHPRIM_INTERNAL_CUBLAS_CHECK(
-        cublasDdot(handle, n, x_ptr, incx, y_ptr, incy, &result));
+    MATHPRIM_INTERNAL_CUBLAS_CHECK(cublasDdot(handle, n, x_ptr, incx, y_ptr, incy, &result));
   } else {
     static_assert(!std::is_same_v<T, T>, "Unsupported type");
   }
@@ -189,7 +174,6 @@ T blas_impl_cublas<T>::dot(const_vector_view x, const_vector_view y) {
 }
 
 template <typename T> T blas_impl_cublas<T>::norm(const_vector_view x) {
-  internal::cublas_context::instance();
   auto &ctx = internal::cublas_context::instance();
   auto *handle = ctx.handle();
   auto n = static_cast<int>(x.size(0));
@@ -197,11 +181,9 @@ template <typename T> T blas_impl_cublas<T>::norm(const_vector_view x) {
   auto incx = x.stride(0);
   T result;
   if constexpr (std::is_same_v<T, float>) {
-    MATHPRIM_INTERNAL_CUBLAS_CHECK(
-        cublasSnrm2(handle, n, x_ptr, incx, &result));
+    MATHPRIM_INTERNAL_CUBLAS_CHECK(cublasSnrm2(handle, n, x_ptr, incx, &result));
   } else if constexpr (std::is_same_v<T, double>) {
-    MATHPRIM_INTERNAL_CUBLAS_CHECK(
-        cublasDnrm2(handle, n, x_ptr, incx, &result));
+    MATHPRIM_INTERNAL_CUBLAS_CHECK(cublasDnrm2(handle, n, x_ptr, incx, &result));
   } else {
     static_assert(!std::is_same_v<T, T>, "Unsupported type");
   }
@@ -209,7 +191,6 @@ template <typename T> T blas_impl_cublas<T>::norm(const_vector_view x) {
 }
 
 template <typename T> T blas_impl_cublas<T>::asum(const_vector_view x) {
-  internal::cublas_context::instance();
   auto &ctx = internal::cublas_context::instance();
   auto *handle = ctx.handle();
   auto n = static_cast<int>(x.size(0));
@@ -217,11 +198,9 @@ template <typename T> T blas_impl_cublas<T>::asum(const_vector_view x) {
   auto incx = x.stride(0);
   T result;
   if constexpr (std::is_same_v<T, float>) {
-    MATHPRIM_INTERNAL_CUBLAS_CHECK(
-        cublasSasum(handle, n, x_ptr, incx, &result));
+    MATHPRIM_INTERNAL_CUBLAS_CHECK(cublasSasum(handle, n, x_ptr, incx, &result));
   } else if constexpr (std::is_same_v<T, double>) {
-    MATHPRIM_INTERNAL_CUBLAS_CHECK(
-        cublasDasum(handle, n, x_ptr, incx, &result));
+    MATHPRIM_INTERNAL_CUBLAS_CHECK(cublasDasum(handle, n, x_ptr, incx, &result));
   } else {
     static_assert(!std::is_same_v<T, T>, "Unsupported type");
   }
@@ -249,8 +228,7 @@ template <typename T> T blas_impl_cublas<T>::asum(const_vector_view x) {
 // }
 
 template <typename T>
-void blas_impl_cublas<T>::gemv(T alpha, const_matrix_view A,
-                               const_vector_view x, T beta, vector_view y) {
+void blas_impl_cublas<T>::gemv(T alpha, const_matrix_view A, const_vector_view x, T beta, vector_view y) {
   internal::check_mv_shapes(A.shape(), x.shape(), y.shape());
   int m = static_cast<int>(A.size(0));
   int n = static_cast<int>(A.size(1));
@@ -272,21 +250,18 @@ void blas_impl_cublas<T>::gemv(T alpha, const_matrix_view A,
   }
 
   if constexpr (std::is_same_v<T, float>) {
-    MATHPRIM_INTERNAL_CUBLAS_CHECK(cublasSgemv(handle, op, m, n, &alpha,
-                                               A.data(), lda, x.data(), inc_x,
-                                               &beta, y.data(), inc_y));
+    MATHPRIM_INTERNAL_CUBLAS_CHECK(
+        cublasSgemv(handle, op, m, n, &alpha, A.data(), lda, x.data(), inc_x, &beta, y.data(), inc_y));
   } else if constexpr (std::is_same_v<T, double>) {
-    MATHPRIM_INTERNAL_CUBLAS_CHECK(cublasDgemv(handle, op, m, n, &alpha,
-                                               A.data(), lda, x.data(), inc_x,
-                                               &beta, y.data(), inc_y));
+    MATHPRIM_INTERNAL_CUBLAS_CHECK(
+        cublasDgemv(handle, op, m, n, &alpha, A.data(), lda, x.data(), inc_x, &beta, y.data(), inc_y));
   } else {
     static_assert(!std::is_same_v<T, T>, "Unsupported type");
   }
 }
 
 template <typename T>
-void blas_impl_cublas<T>::gemm(T alpha, const_matrix_view A,
-                               const_matrix_view B, T beta, matrix_view C) {
+void blas_impl_cublas<T>::gemm(T alpha, const_matrix_view A, const_matrix_view B, T beta, matrix_view C) {
   internal::check_mm_shapes(A.shape(), B.shape(), C.shape());
 
   int m = static_cast<int>(C.size(0));
@@ -324,20 +299,20 @@ void blas_impl_cublas<T>::gemm(T alpha, const_matrix_view A,
     //                                            &alpha, A.data(), lda,
     //                                            B.data(), ldb, &beta,
     //                                            C.data(), ldc));
-    MATHPRIM_INTERNAL_CUBLAS_CHECK(cublasSgemm(handle, opB, opA, n, m, k,
-                                               &alpha, B.data(), ldb, A.data(),
-                                               lda, &beta, C.data(), ldc));
+    MATHPRIM_INTERNAL_CUBLAS_CHECK(
+        cublasSgemm(handle, opB, opA, n, m, k, &alpha, B.data(), ldb, A.data(), lda, &beta, C.data(), ldc));
   } else if constexpr (std::is_same_v<T, double>) {
     // MATHPRIM_INTERNAL_CUBLAS_CHECK(cublasDgemm(handle, opA, opB, m, n, k,
     //                                            &alpha, A.data(), lda,
     //                                            B.data(), ldb, &beta,
     //                                            C.data(), ldc));
-    MATHPRIM_INTERNAL_CUBLAS_CHECK(cublasDgemm(handle, opB, opA, n, m, k,
-                                               &alpha, B.data(), ldb, A.data(),
-                                               lda, &beta, C.data(), ldc));
+    MATHPRIM_INTERNAL_CUBLAS_CHECK(
+        cublasDgemm(handle, opB, opA, n, m, k, &alpha, B.data(), ldb, A.data(), lda, &beta, C.data(), ldc));
   } else {
     static_assert(!std::is_same_v<T, T>, "Unsupported type");
   }
 }
 
-} // namespace mathprim::blas
+#undef MATHPRIM_INTERNAL_CUBLAS_CHECK
+
+}  // namespace mathprim::blas

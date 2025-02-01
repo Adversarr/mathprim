@@ -2,7 +2,6 @@
 #ifndef MATHPRIM_ENABLE_CUDA
 #  error "This file should be included only when cuda is enabled."
 #endif
-
 #include <cuda_runtime.h>
 
 #include <stdexcept>
@@ -13,7 +12,7 @@
 #include "mathprim/core/utils/cuda_utils.cuh"
 
 namespace mathprim {
-namespace backend::cuda {
+namespace cuda {
 namespace internal {
 
 inline void *alloc(size_t size) {
@@ -39,21 +38,21 @@ inline void free(void *ptr) noexcept {
 }
 
 }  // namespace internal
-}  // namespace backend::cuda
+}  // namespace cuda
 
 template <> struct buffer_backend_traits<device_t::cuda> {
   static constexpr size_t alloc_alignment = 128;
 
   static void *alloc(size_t size) {
-    return backend::cuda::internal::alloc(size);
+    return cuda::internal::alloc(size);
   }
 
   static void free(void *ptr) noexcept {
-    backend::cuda::internal::free(ptr);
+    cuda::internal::free(ptr);
   }
 
   static void memset(void *ptr, int value, size_t size) noexcept {
-    backend::cuda::internal::assert_success(cudaMemset(ptr, value, size));
+    cuda::internal::assert_success(cudaMemset(ptr, value, size));
   }
 
   static void memcpy_host_to_device(void *dst, const void *src, size_t size) {

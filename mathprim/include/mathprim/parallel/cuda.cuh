@@ -1,4 +1,8 @@
 #pragma once
+#include <thrust/execution_policy.h>
+#include <thrust/for_each.h>
+#include <thrust/iterator/counting_iterator.h>
+
 #include <cuda/std/tuple>
 
 #include "mathprim/core/dim.hpp"
@@ -91,21 +95,22 @@ template <> struct parfor<par::cuda> {
   }
 
   template <typename Fn, index_t N> static void run(const dim<N> &grid_dim, Fn &&fn) {
-    // TODO: Optimize over blockDim.
-    run(grid_dim, dim<N>{1}, [fn] MATHPRIM_DEVICE(const dim<N> &grid_id, const dim<N> & /* block_id */) {
-      fn(grid_id);
+    const thrust::counting_iterator<index_t> start(0);
+    const thrust::counting_iterator<index_t> end = start + numel(grid_dim);
+    thrust::for_each(thrust::device, start, end, [fn, grid_dim] MATHPRIM_DEVICE(index_t idx) {
+      fn(ind2sub(grid_dim, idx));
     });
   }
 
   template <typename Fn, typename T, index_t N, device_t dev>
-  static void for_each(const basic_view<T, N, dev>& buffer, Fn && fn) {
+  static void for_each(const basic_view<T, N, dev> &buffer, Fn &&fn) {
     run(buffer.shape(), [fn, buffer] MATHPRIM_DEVICE(const dim<N> &idx) {
       fn(buffer(idx));
     });
   }
 
   template <typename Fn, typename T, index_t N, device_t dev>
-  static void for_each_indexed(const basic_view<T, N, dev>& buffer, Fn && fn) {
+  static void for_each_indexed(const basic_view<T, N, dev> &buffer, Fn &&fn) {
     run(buffer.shape(), [fn, buffer] MATHPRIM_DEVICE(const dim<N> &idx) {
       fn(idx, buffer(idx));
     });
@@ -113,13 +118,15 @@ template <> struct parfor<par::cuda> {
 
   template <typename Fn, typename... vmap_args> static void vmap(Fn &&fn, vmap_args &&...args) {
     static_assert(sizeof...(vmap_args) > 0, "must provide at least one argument");
-    auto all_args = cuda::std::make_tuple(make_vmap_arg(std::forward<vmap_args>(args))...);
+    auto all_args = ::cuda::std::make_tuple(make_vmap_arg(std::forward<vmap_args>(args))...);
+    const index_t size = ::cuda::std::get<0>(all_args).size();
+    // TODO: check the size of all arguments equal.
 
-    parfor::run(dim<1>((args.size(), ...)), [all_args, fn] MATHPRIM_DEVICE(const dim<1> &idx) {
+    parfor::run(dim<1>(size), [all_args, fn] MATHPRIM_DEVICE(const dim<1> &idx) {
       auto apply_to_fn = [fn, i = idx.x_](auto &&...views) {
         fn(views[i]...);
       };
-      cuda::std::apply(apply_to_fn, all_args);
+      ::cuda::std::apply(apply_to_fn, all_args);
     });
   }
 };

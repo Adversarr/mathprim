@@ -6,16 +6,16 @@
 
 #pragma once
 #include "mathprim/core/defines.hpp"
+#include "mathprim/core/utils/common.hpp"
 #ifdef __CUDACC__
 #  pragma nv_diagnostic push
 #  pragma nv_diag_suppress 20012
 #endif
-#include <Eigen/Dense>
+#include <eigen3/Eigen/Dense>
 #ifdef __CUDACC__
 #  pragma nv_diagnostic pop
 #endif
-#include <mathprim/core/common.hpp>        // IWYU pragma: export
-#include <mathprim/core/utils/common.hpp>  // IWYU pragma: export
+#include "mathprim/blas/blas.hpp"
 
 #ifdef EIGEN_DEFAULT_TO_ROW_MAJOR
 #  error "EIGEN_DEFAULT_TO_ROW_MAJOR is not supported"
@@ -30,22 +30,27 @@ namespace internal {
  ********************************************************************/
 
 /// Determine the number of dimensions of the given Eigen type
-template <typename T> constexpr int ndim_v = bool(T::IsVectorAtCompileTime) ? 1 : 2;
+template <typename T>
+constexpr int ndim_v = bool(T::IsVectorAtCompileTime) ? 1 : 2;
 
 /// Extract the compile-time strides of the given Eigen type
-template <typename T> struct stride {
+template <typename T>
+struct stride {
   using type = Eigen::Stride<0, 0>;
 };
 
-template <typename T, int Options, typename StrideType> struct stride<Eigen::Map<T, Options, StrideType>> {
+template <typename T, int Options, typename StrideType>
+struct stride<Eigen::Map<T, Options, StrideType>> {
   using type = StrideType;
 };
 
-template <typename T, int Options, typename StrideType> struct stride<Eigen::Ref<T, Options, StrideType>> {
+template <typename T, int Options, typename StrideType>
+struct stride<Eigen::Ref<T, Options, StrideType>> {
   using type = StrideType;
 };
 
-template <typename T> using stride_t = typename stride<T>::type;
+template <typename T>
+using stride_t = typename stride<T>::type;
 
 /** \brief Identify types with a contiguous memory representation.
  *
@@ -71,7 +76,8 @@ constexpr bool can_map_contiguous_memory_v
           || int(stride_t<T>::OuterStrideAtCompileTime) == int(T::InnerSizeAtCompileTime));
 
 /// Any kind of Eigen class
-template <typename T> constexpr bool is_eigen_v = mathprim::internal::is_base_of_template_v<T, Eigen::EigenBase>;
+template <typename T>
+constexpr bool is_eigen_v = mathprim::internal::is_base_of_template_v<T, Eigen::EigenBase>;
 
 /// Detects Eigen::Array, Eigen::Matrix, etc.
 template <typename T>
@@ -107,7 +113,8 @@ constexpr Eigen::AlignmentType get_eigen_alignment(size_t alignment) {
   return Eigen::Unaligned;
 }
 
-template <typename T, device_t dev, int rows, int cols> constexpr Eigen::AlignmentType alignment_impl() {
+template <typename T, device_t dev, int rows, int cols>
+constexpr Eigen::AlignmentType alignment_impl() {
   constexpr size_t device_align = buffer_backend_traits<dev>::alloc_alignment;
   constexpr size_t bytes = sizeof(T) * static_cast<size_t>(rows) * static_cast<size_t>(cols);
   constexpr bool can_align = get_eigen_alignment(bytes) != Eigen::Unaligned;
@@ -128,11 +135,18 @@ using matrix_t = std::conditional_t<
 }  // namespace internal
 
 /// Eigen matrix type
-template <typename T, int rows, int cols> using matrix_t = internal::matrix_t<T, rows, cols>;
-template <typename T, int rows> using vector_t = matrix_t<T, rows, 1>;
+template <typename T, int rows, int cols>
+using matrix_t = internal::matrix_t<T, rows, cols>;
+template <typename T, int rows>
+using vector_t = matrix_t<T, rows, 1>;
 
 /// abbreviation for Eigen::Dynamic
 constexpr int dynamic = Eigen::Dynamic;
+using Index = Eigen::Index;
+
+MATHPRIM_CONSTEXPR MATHPRIM_PRIMFUNC Index to_eigen_index(index_t idx) noexcept {
+  return static_cast<Index>(idx);
+}
 
 /// determine the alignment of the Eigen matrix
 template <typename T, device_t dev, int rows, int cols>

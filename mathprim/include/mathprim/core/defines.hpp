@@ -4,8 +4,10 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>  // IWYU pragma: export
-#include <memory>
+#include <cstring>
+#include <memory>  // IWYU pragma: export
 #include <stdexcept>
+#include <type_traits>
 
 ///////////////////////////////////////////////////////////////////////////////
 /// General Options
@@ -38,7 +40,7 @@
 #    define MATHPRIM_CPU_BLAS handmade
 #  endif
 #endif
-#define MATHPRIM_INTERNAL_CPU_BLAS_FALLBACK MATHPRIM_CONCAT(blas_impl_cpu_, MATHPRIM_CPU_BLAS)
+#define MATHPRIM_INTERNAL_CPU_BLAS_FALLBACK MATHPRIM_CONCAT(cpu_, MATHPRIM_CPU_BLAS)
 
 ///////////////////////////////////////////////////////////////////////////////
 /// Feature detection
@@ -72,9 +74,13 @@
 #define MATHPRIM_PRIMFUNC MATHPRIM_FORCE_INLINE MATHPRIM_GENERAL
 #ifdef NDEBUG
 #  define MATHPRIM_ASSERT(cond) ((void)0)
+#  define MATHPRIM_CONSTEXPR
 #else
 #  define MATHPRIM_ASSERT(cond) assert(cond)
+#  define MATHPRIM_CONSTEXPR constexpr
 #endif
+
+#define MATHPRIM_UNUSED(x) ((void)(x))
 
 // Enable/Disable copy constructor/assignment operator.
 
@@ -157,7 +163,8 @@ constexpr size_t to_size(index_t i) {
 using f32_t = float;   ///< Type for 32-bit floating point numbers.
 using f64_t = double;  ///< Type for 64-bit floating point numbers.
 
-template <typename Flt> struct complex {
+template <typename Flt>
+struct complex {
   Flt real_;
   Flt imag_;
 };
@@ -169,33 +176,86 @@ using c64_t = complex<f64_t>;  ///< Type for 64-bit complex numbers.
 /// Constants.
 ///////////////////////////////////////////////////////////////////////////////
 
-constexpr index_t max_ndim = 4;  ///< The maximum supported dimension.
-
 // Indicates this dimension does not exist logically. must be zero.
 constexpr index_t no_dim = 0;
 
 // Indicates this dimension does not change under some operation.
 constexpr index_t keep_dim = -1;
+constexpr index_t dynamic_dim = -1;
 
 // TODO: currently, we only support cpu and gpu backends.
-enum class device_t {
-  cpu,      ///< CPU.
-  cuda,     ///< NVidia GPU.
-  dynamic,  ///< Reserved for untyped buffer view
+namespace device {  // i.e. backends.
+
+template <typename Derived>
+class basic_device {
+public:
+  void *malloc(size_t size) const {
+    void *ptr = static_cast<const Derived *>(this)->malloc_impl(size);
+    if (!ptr) {
+      throw std::bad_alloc{};
+    }
+#if MATHPRIM_VERBOSE_MALLOC
+    printf("%s: Allocated %zu bytes\n", name(), size);
+#endif
+    return ptr;
+  }
+  void free(void *ptr) const {
+    static_cast<const Derived *>(this)->free_impl(ptr);
+#if MATHPRIM_VERBOSE_MALLOC
+    printf("%s: Free %p\n", name(), ptr);
+#endif
+  }
+
+  void memset(void *ptr, int value, size_t size) const {
+    static_cast<const Derived *>(this)->memset_impl(ptr, value, size);
+  }
+
+  const char *name() const {
+    return static_cast<const Derived *>(this)->name_impl();
+  }
 };
 
-// enum class par {
-//   seq,     ///< No parallelism.
-//   std,     ///< Standard C++ parallelism.
-//   openmp,  ///< OpenMP. for cpu backend only
-//   cuda,    ///< CUDA.   for cuda backend only
-// };
+class cpu : public basic_device<cpu> {
+public:
+  void *malloc_impl(size_t size) const {
+    return std::aligned_alloc(MATHPRIM_BACKEND_CPU_ALIGNMENT, size);
+  }
+
+  void free_impl(void *ptr) const noexcept {
+    std::free(ptr);
+  }
+
+  void memset_impl(void *ptr, int value, size_t size) const {
+    std::memset(ptr, value, size);
+  }
+
+  const char *name_impl() const noexcept {
+    return "cpu";
+  }
+};
+
+template <typename T>
+struct is_device : std::false_type {};
+template <typename Derived>
+struct is_device<basic_device<Derived>> : std::true_type {};
+
+template <typename From, typename To>
+struct basic_memcpy;
+
+template <>
+struct basic_memcpy<cpu, cpu> {
+  void operator()(void *dst, const void *src, size_t size) {
+    std::memcpy(dst, src, size);
+  }
+};
+
+}  // namespace device
 
 namespace par {
-class seq;
-class stl;
-class openmp;
-class cuda;
+// class seq;
+// class stl;
+// class openmp;
+// class cuda;
 }  // namespace par
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -224,36 +284,45 @@ MATHPRIM_INTERNAL_DECLARE_ERROR(shape_error, runtime_error);
 /// Forward Declarations.
 ///////////////////////////////////////////////////////////////////////////////
 
-// TODO: should we use a simpler approach for blas
+// TODO:
+// 1. should we use a simpler approach for blas
+// 2. remove from here.
 
 /// @brief BLAS backend
 namespace blas {
-template <typename T> struct blas_impl_cpu_handmade;
-template <typename T> struct blas_impl_cpu_blas;
-template <typename T> struct blas_impl_cpu_eigen;
+template <typename T>
+struct cpu_handmade;
+template <typename T>
+struct blas_impl_cpu_blas;
+template <typename T>
+struct blas_impl_cpu_eigen;
 }  // namespace blas
 
-/**
- * @brief Dimensionality type for general buffers.
- */
-template <index_t N> struct dim;
-using dim_t = dim<max_ndim>;
+template <index_t N>
+struct index_array;
+template <index_t... svalues>
+struct index_pack;
 
 /**
  * @brief general buffer type.
  *
  * @tparam T the data type, need to be plain-old-data.
  */
-template <typename T, index_t N, device_t dev> class basic_buffer;
+template <typename T, typename sshape, typename sstride, typename dev>
+class basic_buffer;
 
 /// @brief The buffer backend traits.
-template <device_t dev> struct buffer_backend_traits;
+/// TODO: necessary?
+template <typename dev>
+struct buffer_backend_traits;
 
 /// @brief view of a buffer.
-template <typename T, index_t N, device_t dev> class basic_view;
+template <typename T, typename sshape, typename sstride, typename dev>
+class basic_view;
 
 /// @brief iterator for buffer view.
-template <typename T, index_t N, device_t dev> class basic_view_iterator;
+template <typename T, typename sshape, typename sstride, typename dev>
+struct dimension_iterator;
 
 ///////////////////////////////////////////////////////////////////////////////
 /// Parallelism
@@ -261,68 +330,63 @@ template <typename T, index_t N, device_t dev> class basic_view_iterator;
 /// @brief Parallel backend implementation.
 
 /// @brief Parallel for loop
-template <class par_impl> struct parfor;
+template <class par_impl>
+struct parfor;
 
 ///////////////////////////////////////////////////////////////////////////////
 /// BLAS
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief BLAS backend selection fallback, do not use this to select backend.
-template <typename T, device_t dev> struct blas_select_fallback;
+template <typename T, typename dev>
+struct blas_select_fallback;
 
-template <typename T> struct blas_select_fallback<T, device_t::cpu> {
-  using type = blas::MATHPRIM_INTERNAL_CPU_BLAS_FALLBACK<T>;
-};
-
-template <typename T> struct blas_select_fallback<T, device_t::cuda> {
-  using type = blas::blas_impl_cpu_handmade<T>;
+template <typename T>
+struct blas_select_fallback<T, device::cpu> {
+  // using type = blas::MATHPRIM_INTERNAL_CPU_BLAS_FALLBACK<T>;
 };
 
 /// @brief BLAS backend selection (for user selection)
-template <typename T, device_t dev> struct blas_select {
+template <typename T, typename dev>
+struct blas_select {
   using type = typename blas_select_fallback<T, dev>::type;
 };
 
 /// @brief BLAS backend selection (shortcut)
-template <typename T, device_t dev> using blas_select_t = typename blas_select<T, dev>::type;
+template <typename T, typename dev>
+using blas_select_t = typename blas_select<T, dev>::type;
 
 ///////////////////////////////////////////////////////////////////////////////
 /// Aliases.
+/// TODO: fill.
 ///////////////////////////////////////////////////////////////////////////////
-using f32_buffer = basic_buffer<f32_t, max_ndim, device_t::dynamic>;
-using f64_buffer = basic_buffer<f64_t, max_ndim, device_t::dynamic>;
-using index_buffer = basic_buffer<index_t, max_ndim, device_t::dynamic>;
-using float_buffer = f32_buffer;
-using double_buffer = f64_buffer;
-
+// using f32_buffer = basic_buffer<f32_t, max_ndim, device_t::dynamic>;
+// using f64_buffer = basic_buffer<f64_t, max_ndim, device_t::dynamic>;
+// using index_buffer = basic_buffer<index_t, max_ndim, device_t::dynamic>;
+// using float_buffer = f32_buffer;
+// using double_buffer = f64_buffer;
 /// @brief default pointer to a buffer.
-template <typename T, index_t N, device_t dev> using basic_buffer_ptr = std::unique_ptr<basic_buffer<T, N, dev>>;
-
-#define MATHPRIM_DECLARE_BUFFER_VIEW(tp, prefix)                                                            \
-  template <index_t N = max_ndim, device_t dev = device_t::dynamic>                                         \
-  using prefix##_buffer_view = basic_view<tp, N, dev>;                                                      \
-  template <index_t N = max_ndim, device_t dev = device_t::dynamic>                                         \
-  using const_##prefix##_buffer_view = basic_view<const tp, N, dev>;                                        \
-  template <device_t dev = device_t::dynamic> using prefix##_buffer_view_1d = prefix##_buffer_view<1, dev>; \
-  template <device_t dev = device_t::dynamic>                                                               \
-  using const_##prefix##_buffer_view_1d = const_##prefix##_buffer_view<1, dev>;                             \
-  template <device_t dev = device_t::dynamic> using prefix##_buffer_view_2d = prefix##_buffer_view<2, dev>; \
-  template <device_t dev = device_t::dynamic>                                                               \
-  using const_##prefix##_buffer_view_2d = const_##prefix##_buffer_view<2, dev>;                             \
-  template <device_t dev = device_t::dynamic> using prefix##_buffer_view_3d = prefix##_buffer_view<3, dev>; \
-  template <device_t dev = device_t::dynamic>                                                               \
-  using const_##prefix##_buffer_view_3d = const_##prefix##_buffer_view<3, dev>;                             \
-  template <device_t dev = device_t::dynamic> using prefix##_buffer_view_4d = prefix##_buffer_view<4, dev>; \
-  template <device_t dev = device_t::dynamic>                                                               \
-  using const_##prefix##_buffer_view_4d = const_##prefix##_buffer_view<4, dev>
-
-MATHPRIM_DECLARE_BUFFER_VIEW(f32_t, f32);
-MATHPRIM_DECLARE_BUFFER_VIEW(f64_t, f64);
-MATHPRIM_DECLARE_BUFFER_VIEW(index_t, index);
-
-#undef MATHPRIM_DECLARE_BUFFER_VIEW
-
-MATHPRIM_PRIMFUNC index_t ceil_div(index_t a, index_t b) noexcept {
-  return (a + b - 1) / b;
-}
+// template <typename T, index_t N, device_t dev> using basic_buffer_ptr = std::unique_ptr<basic_buffer<T, N, dev>>;
+// #define MATHPRIM_DECLARE_BUFFER_VIEW(tp, prefix)                                                            \
+//   template <index_t N = max_ndim, device_t dev = device_t::dynamic>                                         \
+//   using prefix##_buffer_view = basic_view<tp, N, dev>;                                                      \
+//   template <index_t N = max_ndim, device_t dev = device_t::dynamic>                                         \
+//   using const_##prefix##_buffer_view = basic_view<const tp, N, dev>;                                        \
+//   template <device_t dev = device_t::dynamic> using prefix##_buffer_view_1d = prefix##_buffer_view<1, dev>; \
+//   template <device_t dev = device_t::dynamic>                                                               \
+//   using const_##prefix##_buffer_view_1d = const_##prefix##_buffer_view<1, dev>;                             \
+//   template <device_t dev = device_t::dynamic> using prefix##_buffer_view_2d = prefix##_buffer_view<2, dev>; \
+//   template <device_t dev = device_t::dynamic>                                                               \
+//   using const_##prefix##_buffer_view_2d = const_##prefix##_buffer_view<2, dev>;                             \
+//   template <device_t dev = device_t::dynamic> using prefix##_buffer_view_3d = prefix##_buffer_view<3, dev>; \
+//   template <device_t dev = device_t::dynamic>                                                               \
+//   using const_##prefix##_buffer_view_3d = const_##prefix##_buffer_view<3, dev>;                             \
+//   template <device_t dev = device_t::dynamic> using prefix##_buffer_view_4d = prefix##_buffer_view<4, dev>; \
+//   template <device_t dev = device_t::dynamic>                                                               \
+//   using const_##prefix##_buffer_view_4d = const_##prefix##_buffer_view<4, dev>
+//
+// MATHPRIM_DECLARE_BUFFER_VIEW(f32_t, f32);
+// MATHPRIM_DECLARE_BUFFER_VIEW(f64_t, f64);
+// MATHPRIM_DECLARE_BUFFER_VIEW(index_t, index);
+// #undef MATHPRIM_DECLARE_BUFFER_VIEW
 
 }  // namespace mathprim

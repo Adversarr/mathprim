@@ -3,60 +3,82 @@
 
 #include "mathprim/core/defines.hpp"
 #include "mathprim/core/dim.hpp"
+#include "mathprim/core/view.hpp"
 
 namespace mathprim {
 
 namespace internal {
 
-template <typename T> static constexpr bool is_trival_v = std::is_trivial_v<T>;
+template <typename T>
+static constexpr bool is_trival_v = std::is_trivial_v<T>;
 
 template <typename T>
 static constexpr bool no_cvref_v = std::is_same_v<std::remove_cv_t<std::remove_reference_t<T>>, T>;
 
+template <typename T>
+static constexpr bool is_buffer_supported_v = internal::is_trival_v<T> && internal::no_cvref_v<T>;
+
+template <typename from, typename to>
+struct can_cast;
+template <index_t... from_values, index_t... to_values>
+struct can_cast<index_pack<from_values...>, index_pack<to_values...>> {
+  static constexpr bool value = ((from_values == to_values || from_values == keep_dim || to_values == keep_dim) && ...);
+};
+
+template <typename from, typename to>
+static constexpr bool can_cast_v = can_cast<from, to>::value;
+
 }  // namespace internal
 
-using buffer_deleter = void (*)(void *) noexcept;
-
-template <typename T> static constexpr bool is_buffer_supported_v = internal::is_trival_v<T> && internal::no_cvref_v<T>;
-
-template <typename T, index_t N, device_t dev> class basic_buffer final {
+template <typename T, index_t... sshape_values, index_t... sstride_values, typename dev>
+class basic_buffer<T, index_pack<sshape_values...>, index_pack<sstride_values...>, dev> {
 public:
-  static_assert(is_buffer_supported_v<T>, "Unsupported buffer type.");
+  using sshape = index_pack<sshape_values...>;
+  using sstride = index_pack<sstride_values...>;
+  static_assert(internal::is_buffer_supported_v<T>, "Unsupported buffer type.");
+  template <typename, typename, typename, typename>
+  friend class basic_buffer;  // ok, they are friends.
 
-  // buffer is not responsible for the allocate but responsible for the
-  // deallocate.
-  basic_buffer(const dim<N> &shape, const dim<N> &stride, T *data, device_t device, buffer_deleter deleter) :
-      shape_(shape), stride_(stride), data_(data), device_(device), deleter_(deleter) {
-    MATHPRIM_ASSERT(device != device_t::dynamic && "Runtime device must be specified.");
-    MATHPRIM_ASSERT((dev == device || dev == device_t::dynamic) && "Device mismatch.");
+  // not responsible for the allocation but responsible for deallocation
+  basic_buffer(T *data, const sshape &shape) : basic_buffer(data, shape, make_default_stride<T>(shape)) {}
+  basic_buffer(T *data, const sshape &shape, const sstride &stride) : shape_(shape), stride_(stride), data_(data) {}
+  // basic_buffer(basic_buffer &&other) noexcept : shape_(other.shape_), stride_(other.stride_), data_(other.data_) {
+  //   other.data_ = nullptr;
+  // }
+
+  template <typename sshape2, typename sstride2,
+            typename
+            = std::enable_if_t<internal::can_cast_v<sshape2, sshape> && internal::can_cast_v<sstride2, sstride>>>
+  basic_buffer(basic_buffer<T, sshape2, sstride, dev> &&other) :  // NOLINT: explicit
+      shape_(other.shape()), stride_(other.stride()), data_(other.data()) {
+    other.data_ = nullptr;
   }
 
   ~basic_buffer() {
     if (data_) {
-      deleter_(data_);
+      dev{}.free(data_);
+      data_ = nullptr;
     }
   }
-
   MATHPRIM_INTERNAL_COPY(basic_buffer, delete);
-
-  template <typename T2, index_t N2, device_t dev2> friend class basic_buffer;
-
-  template <device_t dev2>
-  basic_buffer(basic_buffer<T, N, dev2> &&other) noexcept :  // NOLINT: explicit
-      basic_buffer(other.shape_, other.stride_, other.data_, other.device_, other.deleter_) {
-    other.data_ = nullptr;
-  }
-
   basic_buffer &operator=(basic_buffer &&) = delete;  // move constructor
 
   // Shape of buffer.
-  const dim<N> &shape() const noexcept {
+  const sshape &shape() const noexcept {
     return shape_;
   }
 
+  index_t shape(index_t i) const noexcept {
+    return shape_.at(i);
+  }
+
   // Stride of buffer.
-  const dim<N> &stride() const noexcept {
+  const sstride &stride() const noexcept {
     return stride_;
+  }
+
+  index_t stride(index_t i) const noexcept {
+    return stride_.at(i);
   }
 
   // The valid ndim of the buffer.
@@ -76,7 +98,7 @@ public:
 
   // The physical size of the buffer.
   index_t physical_size() const noexcept {
-    return numel() * sizeof(T);
+    return stride_.template get<0>() * shape_.template get<0>();
   }
 
   // Underlying data pointer.
@@ -88,67 +110,41 @@ public:
     return data_;
   }
 
-  // Device of the buffer.
-  device_t device() const noexcept {
-    return device_;
-  }
-
-  // Copy from another buffer.
+  using view_type = basic_view<T, sshape, sstride, dev>;
+  using const_view_type = basic_view<const T, sshape, sstride, dev>;
+  using iterator = dimension_iterator<T, sshape, sstride, dev>;
+  using const_iterator = dimension_iterator<const T, sshape, sstride, dev>;
 
   // default view, implemented in view.hpp
-  basic_view<T, N, dev> view();
-  basic_view<const T, N, dev> view() const;
-  basic_view_iterator<T, N, dev> begin();
-  basic_view_iterator<const T, N, dev> begin() const;
-  basic_view_iterator<T, N, dev> end();
-  basic_view_iterator<const T, N, dev> end() const;
+  view_type view() noexcept {
+    return view_type(data_, shape_, stride_);
+  }
+  const_view_type view() const noexcept {
+    return const_view();
+  }
+
+  const_view_type const_view() const noexcept {
+    return const_view_type(data_, shape_, stride_);
+  }
+
+  iterator begin() noexcept {
+    return view().begin();
+  }
+  const_iterator begin() const noexcept {
+    return view().begin();
+  }
+  iterator end() noexcept {
+    return view().end();
+  }
+  const_iterator end() const noexcept {
+    return view().end();
+  }
 
 private:
-  dim<N> shape_;
-  dim<N> stride_;  // TODO: should the buffer have stride?
+  sshape shape_;
+  sstride stride_;
   T *data_;
-  device_t device_;
-  const buffer_deleter deleter_;
 };
-
-template <typename T, index_t N, device_t dev> void memset(basic_buffer<T, N, dev> &buffer, int value) {
-  if constexpr (dev == device_t::dynamic) {
-    device_t dyn_dev = buffer.device();
-    if (dyn_dev == device_t::cpu) {
-      memset<device_t::cpu>(buffer, value);
-    } else if (dyn_dev == device_t::cuda) {
-      memset<device_t::cuda>(buffer, value);
-    } else {
-      MATHPRIM_INTERNAL_FATAL("Unsupported device.");
-    }
-  }
-  buffer_backend_traits<dev>::memset(buffer.data(), value, buffer.physical_size());
-}
-
-template <typename T, device_t dev1, device_t dev2> void memcpy(void *dst, const void *src, size_t mem_in_bytes) {
-  static_assert(dev1 != device_t::dynamic && dev2 != device_t::dynamic, "Device must be specified.");
-
-  if constexpr (dev1 == dev2) {
-    using trait = buffer_backend_traits<dev1>;
-    trait::memcpy_device_to_device(dst, src, mem_in_bytes);
-  } else if constexpr (dev1 == device_t::cpu) {
-    using trait = buffer_backend_traits<dev2>;
-    trait::memcpy_host_to_device(dst, src, mem_in_bytes);
-  } else if constexpr (dev2 == device_t::cpu) {
-    using trait = buffer_backend_traits<dev1>;
-    trait::memcpy_device_to_host(dst, src, mem_in_bytes);
-  } else {
-    static_assert(dev1 == dev2, "Copy between different devices is not supported.");
-  }
-}
-
-template <typename T1, typename T2, index_t N1, index_t N2, device_t dev1, device_t dev2>
-void memcpy(basic_buffer<T1, N1, dev1> &dst, const basic_buffer<T2, N2, dev2> &src) {
-  static_assert(dev1 != device_t::dynamic && dev2 != device_t::dynamic, "Device must be specified.");
-
-  MATHPRIM_ASSERT(dst.physical_size() == src.physical_size() && "Size mismatch.");
-  memcpy<T1, dev1, dev2>(dst.data(), src.data(), dst.physical_size());
-}
 
 /**
  * @brief The default creator for a buffer.
@@ -157,40 +153,10 @@ void memcpy(basic_buffer<T1, N1, dev1> &dst, const basic_buffer<T2, N2, dev2> &s
  * @param shape
  * @return buffer, throw exception if failed.
  */
-template <typename T, index_t N, device_t dev = device_t::cpu>
-basic_buffer<T, N, dev> make_buffer(const dim<N> &shape) {
-  void *ptr = buffer_backend_traits<dev>::alloc(shape.numel() * sizeof(T));
-  dim<N> stride = make_default_stride(shape);
-  return basic_buffer<T, N, dev>(shape, stride, static_cast<T *>(ptr), dev, buffer_backend_traits<dev>::free);
-}
-
-/**
- * @brief Alias of make_buffer.
- *
- */
-template <typename T, device_t dev = device_t::cpu> basic_buffer<T, 1, dev> make_buffer(index_t x) {
-  return make_buffer<T, 1, dev>(dim<1>{x});
-}
-
-template <typename T, device_t dev = device_t::cpu, typename... Args,
-          typename = std::enable_if_t<(std::is_convertible_v<Args, index_t> && ...) && sizeof...(Args) >= 2>>
-basic_buffer<T, sizeof...(Args), dev> make_buffer(Args... args) {
-  return make_buffer<T, sizeof...(Args), dev>(dim<sizeof...(Args)>{args...});
-}
-
-template <typename T, index_t N, device_t dev = device_t::cpu>
-basic_buffer_ptr<T, N, dev> make_buffer_ptr(const dim<N> &shape) {
-  return std::make_unique<basic_buffer<T, N, dev>>(make_buffer<T, N, dev>(shape));
-}
-
-template <typename T, device_t dev = device_t::cpu> basic_buffer_ptr<T, 1, dev> make_buffer_ptr(index_t x) {
-  return make_buffer_ptr<T, 1, dev>(dim<1>{x});
-}
-
-template <typename T, index_t N, device_t dev = device_t::cpu, typename... Args>
-basic_buffer<T, N, dev> make_buffer_ptr(Args... args) {
-  static_assert(sizeof...(args) >= 2, "At least two arguments required.");
-  return make_buffer_ptr<T, N, dev>(dim<N>{args...});
+template <typename T, typename dev = device::cpu, typename sshape>
+basic_buffer<T, sshape, internal::default_stride_t<T, sshape>, dev> make_buffer(const sshape &shape) {
+  auto ptr = static_cast<T *>(dev{}.malloc(sizeof(T) * mathprim::numel(shape)));
+  return basic_buffer<T, sshape, internal::default_stride_t<T, sshape>, dev>(ptr, shape);
 }
 
 }  // namespace mathprim

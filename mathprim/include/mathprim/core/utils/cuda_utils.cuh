@@ -24,7 +24,7 @@
 
 namespace mathprim {
 
-namespace backend::cuda::internal {
+namespace cuda::internal {
 template <typename Exception> void check_success(cudaError_t status) {
   if (status != cudaSuccess) {
     throw Exception{cudaGetErrorString(status)};
@@ -38,7 +38,7 @@ inline void assert_success(cudaError_t status) noexcept {
     std::terminate();
   }
 }
-} // namespace backend::cuda::internal
+} // namespace cuda::internal
 
 template <index_t N> MATHPRIM_PRIMFUNC dim<N> from_cuda_dim(const dim3 &d);
 

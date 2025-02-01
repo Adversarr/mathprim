@@ -14,7 +14,7 @@
   BreakBeforeBinaryOperators: All
   BreakBeforeTernaryOperators: true
   BreakConstructorInitializers: AfterColon
-  BreakTemplateDeclarations: MultiLine
+  BreakTemplateDeclarations: Yes
   BracedInitializerIndentWidth: 2
   AllowShortBlocksOnASingleLine: Never
   AllowShortCaseLabelsOnASingleLine: false

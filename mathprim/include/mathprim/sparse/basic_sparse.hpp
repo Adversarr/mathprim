@@ -6,12 +6,13 @@ namespace mathprim::sparse {
 enum class sparse_format {
   csr,  // in Eigen, corresponding to compressed sparse row format
   csc,  // in Eigen, corresponding to compressed sparse column format
-  coo   // in coo format, we assume that the indices are sorted by row
+  coo,  // in coo format, we assume that the indices are sorted by row
+  bsr,  // blocked compress row.
 };
 
 enum class sparse_property {
   general,
-  symmetric,    // currently, we do not support symmetric's uplo compression
+  symmetric,    // currently, we do not support symmetric uplo compression
   hermitian,
   skew_symmetric
 };
