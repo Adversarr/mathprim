@@ -16,6 +16,11 @@
           "name": "MATHPRIM_ENABLE_BLAS",
           "value": "True",
           "type": "BOOL"
+        },
+        {
+          "name": "MATHPRIM_ENABLE_EIGEN",
+          "value": "True",
+          "type": "BOOL"
         }
       ]
     },
@@ -33,6 +38,11 @@
       "variables": [
         {
           "name": "MATHPRIM_ENABLE_BLAS",
+          "value": "True",
+          "type": "BOOL"
+        },
+        {
+          "name": "MATHPRIM_ENABLE_EIGEN",
           "value": "True",
           "type": "BOOL"
         }

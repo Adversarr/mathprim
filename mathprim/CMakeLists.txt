@@ -2,7 +2,11 @@ add_library(mathprim INTERFACE)
 target_include_directories(mathprim INTERFACE ${CMAKE_CURRENT_LIST_DIR}/include)
 
 if(MATHPRIM_ENABLE_WARNINGS)
+if(MSVC)
+  target_compile_options(mathprim INTERFACE /W4)
+else()
   target_compile_options(mathprim INTERFACE -Wall -Wextra -Wpedantic)
+endif()
 endif()
 
 if(MATHPRIM_ENABLE_EIGEN)

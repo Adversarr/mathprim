@@ -13,7 +13,7 @@
 #  pragma nv_diagnostic push
 #  pragma nv_diag_suppress 20012
 #endif
-#include <eigen3/Eigen/Dense>
+#include <Eigen/Dense>
 #ifdef __CUDACC__
 #  pragma nv_diagnostic pop
 #endif
