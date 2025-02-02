@@ -5,7 +5,9 @@
  */
 
 #pragma once
+
 #include "mathprim/core/defines.hpp"
+#include "mathprim/core/dim.hpp"
 #include "mathprim/core/utils/common.hpp"
 #ifdef __CUDACC__
 #  pragma nv_diagnostic push
@@ -113,9 +115,9 @@ constexpr Eigen::AlignmentType get_eigen_alignment(size_t alignment) {
   return Eigen::Unaligned;
 }
 
-template <typename T, device_t dev, int rows, int cols>
+template <typename T, class dev, int rows, int cols>
 constexpr Eigen::AlignmentType alignment_impl() {
-  constexpr size_t device_align = buffer_backend_traits<dev>::alloc_alignment;
+  constexpr size_t device_align = device::device_traits<dev>::alloc_alignment;
   constexpr size_t bytes = sizeof(T) * static_cast<size_t>(rows) * static_cast<size_t>(cols);
   constexpr bool can_align = get_eigen_alignment(bytes) != Eigen::Unaligned;
 
@@ -142,6 +144,11 @@ using vector_t = matrix_t<T, rows, 1>;
 
 /// abbreviation for Eigen::Dynamic
 constexpr int dynamic = Eigen::Dynamic;
+template <index_t val>
+constexpr int to_eigen_v = val == keep_dim ? Eigen::Dynamic : static_cast<int>(val);
+template <index_t val>
+constexpr int from_eigen_v = val == Eigen::Dynamic ? keep_dim : static_cast<index_t>(val);
+
 using Index = Eigen::Index;
 
 MATHPRIM_CONSTEXPR MATHPRIM_PRIMFUNC Index to_eigen_index(index_t idx) noexcept {
@@ -149,133 +156,168 @@ MATHPRIM_CONSTEXPR MATHPRIM_PRIMFUNC Index to_eigen_index(index_t idx) noexcept 
 }
 
 /// determine the alignment of the Eigen matrix
-template <typename T, device_t dev, int rows, int cols>
+template <typename T, typename dev, int rows, int cols>
 static constexpr Eigen::AlignmentType alignment_v = internal::alignment_impl<T, dev, rows, cols>();
 
 /// Determine a proper type for mapped matrix
-template <typename T, int rows, int cols, device_t dev>
-using matrix_map_t = Eigen::Map<matrix_t<T, rows, cols>, Eigen::Unaligned, Eigen::Stride<dynamic, dynamic>>;
+template <typename T, int rows, int cols, typename dev>
+using matrix_map_t = Eigen::Map<matrix_t<T, cols, rows>, Eigen::Unaligned, Eigen::Stride<dynamic, dynamic>>;
 
 /// Determine a proper type for continuous mapped matrix
-template <typename T, int rows, int cols, device_t dev>
-using matrix_cmap_t = Eigen::Map<matrix_t<T, rows, cols>, alignment_v<T, dev, rows, cols>, Eigen::Stride<0, 0>>;
+template <typename T, int rows, int cols, typename dev>
+using matrix_cmap_t = Eigen::Map<matrix_t<T, cols, rows>, alignment_v<T, dev, rows, cols>, Eigen::Stride<0, 0>>;
+
+template <typename EigenMatrix>
+using from_eigen_shape_t = std::conditional_t<
+    EigenMatrix::ColsAtCompileTime == 1, shape_t<from_eigen_v<EigenMatrix::RowsAtCompileTime>>,
+    shape_t<from_eigen_v<EigenMatrix::ColsAtCompileTime>, from_eigen_v<EigenMatrix::RowsAtCompileTime>>>;
+
+template <typename EigenMatrix, bool is_const, typename device>
+using matrix_view_t
+    = basic_view<std::conditional_t<is_const, const typename EigenMatrix::Scalar, typename EigenMatrix::Scalar>,
+                 from_eigen_shape_t<EigenMatrix>,
+                 ::mathprim::internal::default_stride_t<typename EigenMatrix::Scalar, from_eigen_shape_t<EigenMatrix>>,
+                 device>;
 
 /// Determine a proper type for mapped vector
-template <typename T, int rows, device_t dev>
+template <typename T, int rows, typename dev>
 using vector_map_t = Eigen::Map<vector_t<T, rows>, Eigen::Unaligned, Eigen::InnerStride<dynamic>>;
 
 /// Determine a proper type for continuous mapped vector
-template <typename T, int rows, device_t dev>
+template <typename T, int rows, typename dev>
 using vector_cmap_t = Eigen::Map<vector_t<T, rows>, alignment_v<T, dev, rows, 1>, Eigen::Stride<0, 0>>;
 
 /**
  * @brief Create a continuous map to matrix from a buffer view.
  */
-template <int rows = dynamic, int cols = dynamic, typename T, device_t dev>
-MATHPRIM_PRIMFUNC matrix_cmap_t<T, rows, cols, dev> cmap(basic_view<T, 2, dev> view) {
+template <typename Scalar, index_t s_rows, index_t s_cols, index_t outer_stride, index_t inner_stride, typename dev>
+MATHPRIM_PRIMFUNC matrix_cmap_t<Scalar, to_eigen_v<s_rows>, to_eigen_v<s_cols>, dev> cmap(
+    basic_view<Scalar, shape_t<s_rows, s_cols>, stride_t<outer_stride, inner_stride>, dev> view) noexcept {
   MATHPRIM_ASSERT(view.is_contiguous());
-  const int dyn_rows = view.shape(0);
-  if constexpr (rows != dynamic) {
-    MATHPRIM_ASSERT(dyn_rows == rows);
-  }
-  const int dyn_cols = view.shape(1);
-  if constexpr (cols != dynamic) {
-    MATHPRIM_ASSERT(dyn_cols == cols);
-  }
-  return {view.data(), dyn_rows, dyn_cols};
+  auto [cols, rows] = view.shape();
+  return {view.data(), rows, cols};
 }
 
 /**
  * @brief Create a continuous map to vector from a buffer view.
  */
-template <int rows = dynamic, typename T, device_t dev>
-vector_cmap_t<T, rows, dev> MATHPRIM_PRIMFUNC cmap(basic_view<T, 1, dev> view) {
+template <typename Scalar, index_t s_rows, index_t inner_stride, typename dev>
+MATHPRIM_PRIMFUNC vector_cmap_t<Scalar, to_eigen_v<s_rows>, dev> cmap(
+    basic_view<Scalar, shape_t<s_rows>, stride_t<inner_stride>, dev> view) noexcept {
   MATHPRIM_ASSERT(view.is_contiguous());
-  const int dyn_rows = view.shape(0);
-  if constexpr (rows != dynamic) {
-    MATHPRIM_ASSERT(dyn_rows == rows);
+  return {view.data(), view.shape(0)};
+}
+
+template <typename dev = device::cpu, typename Scalar, int Rows, int Cols, int Options, int MaxRows, int MaxCols>
+MATHPRIM_PRIMFUNC matrix_view_t<Eigen::Matrix<Scalar, Rows, Cols, Options, MaxRows, MaxCols>, true, dev> view(
+    const Eigen::Matrix<Scalar, Rows, Cols, Options, MaxRows, MaxCols> &mat) noexcept {
+  using ret = matrix_view_t<Eigen::Matrix<Scalar, Rows, Cols, Options, MaxRows, MaxCols>, true, dev>;
+  if constexpr (Cols == 1) {
+    return ret{mat.data(), typename ret::sshape{mat.size()}};
+  } else {
+    return ret{mat.data(), typename ret::sshape{mat.cols(), mat.rows()}};
   }
-  return {view.data(), dyn_rows, 1};
 }
 
 /**
  * @brief Create a map to matrix from a buffer view.
  */
-template <int rows = dynamic, int cols = dynamic, typename T, device_t dev>
-MATHPRIM_PRIMFUNC Eigen::Map<matrix_t<T, rows, cols>, Eigen::Unaligned, Eigen::Stride<dynamic, dynamic>> map(
-    basic_view<T, 2, dev> view) {
-  const int dyn_rows = view.shape(0);
-  if constexpr (rows != dynamic) {
-    MATHPRIM_ASSERT(dyn_rows == rows);
-  }
-  const int dyn_cols = view.shape(1);
-  if constexpr (cols != dynamic) {
-    MATHPRIM_ASSERT(dyn_cols == cols);
-  }
+template <typename Scalar, index_t s_rows, index_t s_cols, index_t outer_stride, index_t inner_stride, typename dev>
+MATHPRIM_PRIMFUNC matrix_map_t<Scalar, to_eigen_v<s_rows>, to_eigen_v<s_cols>, dev> map(
+    basic_view<Scalar, shape_t<s_rows, s_cols>, stride_t<outer_stride, inner_stride>, dev> view) noexcept {
+  auto [cols, rows] = view.shape();
+  auto [outer, inner] = view.stride();
+  MATHPRIM_ASSERT(outer % sizeof(Scalar) == 0);
+  MATHPRIM_ASSERT(inner % sizeof(Scalar) == 0);
+  return {view.data(), rows, cols,
+          Eigen::Stride<Eigen::Dynamic, Eigen::Dynamic>(outer / sizeof(Scalar), inner / sizeof(Scalar))};
+}
 
-  return {view.data(), dyn_rows, dyn_cols, Eigen::Stride<dynamic, dynamic>(view.stride(0), view.stride(1))};
+template <typename Scalar, index_t s_rows, index_t s_cols, index_t outer_stride, index_t inner_stride, typename dev>
+MATHPRIM_PRIMFUNC std::conditional_t<::mathprim::internal::is_continuous_compile_time_v<
+                                         Scalar, shape_t<s_rows, s_cols>, stride_t<outer_stride, inner_stride>>,
+                                     matrix_cmap_t<Scalar, to_eigen_v<s_rows>, to_eigen_v<s_cols>, dev>,
+                                     matrix_map_t<Scalar, to_eigen_v<s_rows>, to_eigen_v<s_cols>, dev>>
+amap(basic_view<Scalar, shape_t<s_rows, s_cols>, stride_t<outer_stride, inner_stride>, dev> view) noexcept {
+  if constexpr (::mathprim::internal::is_continuous_compile_time_v<Scalar, shape_t<s_rows, s_cols>,
+                                                                   stride_t<outer_stride, inner_stride>>) {
+    return cmap<Scalar, s_rows, s_cols, outer_stride, inner_stride, dev>(view);
+  } else {
+    return map<Scalar, s_rows, s_cols, outer_stride, inner_stride, dev>(view);
+  }
+}
+
+template <typename Scalar, index_t s_rows, index_t inner_stride, typename dev>
+MATHPRIM_PRIMFUNC std::conditional_t<
+    ::mathprim::internal::is_continuous_compile_time_v<Scalar, shape_t<s_rows>, stride_t<inner_stride>>,
+    vector_cmap_t<Scalar, to_eigen_v<s_rows>, dev>, vector_map_t<Scalar, to_eigen_v<s_rows>, dev>>
+amap(basic_view<Scalar, shape_t<s_rows>, stride_t<inner_stride>, dev> view) noexcept {
+  if constexpr (::mathprim::internal::is_continuous_compile_time_v<Scalar, shape_t<s_rows>, stride_t<inner_stride>>) {
+    return cmap<Scalar, s_rows, inner_stride, dev>(view);
+  } else {
+    return map<Scalar, s_rows, inner_stride, dev>(view);
+  }
 }
 
 /**
  * @brief Create a map to vector from a buffer view.
  */
-template <int rows = dynamic, typename T, device_t dev>
-MATHPRIM_PRIMFUNC Eigen::Map<vector_t<T, rows>, Eigen::Unaligned, Eigen::InnerStride<dynamic>> map(
-    basic_view<T, 1, dev> view) {
-  const int dyn_rows = view.shape(0);
-  if constexpr (rows != dynamic) {
-    MATHPRIM_ASSERT(dyn_rows == rows);
-  }
-  const int stride = view.stride(0);
-  return {view.data(), dyn_rows, 1, Eigen::InnerStride<dynamic>(stride)};
+template <typename Scalar, index_t s_rows, index_t inner_stride, typename dev>
+MATHPRIM_PRIMFUNC vector_map_t<Scalar, to_eigen_v<s_rows>, dev> map(
+    basic_view<Scalar, shape_t<s_rows>, stride_t<inner_stride>, dev> view) noexcept {
+  auto [rows] = view.shape();
+  auto [inner] = view.stride();
+  MATHPRIM_ASSERT(inner % sizeof(Scalar) == 0);
+  return {view.data(), rows, Eigen::InnerStride<Eigen::Dynamic>(inner / sizeof(Scalar))};
 }
 
 /**
  * @brief Create a continuous Eigen::Ref from a buffer view. (matrix)
  */
-template <int rows = dynamic, int cols = dynamic, typename T, device_t dev>
-MATHPRIM_PRIMFUNC Eigen::Ref<matrix_t<T, rows, cols>, alignment_v<T, dev, rows, cols>> cref(
-    basic_view<T, 2, dev> view) {
+template <typename Scalar, index_t s_rows, index_t s_cols, index_t outer_stride, index_t inner_stride, typename dev>
+MATHPRIM_PRIMFUNC Eigen::Ref<matrix_t<Scalar, to_eigen_v<s_rows>, to_eigen_v<s_cols>>,
+                             alignment_v<Scalar, dev, to_eigen_v<s_rows>, to_eigen_v<s_cols>>>
+cref(basic_view<Scalar, shape_t<s_rows, s_cols>, stride_t<outer_stride, inner_stride>, dev> view) noexcept {
   MATHPRIM_ASSERT(view.is_contiguous());
-  return {view.data(), view.shape(0), view.shape(1)};
+  auto [rows, cols] = view.shape();
+  return {view.data(), rows, cols};
 }
 
 /**
  * @brief Create a continuous Eigen::Ref from a buffer view. (vector)
  */
-template <int rows = dynamic, typename T, device_t dev>
-MATHPRIM_PRIMFUNC Eigen::Ref<vector_t<T, rows>, Eigen::Unaligned> cref(basic_view<T, 1, dev> view) {
-  return {view.data(), view.shape(0), 1};
+template <typename Scalar, index_t s_rows, index_t inner_stride, typename dev>
+MATHPRIM_PRIMFUNC Eigen::Ref<vector_t<Scalar, to_eigen_v<s_rows>>, alignment_v<Scalar, dev, to_eigen_v<s_rows>, 1>>
+cref(basic_view<Scalar, shape_t<s_rows>, stride_t<inner_stride>, dev> view) noexcept {
+  MATHPRIM_ASSERT(view.is_contiguous());
+  return {view.data(), view.shape(0)};
 }
 
 /**
  * @brief Create a Eigen::Ref from a buffer view. (matrix)
  */
-template <int rows = dynamic, int cols = dynamic, typename T, device_t dev>
-MATHPRIM_PRIMFUNC Eigen::Ref<matrix_t<T, rows, cols>, Eigen::Unaligned, Eigen::Stride<dynamic, dynamic>> ref(
-    basic_view<T, 2, dev> view) {
-  const int dyn_rows = view.shape(0);
-  if constexpr (rows != dynamic) {
-    MATHPRIM_ASSERT(dyn_rows == rows);
-  }
-  const int dyn_cols = view.shape(1);
-  if constexpr (cols != dynamic) {
-    MATHPRIM_ASSERT(dyn_cols == cols);
-  }
-  return {view.data(), dyn_rows, dyn_cols, Eigen::Stride<dynamic, dynamic>(view.stride(0), view.stride(1))};
+template <typename Scalar, index_t s_rows, index_t s_cols, index_t outer_stride, index_t inner_stride, typename dev>
+MATHPRIM_PRIMFUNC Eigen::Ref<matrix_t<Scalar, to_eigen_v<s_rows>, to_eigen_v<s_cols>>,
+                             alignment_v<Scalar, dev, to_eigen_v<s_rows>, to_eigen_v<s_cols>>>
+ref(basic_view<Scalar, shape_t<s_rows, s_cols>, stride_t<outer_stride, inner_stride>, dev> view) noexcept {
+  auto [rows, cols] = view.shape();
+  auto [outer, inner] = view.stride();
+  MATHPRIM_ASSERT(outer % sizeof(Scalar) == 0);
+  MATHPRIM_ASSERT(inner % sizeof(Scalar) == 0);
+  return {view.data(), rows, cols,
+          Eigen::Stride<Eigen::Dynamic, Eigen::Dynamic>(outer / sizeof(Scalar), inner / sizeof(Scalar))};
 }
 
 /**
  * @brief Create a Eigen::Ref from a buffer view. (vector)
  */
-template <int rows = dynamic, typename T, device_t dev>
-MATHPRIM_PRIMFUNC Eigen::Ref<vector_t<T, rows>, Eigen::Unaligned, Eigen::InnerStride<dynamic>> ref(
-    basic_view<T, 1, dev> view) {
-  const int dyn_rows = view.shape(0);
-  if constexpr (rows != dynamic) {
-    MATHPRIM_ASSERT(dyn_rows == rows);
-  }
-  return {view.data(), dyn_rows, 1, Eigen::InnerStride<dynamic>(view.stride(0))};
+template <typename Scalar, index_t s_rows, index_t inner_stride, typename dev>
+MATHPRIM_PRIMFUNC Eigen::Ref<vector_t<Scalar, to_eigen_v<s_rows>>, alignment_v<Scalar, dev, to_eigen_v<s_rows>, 1>> ref(
+    basic_view<Scalar, shape_t<s_rows>, stride_t<inner_stride>, dev> view) noexcept {
+  auto [rows] = view.shape();
+  auto [inner] = view.stride();
+  MATHPRIM_ASSERT(inner % sizeof(Scalar) == 0);
+  return {view.data(), rows, Eigen::InnerStride<Eigen::Dynamic>(inner / sizeof(Scalar))};
 }
 
 }  // namespace mathprim::eigen_support

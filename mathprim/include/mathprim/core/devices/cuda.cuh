@@ -1,4 +1,5 @@
 #pragma once
+#include <cuda_device_runtime_api.h>
 #ifndef MATHPRIM_ENABLE_CUDA
 #  error "This file should be included only when cuda is enabled."
 #endif
@@ -40,55 +41,40 @@ inline void free(void *ptr) noexcept {
 }  // namespace internal
 }  // namespace cuda
 
-template <> struct buffer_backend_traits<device_t::cuda> {
+namespace device {
+class cuda : basic_device<cuda> {
+public:
   static constexpr size_t alloc_alignment = 128;
 
-  static void *alloc(size_t size) {
-    return cuda::internal::alloc(size);
-  }
-
-  static void free(void *ptr) noexcept {
-    cuda::internal::free(ptr);
-  }
-
-  static void memset(void *ptr, int value, size_t size) noexcept {
-    cuda::internal::assert_success(cudaMemset(ptr, value, size));
-  }
-
-  static void memcpy_host_to_device(void *dst, const void *src, size_t size) {
-    auto status = cudaMemcpy(dst, src, size, cudaMemcpyHostToDevice);
+  void *malloc_impl(size_t size) {
+    void *ptr = nullptr;
+    auto status = cudaMalloc(&ptr, size);
     if (status != cudaSuccess) {
-      const char *error = cudaGetErrorString(status);
-      throw memcpy_error{error};
+      fprintf(stderr, "CUDA error: %s\n", cudaGetErrorString(status));
+      throw std::bad_alloc{};
     }
+    MATHPRIM_ASSERT(ptr != nullptr);
+    return ptr;
   }
 
-  static void memcpy_device_to_host(void *dst, const void *src, size_t size) {
-    auto status = cudaMemcpy(dst, src, size, cudaMemcpyDeviceToHost);
-    if (status != cudaSuccess) {
-      const char *error = cudaGetErrorString(status);
-      throw memcpy_error{error};
-    }
+  void free_impl(void *ptr) noexcept {
+    MATHPRIM_INTERNAL_CUDA_CHECK_SUCCESS(cudaFree(ptr));
   }
 
-  static void memcpy_device_to_device(void *dst, const void *src, size_t size) {
-    auto status = cudaMemcpy(dst, src, size, cudaMemcpyDeviceToDevice);
-    if (status != cudaSuccess) {
-      const char *error = cudaGetErrorString(status);
-      throw memcpy_error{error};
-    }
+  void memset_impl(void *ptr, int value, size_t size) const {
+    MATHPRIM_INTERNAL_CUDA_CHECK_SUCCESS(cudaMemset(ptr, value, size));
   }
 
-  template <typename T, index_t N>
-  static void view_copy(basic_view<T, N, device_t::cuda> dst, basic_view<const T, N, device_t::cuda> src) noexcept {
-    // TODO: blockDim=1 is not efficient for large N.
-    if (!dst.contiguous() || !src.contiguous()) {
-      throw std::invalid_argument{"view_copy: dst and src must be contiguous"};
-    }
-
-    MATHPRIM_ASSERT(dst.size() == src.size());
-    cudaMemcpy(dst.data(), src.data(), dst.size() * sizeof(T));
+  const char *name_impl() const noexcept {
+    return "cpu";
   }
 };
+
+template <>
+struct device_traits<cuda> {
+  static constexpr size_t alloc_alignment = 128;
+};
+
+}  // namespace device
 
 }  // namespace mathprim

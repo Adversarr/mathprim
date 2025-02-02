@@ -14,7 +14,7 @@ add_subdirectory(benchmark)
 #     add_subdirectory(eigen_cuda)
 #   endif()
 # endif()
-#
-# if(MATHPRIM_ENABLE_EIGEN)
-#   add_subdirectory(eigen)
-# endif()
+
+if(MATHPRIM_ENABLE_EIGEN)
+  add_subdirectory(eigen)
+endif()

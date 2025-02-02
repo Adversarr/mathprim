@@ -1,7 +1,7 @@
-#define MATHPRIM_VERBOSE_MALLOC 1
 #define MATHPRIM_CPU_BLAS blas
 #include <gtest/gtest.h>
 
+#include "mathprim/blas/cpu_eigen.hpp"
 #include <mathprim/core/buffer.hpp>
 
 #include "mathprim/blas/cpu_blas.hpp"
@@ -11,6 +11,7 @@ using namespace mathprim;
 GTEST_TEST(blas, gemv) {
   blas::cpu_blas<float> bb;
   blas::cpu_handmade<float> b;
+  blas::cpu_eigen<float> be;
   auto Ab = make_buffer<float>(make_dynamic_shape(4, 3));
   auto xb = make_buffer<float>(make_dynamic_shape(3));
   auto wb = make_buffer<float>(make_dynamic_shape(3));
@@ -38,9 +39,18 @@ GTEST_TEST(blas, gemv) {
   for (int i = 0; i < 4; ++i) {
     EXPECT_EQ(y(i), z(i));
   }
+  be.gemv(1.0f, a.as_const(), x.as_const(), 0.0f, z);
+  for (int i = 0; i < 4; ++i) {
+    EXPECT_EQ(y(i), z(i));
+  }
 
   bb.gemv(1.0f, a.as_const().transpose(), y.as_const(), 0.0f, x);
   b.gemv(1.0f, a.as_const().transpose(), y.as_const(), 0.0f, w);
+  for (int i = 0; i < 3; ++i) {
+    EXPECT_EQ(x(i), w(i));
+  }
+
+  be.gemv(1.0f, a.as_const().transpose(), y.as_const(), 0.0f, w);
   for (int i = 0; i < 3; ++i) {
     EXPECT_EQ(x(i), w(i));
   }
@@ -48,6 +58,8 @@ GTEST_TEST(blas, gemv) {
 
 GTEST_TEST(blas, gemm) {
   blas::cpu_blas<float> b;
+  blas::cpu_handmade<float> bh;
+  blas::cpu_eigen<float> be;
   auto matrix = make_buffer<float>(make_dynamic_shape(4, 3));
   auto matrix2 = make_buffer<float>(make_dynamic_shape(3, 2));
   for (int i = 0; i < 4; ++i) {
@@ -80,8 +92,23 @@ GTEST_TEST(blas, gemm) {
       EXPECT_EQ(out_view(i, j), hand[i][j]);
     }
   }
+  be.gemm(1.0f, matrix.const_view(), matrix2.const_view(),
+         0.0f, out_view);
+  for (int i = 0; i < 4; ++i) {
+    for (int j = 0; j < 2; ++j) {
+      EXPECT_EQ(out_view(i, j), hand[i][j]);
+    }
+  }
 
   b.gemm(1.0f, matrix2.const_view().transpose(), matrix.const_view().transpose(),
+         0.0f, out_view.transpose());
+  for (int i = 0; i < 4; ++i) {
+    for (int j = 0; j < 2; ++j) {
+      EXPECT_EQ(out_view(i, j), hand[i][j]);
+    }
+  }
+
+  be.gemm(1.0f, matrix2.const_view().transpose(), matrix.const_view().transpose(),
          0.0f, out_view.transpose());
   for (int i = 0; i < 4; ++i) {
     for (int j = 0; j < 2; ++j) {

@@ -219,15 +219,15 @@ class cpu : public basic_device<cpu> {
 public:
   void *malloc_impl(size_t size) const {
 #if defined(_MSC_VER)
-      return _aligned_malloc(size, MATHPRIM_BACKEND_CPU_ALIGNMENT);
+    return _aligned_malloc(size, MATHPRIM_BACKEND_CPU_ALIGNMENT);
 #else
-      return std::aligned_alloc(MATHPRIM_BACKEND_CPU_ALIGNMENT, size);
+    return std::aligned_alloc(MATHPRIM_BACKEND_CPU_ALIGNMENT, size);
 #endif
   }
 
   void free_impl(void *ptr) const noexcept {
 #if defined(_MSC_VER)
-      _aligned_free(ptr);
+    _aligned_free(ptr);
 #else
     std::free(ptr);
 #endif
@@ -246,6 +246,14 @@ template <typename T>
 struct is_device : std::false_type {};
 template <typename Derived>
 struct is_device<basic_device<Derived>> : std::true_type {};
+
+template <typename T>
+struct device_traits;
+
+template <>
+struct device_traits<cpu> {
+  static constexpr size_t alloc_alignment = MATHPRIM_BACKEND_CPU_ALIGNMENT;
+};
 
 template <typename From, typename To>
 struct basic_memcpy;

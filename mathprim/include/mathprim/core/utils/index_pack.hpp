@@ -375,6 +375,16 @@ constexpr MATHPRIM_PRIMFUNC index_t numel(index_pack<svalues...> pack) {
 /// Operators
 ///////////////////////////////////////////////////////////////////////////////
 namespace internal {
+template <typename lhs, typename rhs, bool dim_equal = lhs::ndim == rhs::ndim>
+struct compile_time_equal : std::false_type {};
+
+template <index_t... svalues1, index_t... svalues2>
+struct compile_time_equal<index_pack<svalues1...>, index_pack<svalues2...>, true> {
+  static constexpr bool value = ((svalues1 == svalues2 && svalues1 != keep_dim && svalues2 != keep_dim) && ...);
+};
+
+template <typename lhs, typename rhs>
+constexpr bool is_compile_time_equal_v = compile_time_equal<lhs, rhs>::value;
 
 template <index_t... svalues1, index_t... svalues2, index_t... idx>
 constexpr MATHPRIM_PRIMFUNC bool equal(const index_pack<svalues1...> lhs, const index_pack<svalues2...> rhs,

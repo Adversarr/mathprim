@@ -42,6 +42,9 @@ constexpr bool is_index_pack_v = is_index_pack<T>::value;
 template <typename T, typename pack>
 using default_stride_t = god::to_pack<typename default_stride<T, typename pack::seq>::type>;
 
+template <typename T, typename shape, typename stride>
+constexpr bool is_continuous_compile_time_v = internal::is_compile_time_equal_v<default_stride_t<T, shape>, stride>;
+
 template <index_t... svalues, index_t ndim, index_t... seq>
 index_t byte_offset(const index_pack<svalues...> &stride, const index_array<ndim> &subscript,
                     const index_seq<seq...> & /* seq */) noexcept {
