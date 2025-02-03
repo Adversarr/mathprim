@@ -3,7 +3,7 @@ find_package(Eigen3 REQUIRED)
 find_package(BLAS REQUIRED)
 add_executable(BM_map map.cpp)
 target_link_libraries(BM_map PRIVATE benchmark::benchmark mathprim)
-
+target_compile_options(BM_map PRIVATE -march=native)
 add_executable(BM_blas blas.cpp)
 target_link_libraries(BM_blas PRIVATE benchmark::benchmark mathprim Eigen3::Eigen BLAS::BLAS)
 target_compile_options(BM_blas PRIVATE -march=native)

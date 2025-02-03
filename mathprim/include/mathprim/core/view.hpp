@@ -196,7 +196,7 @@ public:
   }
 
   auto end() const noexcept {
-    return dimension_iterator<T, sshape, sstride, dev>(*this, 0);
+    return dimension_iterator<T, sshape, sstride, dev>(*this, shape(0));
   }
 
   ///////////////////////////////////////////////////////////////////////////////
