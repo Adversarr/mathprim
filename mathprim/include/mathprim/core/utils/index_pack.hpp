@@ -36,7 +36,6 @@ struct prepend<value, index_seq<args...>> {
   using type = index_seq<value, args...>;
 };
 
-
 template <index_t, typename seq>
 struct append;
 template <index_t value, index_t... args>
@@ -189,6 +188,18 @@ struct index_array {
     return data_[i];
   }
 };
+template <>
+struct index_array<0> {
+  MATHPRIM_PRIMFUNC index_array() noexcept = default;
+  MATHPRIM_PRIMFUNC index_array(const index_array &) noexcept = default;
+  MATHPRIM_PRIMFUNC index_array(index_array &&) noexcept = default;
+  MATHPRIM_PRIMFUNC index_array &operator=(const index_array &) noexcept = default;
+  MATHPRIM_PRIMFUNC index_array &operator=(index_array &&) noexcept = default;
+  MATHPRIM_PRIMFUNC index_t &operator[](index_t) noexcept;
+  MATHPRIM_PRIMFUNC const index_t &operator[](index_t i) const noexcept;
+  template <index_t i>
+  MATHPRIM_PRIMFUNC index_t get() const noexcept;
+};
 
 // Iterators for index_array and index_pack
 namespace internal {
@@ -295,7 +306,7 @@ using make_index_seq = internal::make_index_seq<ndim>;
 template <index_t... svalues>
 struct index_pack {
   using seq = index_seq<svalues...>;
-  using array_t = index_array<sizeof...(svalues)>;
+  using arr = index_array<sizeof...(svalues)>;
   using iterator = internal::index_iterator<sizeof...(svalues)>;
   using const_iterator = internal::index_iterator<sizeof...(svalues)>;
 

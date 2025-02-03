@@ -1,21 +1,28 @@
 #pragma once
 
-#include "mathprim/core/dim.hpp"  // IWYU pragma: export
-#include "mathprim/core/parallel.hpp"
+#include "mathprim/core/defines.hpp"
+#include "mathprim/parallel/parallel.hpp"
 
 namespace mathprim {
 
 namespace par {
 
-class seq {
+class seq : public parfor<seq> {
 public:
-  template <typename Fn, index_t N>
-  static void foreach_index(const dim<N>& grid_dim, const dim<N>& block_dim,
-                            Fn fn) {
+  template <typename Fn, index_t... sgrids, index_t... sblocks>
+  void run_impl(const index_pack<sgrids...>& grid_dim, const index_pack<sblocks...>& block_dim,
+                Fn&& fn) const noexcept {
     for (auto grid_id : grid_dim) {
       for (auto block_id : block_dim) {
         fn(grid_id, block_id);
       }
+    }
+  }
+
+  template <typename Fn, index_t... sgrids>
+  void run_impl(const index_pack<sgrids...>& grid_dim, Fn&& fn) const noexcept {
+    for (auto grid_id : grid_dim) {
+      fn(grid_id);
     }
   }
 };

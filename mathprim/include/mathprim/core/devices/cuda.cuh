@@ -9,33 +9,6 @@
 #include "mathprim/core/utils/cuda_utils.cuh"
 
 namespace mathprim {
-namespace cuda {
-namespace internal {
-
-inline void *alloc(size_t size) {
-  void *ptr = nullptr;
-  int ret = cudaMalloc(&ptr, size);
-  if (ret != cudaSuccess) {
-    throw std::bad_alloc{};
-  }
-
-#if MATHPRIM_VERBOSE_MALLOC
-  printf("CUDA: Allocated %zu bytes at %p\n", size, ptr);
-#endif
-  return ptr;
-}
-
-// TODO: support pitching.
-
-inline void free(void *ptr) noexcept {
-#if MATHPRIM_VERBOSE_MALLOC
-  printf("CUDA: Free %p\n", ptr);
-#endif
-  assert_success(cudaFree(ptr));
-}
-
-}  // namespace internal
-}  // namespace cuda
 
 namespace device {
 class cuda : public basic_device<cuda> {

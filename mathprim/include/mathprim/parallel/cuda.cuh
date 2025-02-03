@@ -5,145 +5,130 @@
 
 #include <cuda/std/tuple>
 
+#include "mathprim/core/defines.hpp"
 #include "mathprim/core/dim.hpp"
-#include "mathprim/core/parallel.hpp"
 #include "mathprim/core/utils/cuda_utils.cuh"
+#include "mathprim/parallel/parallel.hpp"
 
 namespace mathprim {
 
+namespace par {
+
 namespace internal {
-template <typename Fn>
-__global__ void do_work(Fn fn, dim_t grid_dim, dim_t block_dim) {
-  dim_t block_id
-      = {static_cast<index_t>(blockIdx.x), static_cast<index_t>(blockIdx.y), static_cast<index_t>(blockIdx.z)};
-  dim_t thread_id
-      = {static_cast<index_t>(threadIdx.x), static_cast<index_t>(threadIdx.y), static_cast<index_t>(threadIdx.z)};
 
-  for (index_t grid_w = 0; grid_w < to_valid_index(grid_dim.w_); ++grid_w) {
-    for (index_t block_w = 0; block_w < to_valid_index(block_dim.w_); ++block_w) {
-      block_id.w_ = grid_w;
-      thread_id.w_ = block_w;
+template <typename sgrid_t, typename sblock_t, bool IsNaive = (sgrid_t::ndim <= 3 && sblock_t::ndim <= 3)>
+struct launcher;
 
-      fn(block_id, thread_id);
-    }
+template <typename CudaT>
+MATHPRIM_PRIMFUNC void from_cuda(CudaT d, index_array<1> &array) {
+  array[0] = d.x;
+}
+
+template <typename CudaT>
+MATHPRIM_PRIMFUNC void from_cuda(CudaT d, index_array<2> &array) {
+  array[0] = d.x;
+  array[1] = d.y;
+}
+
+template <typename CudaT>
+MATHPRIM_PRIMFUNC void from_cuda(CudaT d, index_array<3> &array) {
+  array[0] = d.x;
+  array[1] = d.y;
+  array[2] = d.z;
+}
+
+template <typename CudaT>
+MATHPRIM_PRIMFUNC void to_cuda(const index_array<1> &array, CudaT &d) {
+  d.x = array[0];
+  d.y = 1;
+  d.z = 1;
+}
+
+template <typename CudaT>
+MATHPRIM_PRIMFUNC void to_cuda(const index_array<2> &array, CudaT &d) {
+  d.x = array[0];
+  d.y = array[1];
+  d.z = 1;
+}
+
+template <typename CudaT>
+MATHPRIM_PRIMFUNC void to_cuda(const index_array<3> &array, CudaT &d) {
+  d.x = array[0];
+  d.y = array[1];
+  d.z = array[2];
+}
+
+template <index_t n_grids, index_t n_blocks, typename Fn>
+__global__ void do_work_naive(Fn fn) {
+  index_array<n_grids> block_idx;
+  from_cuda(blockIdx, block_idx);
+  index_array<n_blocks> thread_idx;
+  from_cuda(threadIdx, thread_idx);
+  fn(block_idx, thread_idx);
+}
+
+template <index_t... sgrids, index_t... sblocks>
+struct launcher<index_pack<sgrids...>, index_pack<sblocks...>, true> {
+  template <typename Fn>
+  void run(const index_pack<sgrids...> &grids, const index_pack<sblocks...> &blocks, Fn &&fn) const noexcept {
+    dim3 grid_dim;
+    to_cuda(grids.to_array(), grid_dim);
+    dim3 block_dim;
+    to_cuda(blocks.to_array(), block_dim);
+
+    do_work_naive<sizeof...(sgrids), sizeof...(sblocks)><<<grid_dim, block_dim>>>(fn);
   }
-}
 
-template <typename Fn>
-void foreach_index(const dim_t &grid_dim, const dim_t &block_dim, Fn fn) {
-  dim3 grid{static_cast<unsigned int>(to_valid_index(grid_dim.x_)),
-            static_cast<unsigned int>(to_valid_index(grid_dim.y_)),
-            static_cast<unsigned int>(to_valid_index(grid_dim.z_))};
-  dim3 block{static_cast<unsigned int>(to_valid_index(block_dim.x_)),
-             static_cast<unsigned int>(to_valid_index(block_dim.y_)),
-             static_cast<unsigned int>(to_valid_index(block_dim.z_))};
-  do_work<<<grid, block>>>(fn, grid_dim, block_dim);
-}
+  template <typename Fn>
+  void run(const index_pack<sgrids...> &grids, Fn &&fn) const noexcept {
+    auto begin = thrust::make_counting_iterator(0);
+    auto end = thrust::make_counting_iterator(grids.numel());
+    thrust::for_each(thrust::device, begin, end, [fn, grids] __device__(index_t idx) {
+      fn(ind2sub(grids, idx));
+    });
+  }
+};
 
-template <typename Fn>
-__global__ void do_work_cuda_supported_1d(Fn fn) {
-  dim<1> block_id{static_cast<index_t>(blockIdx.x)};
-  dim<1> thread_id{static_cast<index_t>(threadIdx.x)};
-  fn(block_id, thread_id);
-}
+template <index_t... sgrids, index_t... sblocks>
+struct launcher<index_pack<sgrids...>, index_pack<sblocks...>, false> {
+  template <typename Fn>
+  void run(const index_pack<sgrids...> &grids, const index_pack<sblocks...> &blocks, Fn &&fn) const noexcept {
+    auto total_grids = grids.numel(), total_blocks = blocks.numel();
+    auto beg = thrust::make_counting_iterator(0);
+    auto end = thrust::make_counting_iterator(total_grids * total_blocks);
+    thrust::for_each(thrust::device, beg, end, [fn, grids, blocks] __device__(index_t idx) {
+      auto block_idx = idx / total_blocks;
+      auto thread_idx = idx % total_blocks;
+      fn(ind2sub(grids, block_idx), ind2sub(blocks, thread_idx));
+    });
+  }
 
-template <typename Fn>
-__global__ void do_work_cuda_supported_2d(Fn fn) {
-  dim<2> block_id{static_cast<index_t>(blockIdx.x), static_cast<index_t>(blockIdx.y)};
-  dim<2> thread_id{static_cast<index_t>(threadIdx.x), static_cast<index_t>(threadIdx.y)};
-  fn(block_id, thread_id);
-}
-
-template <typename Fn>
-__global__ void do_work_cuda_supported_3d(Fn fn) {
-  dim<3> block_id{static_cast<index_t>(blockIdx.x), static_cast<index_t>(blockIdx.y), static_cast<index_t>(blockIdx.z)};
-  dim<3> thread_id{static_cast<index_t>(threadIdx.x), static_cast<index_t>(threadIdx.y),
-                   static_cast<index_t>(threadIdx.z)};
-  fn(block_id, thread_id);
-}
+  template <typename Fn>
+  void run(const index_pack<sgrids...> &grids, Fn &&fn) const noexcept {
+    auto total_grids = grids.numel();
+    auto beg = thrust::make_counting_iterator(0);
+    auto end = thrust::make_counting_iterator(total_grids);
+    thrust::for_each(thrust::device, beg, end, [fn, grids] __device__(index_t idx) {
+      fn(ind2sub(grids, idx));
+    });
+  }
+};
 
 }  // namespace internal
 
-namespace par {
-
 class cuda {
 public:
-  template <typename Fn>
-  static void foreach_index(const dim_t &grid_dim, const dim_t &block_dim, Fn fn) {
-    internal::foreach_index(grid_dim, block_dim, fn);
+  template <typename Fn, index_t... sgrids, index_t... sblocks>
+  void run(const index_pack<sgrids...> &grid_dim, const index_pack<sblocks...> &block_dim, Fn &&fn) const noexcept {
+    internal::launcher<index_pack<sgrids...>, index_pack<sblocks...>>{}.run(grid_dim, block_dim, fn);
   }
 
-  template <typename Fn>
-  static void foreach_index(const dim<1> &grid_dim, const dim<1> &block_dim, Fn fn) {
-    dim3 grid = to_cuda_dim(grid_dim);
-    auto block = to_cuda_dim(block_dim);
-    internal::do_work_cuda_supported_1d<<<grid, block>>>(fn);
-  }
-
-  template <typename Fn>
-  static void foreach_index(const dim<2> &grid_dim, const dim<2> &block_dim, Fn fn) {
-    dim3 grid = to_cuda_dim(grid_dim);
-    auto block = to_cuda_dim(block_dim);
-    internal::do_work_cuda_supported_2d<<<grid, block>>>(fn);
-  }
-
-  template <typename Fn>
-  static void foreach_index(const dim<3> &grid_dim, const dim<3> &block_dim, Fn fn) {
-    dim3 grid = to_cuda_dim(grid_dim);
-    auto block = to_cuda_dim(block_dim);
-    internal::do_work_cuda_supported_3d<<<grid, block>>>(fn);
+  template <typename Fn, index_t... sgrids>
+  void run(const index_pack<sgrids...> &grid_dim, Fn &&fn) const noexcept {
+    internal::launcher<index_pack<sgrids...>, index_pack<>>{}.run(grid_dim, fn);
   }
 };
 
 }  // namespace par
-
-template <>
-struct parfor<par::cuda> {
-  using impl = ::mathprim::par::cuda;
-  template <typename Fn, index_t N>
-  static void run(const dim<N> &grid_dim, const dim<N> &block_dim, Fn &&fn) {
-    impl::foreach_index(grid_dim, block_dim, fn);
-  }
-
-  template <typename Fn, index_t N>
-  static void run(const dim<N> &grid_dim, Fn &&fn) {
-    const thrust::counting_iterator<index_t> start(0);
-    const thrust::counting_iterator<index_t> end = start + numel(grid_dim);
-    thrust::for_each(thrust::device, start, end, [fn, grid_dim] MATHPRIM_DEVICE(index_t idx) {
-      fn(ind2sub(grid_dim, idx));
-    });
-  }
-
-  template <typename Fn, typename T, index_t N, device_t dev>
-  static void for_each(const basic_view<T, N, dev> &buffer, Fn &&fn) {
-    run(buffer.shape(), [fn, buffer] MATHPRIM_DEVICE(const dim<N> &idx) {
-      fn(buffer(idx));
-    });
-  }
-
-  template <typename Fn, typename T, index_t N, device_t dev>
-  static void for_each_indexed(const basic_view<T, N, dev> &buffer, Fn &&fn) {
-    run(buffer.shape(), [fn, buffer] MATHPRIM_DEVICE(const dim<N> &idx) {
-      fn(idx, buffer(idx));
-    });
-  }
-
-  template <typename Fn, typename... vmap_args>
-  static void vmap(Fn &&fn, vmap_args &&...args) {
-    static_assert(sizeof...(vmap_args) > 0, "must provide at least one argument");
-    auto all_args = ::cuda::std::make_tuple(make_vmap_arg(std::forward<vmap_args>(args))...);
-    const index_t size = ::cuda::std::get<0>(all_args).size();
-    // TODO: check the size of all arguments equal.
-
-    parfor::run(dim<1>(size), [all_args, fn] MATHPRIM_DEVICE(const dim<1> &idx) {
-      auto apply_to_fn = [fn, i = idx.x_](auto &&...views) {
-        fn(views[i]...);
-      };
-      ::cuda::std::apply(apply_to_fn, all_args);
-    });
-  }
-};
-
-using parfor_cuda = parfor<par::cuda>;  ///< Alias for parfor<par::cuda>
 
 }  // namespace mathprim

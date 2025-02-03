@@ -1,14 +1,12 @@
 #include <iostream>
-#include <mathprim/core/backends/cuda.cuh>
 #include <mathprim/core/buffer.hpp>
 #include <mathprim/core/view.hpp>
-#include <mathprim/core/parallel.hpp>
-#include <mathprim/core/parallel/cuda.cuh>
+#include <mathprim/parallel/cuda.cuh>
 #include <mathprim/supports/eigen_dense.hpp>
+
 using namespace mathprim;
 
 int main() {
-
   auto matrix = make_buffer<float, device_t::cuda>(4, 4);
   auto mv = matrix.view();
 
@@ -30,24 +28,20 @@ int main() {
     vv(ix) = ix;
   });
 
-  parfor_cuda::run(
-      dim_t{vv.shape()}, [map_to_vector] __device__(const dim_t &i) {
-        printf("map_to_vector(%d) = %f\n", i[0], map_to_vector(i[0]));
-      });
+  parfor_cuda::run(dim_t{vv.shape()}, [map_to_vector] __device__(const dim_t &i) {
+    printf("map_to_vector(%d) = %f\n", i[0], map_to_vector(i[0]));
+  });
 
   // Another way, use map, ignores the continuous property.
   auto map_to_matrix2 = eigen_support::map<4, 4>(mv.as_const());
-  parfor_cuda::run(dim_t{mv.shape()},
-                   [map_to_matrix2] __device__(const dim_t &i) {
-                     printf("map_to_matrix2(%d, %d) = %f\n", i[0], i[1],
-                            map_to_matrix2(i[0], i[1]));
-                   });
+  parfor_cuda::run(dim_t{mv.shape()}, [map_to_matrix2] __device__(const dim_t &i) {
+    printf("map_to_matrix2(%d, %d) = %f\n", i[0], i[1], map_to_matrix2(i[0], i[1]));
+  });
 
   auto map_to_vector2 = eigen_support::map<4>(vv.as_const());
-  parfor_cuda::run(
-      dim_t{vv.shape()}, [map_to_vector2] __device__(const dim_t &i) {
-        printf("map_to_vector2(%d) = %f\n", i[0], map_to_vector2(i[0]));
-      });
+  parfor_cuda::run(dim_t{vv.shape()}, [map_to_vector2] __device__(const dim_t &i) {
+    printf("map_to_vector2(%d) = %f\n", i[0], map_to_vector2(i[0]));
+  });
 
   auto status = cudaDeviceSynchronize();
   if (status != cudaSuccess) {

@@ -7,6 +7,7 @@
 #define MATHPRIM_VERBOSE_MALLOC 1
 #include <mathprim/core/common.hpp>
 #include <mathprim/core/devices/cuda.cuh>
+#include <mathprim/parallel/cuda.cuh>
 // #include <mathprim/supports/stringify.hpp>
 
 using namespace mathprim;
@@ -19,9 +20,7 @@ __global__ void set_value(float *ptr, int size) {
   }
 }
 
-__global__ void get_value(
-  cuda_vec4f32_const_view_t view
-) {
+__global__ void get_value(cuda_vec4f32_const_view_t view) {
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (idx == 0) {
     printf("view.size() = %d\n", view.size());
@@ -43,6 +42,18 @@ int main() {
   std::cout << i << " " << j << std::endl;
   set_value<<<view.size(), 1>>>(buf.data(), buf.size());
   get_value<<<view.size(), 1>>>(view);
+
+  par::cuda parfor;
+
+  parfor.run(view.shape(), [view]__device__(index_array<2> idx)  {
+    auto [i, j] = idx;
+    printf("Lambda view[%d, %d] = %f\n", i, j, view(i, j));
+  });
+
+  parfor.run(dynamic_shape<4>(10, 4, 1, 1), [view]__device__(index_array<4> idx)  {
+    auto [i, j, k, l] = idx;
+    printf("Lambda view[%d, %d, %d, %d] = %f\n", i, j, k, l, view(i, j));
+  });
 
   cudaDeviceSynchronize();
   return EXIT_SUCCESS;

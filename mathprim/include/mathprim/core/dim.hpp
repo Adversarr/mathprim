@@ -20,6 +20,9 @@ struct is_index_pack : std::false_type {};
 template <index_t... svalues>
 struct is_index_pack<index_pack<svalues...>> : std::true_type {};
 
+template <index_t ndim>
+using dim_t = index_array<ndim>;
+
 template <typename T, typename seq>
 struct default_stride;
 template <typename T, index_t single>
@@ -47,7 +50,7 @@ constexpr bool is_continuous_compile_time_v = internal::is_compile_time_equal_v<
 
 template <index_t... svalues, index_t ndim, index_t... seq>
 MATHPRIM_PRIMFUNC index_t byte_offset(const index_pack<svalues...> &stride, const index_array<ndim> &subscript,
-                    const index_seq<seq...> & /* seq */) noexcept {
+                                      const index_seq<seq...> & /* seq */) noexcept {
   return ((stride.template get<seq>() * subscript.template get<seq>()) + ...);
 }
 
@@ -86,7 +89,8 @@ MATHPRIM_PRIMFUNC index_t byte_offset(const stride_t<svalues...> &stride, const 
 }
 
 template <index_t... svalues>
-MATHPRIM_PRIMFUNC index_array<index_pack<svalues...>::ndim> ind2sub(const shape_t<svalues...> &shape, index_t index) noexcept {
+MATHPRIM_PRIMFUNC index_array<index_pack<svalues...>::ndim> ind2sub(const shape_t<svalues...> &shape,
+                                                                    index_t index) noexcept {
   index_array<index_pack<svalues...>::ndim> sub;
   index_t remaining = index;
   for (index_t i = ndim(shape) - 1; i >= 0; --i) {

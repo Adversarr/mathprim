@@ -8,8 +8,6 @@
 #include <cstdio>
 #include <stdexcept>  // IWYU pragma: export
 
-#include "mathprim/core/dim.hpp"
-
 #ifndef MATHPRIM_CUDA_DEFAULT_BLOCK_SIZE_1D
 #  define MATHPRIM_CUDA_DEFAULT_BLOCK_SIZE_1D 64
 #endif
@@ -23,22 +21,6 @@
 #endif
 
 namespace mathprim {
-
-namespace cuda::internal {
-template <typename Exception>
-void check_success(cudaError_t status) {
-  if (status != cudaSuccess) {
-    throw Exception{cudaGetErrorString(status)};
-  }
-}
-
-inline void assert_success(cudaError_t status) noexcept {
-  if (status != cudaSuccess) {
-    fprintf(stderr, "Terminate due to CUDA error: %s\n", cudaGetErrorString(status));
-    std::terminate();
-  }
-}
-}  // namespace cuda::internal
 
 #define MATHPRIM_INTERNAL_CUDA_CHECK_SUCCESS(expr)                                                                 \
   do {                                                                                                             \
