@@ -46,7 +46,7 @@ template <typename T, typename shape, typename stride>
 constexpr bool is_continuous_compile_time_v = internal::is_compile_time_equal_v<default_stride_t<T, shape>, stride>;
 
 template <index_t... svalues, index_t ndim, index_t... seq>
-index_t byte_offset(const index_pack<svalues...> &stride, const index_array<ndim> &subscript,
+MATHPRIM_PRIMFUNC index_t byte_offset(const index_pack<svalues...> &stride, const index_array<ndim> &subscript,
                     const index_seq<seq...> & /* seq */) noexcept {
   return ((stride.template get<seq>() * subscript.template get<seq>()) + ...);
 }
@@ -80,13 +80,13 @@ MATHPRIM_PRIMFUNC internal::default_stride_t<T, index_pack<svalues...>> make_def
 }
 
 template <index_t... svalues, index_t ndim>
-index_t byte_offset(const stride_t<svalues...> &stride, const index_array<ndim> &subscript) noexcept {
+MATHPRIM_PRIMFUNC index_t byte_offset(const stride_t<svalues...> &stride, const index_array<ndim> &subscript) noexcept {
   static_assert(ndim == sizeof...(svalues), "The subscript and stride must have the same dimension.");
   return internal::byte_offset(stride, subscript, make_index_seq<ndim>{});
 }
 
 template <index_t... svalues>
-index_array<index_pack<svalues...>::ndim> ind2sub(const shape_t<svalues...> &shape, index_t index) noexcept {
+MATHPRIM_PRIMFUNC index_array<index_pack<svalues...>::ndim> ind2sub(const shape_t<svalues...> &shape, index_t index) noexcept {
   index_array<index_pack<svalues...>::ndim> sub;
   index_t remaining = index;
   for (index_t i = ndim(shape) - 1; i >= 0; --i) {

@@ -9,11 +9,6 @@ namespace mathprim {
 // static and dynamic
 template <index_t... args>
 struct index_pack;
-// Use std::integer_sequence to store a sequence of indices.
-template <index_t... args>
-using index_seq = std::integer_sequence<index_t, args...>;
-template <index_t ndim>
-using make_index_seq = std::make_integer_sequence<index_t, ndim>;
 
 ///////////////////////////////////////////////////////////////////////////////
 /// Tiny meta programming library.
@@ -39,6 +34,14 @@ struct prepend;
 template <index_t value, index_t... args>
 struct prepend<value, index_seq<args...>> {
   using type = index_seq<value, args...>;
+};
+
+
+template <index_t, typename seq>
+struct append;
+template <index_t value, index_t... args>
+struct append<value, index_seq<args...>> {
+  using type = index_seq<args..., value>;
 };
 
 template <index_t value, typename seq>
@@ -147,6 +150,8 @@ using arithmetic_seq_plus
 template <typename lhs, typename rhs>
 using arithmetic_seq_multiply
     = apply_seq_t<index_pack, typename arithmetic_seq<typename lhs::seq, typename rhs::seq>::multiply>;
+template <index_t value, typename seq>
+using append_t = typename append<value, seq>::type;
 
 }  // namespace god
 
@@ -267,7 +272,25 @@ struct router<svalue, true> {
     return dvalue;
   }
 };
+
+template <index_t ndim>
+struct make_index_seq_impl {
+  static_assert(ndim > 0, "The dimension must be greater than 0.");
+  using type = god::append_t<ndim - 1, typename make_index_seq_impl<ndim - 1>::type>;
+};
+
+template <>
+struct make_index_seq_impl<0> {
+  using type = index_seq<>;
+};
+
+template <index_t ndim>
+using make_index_seq = typename make_index_seq_impl<ndim>::type;
+
 }  // namespace internal
+
+template <index_t ndim>
+using make_index_seq = internal::make_index_seq<ndim>;
 
 template <index_t... svalues>
 struct index_pack {

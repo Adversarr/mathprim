@@ -5,11 +5,7 @@
 #endif
 #include <cuda_runtime.h>
 
-#include <stdexcept>
-#include <type_traits>
-
 #include "mathprim/core/defines.hpp"
-#include "mathprim/core/dim.hpp"
 #include "mathprim/core/utils/cuda_utils.cuh"
 
 namespace mathprim {
@@ -42,11 +38,11 @@ inline void free(void *ptr) noexcept {
 }  // namespace cuda
 
 namespace device {
-class cuda : basic_device<cuda> {
+class cuda : public basic_device<cuda> {
 public:
   static constexpr size_t alloc_alignment = 128;
 
-  void *malloc_impl(size_t size) {
+  void *malloc_impl(size_t size) const {
     void *ptr = nullptr;
     auto status = cudaMalloc(&ptr, size);
     if (status != cudaSuccess) {
@@ -57,7 +53,7 @@ public:
     return ptr;
   }
 
-  void free_impl(void *ptr) noexcept {
+  void free_impl(void *ptr) const noexcept {
     MATHPRIM_INTERNAL_CUDA_CHECK_SUCCESS(cudaFree(ptr));
   }
 
@@ -66,7 +62,7 @@ public:
   }
 
   const char *name_impl() const noexcept {
-    return "cpu";
+    return "cuda";
   }
 };
 

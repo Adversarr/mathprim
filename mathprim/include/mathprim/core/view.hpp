@@ -124,7 +124,7 @@ public:
 
   template <typename Scalar2, typename sshape2, typename sstride2,
             typename = std::enable_if_t<std::is_same_v<std::decay_t<Scalar2>, std::decay_t<T>>>>
-  MATHPRIM_PRIMFUNC basic_view(const basic_view<Scalar2, sshape2, sstride2, dev> &other) :
+  MATHPRIM_PRIMFUNC basic_view(const basic_view<Scalar2, sshape2, sstride2, dev> &other) : // NOLINT: implicit convert
       basic_view(other.data(), internal::safe_cast<sshape>(other.shape()),
                  internal::safe_cast<sstride>(other.stride())) {}
 
