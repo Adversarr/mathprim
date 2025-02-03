@@ -7,7 +7,7 @@
 using namespace mathprim;
 
 GTEST_TEST(view, iteration) {
-  shape_t<-1, 3, 2> shape(4, 3, 2);
+  shape_t<keep_dim, 3, 2> shape(4, 3, 2);
   int p[24];
   for (int i = 0; i < 24; ++i) {
     p[i] = i + 1;
