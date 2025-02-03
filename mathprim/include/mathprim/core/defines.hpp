@@ -215,6 +215,8 @@ public:
   }
 };
 
+class cpu;
+// This implementation is too essential to be here.
 class cpu : public basic_device<cpu> {
 public:
   void *malloc_impl(size_t size) const {
@@ -241,6 +243,7 @@ public:
     return "cpu";
   }
 };
+class cuda; // Include the <mathprim/core/devices/cuda.hpp> for the definition.
 
 template <typename T>
 struct is_device : std::false_type {};
@@ -318,6 +321,10 @@ template <index_t N>
 struct index_array;
 template <index_t... svalues>
 struct index_pack;
+template <index_t... svalues>
+using shape_t = index_pack<svalues...>;
+template <index_t... svalues>
+using stride_t = index_pack<svalues...>;
 
 /**
  * @brief general buffer type.
@@ -375,34 +382,95 @@ using blas_select_t = typename blas_select<T, dev>::type;
 /// Aliases.
 /// TODO: fill.
 ///////////////////////////////////////////////////////////////////////////////
-// using f32_buffer = basic_buffer<f32_t, max_ndim, device_t::dynamic>;
-// using f64_buffer = basic_buffer<f64_t, max_ndim, device_t::dynamic>;
-// using index_buffer = basic_buffer<index_t, max_ndim, device_t::dynamic>;
-// using float_buffer = f32_buffer;
-// using double_buffer = f64_buffer;
-/// @brief default pointer to a buffer.
-// template <typename T, index_t N, device_t dev> using basic_buffer_ptr = std::unique_ptr<basic_buffer<T, N, dev>>;
-// #define MATHPRIM_DECLARE_BUFFER_VIEW(tp, prefix)                                                            \
-//   template <index_t N = max_ndim, device_t dev = device_t::dynamic>                                         \
-//   using prefix##_buffer_view = basic_view<tp, N, dev>;                                                      \
-//   template <index_t N = max_ndim, device_t dev = device_t::dynamic>                                         \
-//   using const_##prefix##_buffer_view = basic_view<const tp, N, dev>;                                        \
-//   template <device_t dev = device_t::dynamic> using prefix##_buffer_view_1d = prefix##_buffer_view<1, dev>; \
-//   template <device_t dev = device_t::dynamic>                                                               \
-//   using const_##prefix##_buffer_view_1d = const_##prefix##_buffer_view<1, dev>;                             \
-//   template <device_t dev = device_t::dynamic> using prefix##_buffer_view_2d = prefix##_buffer_view<2, dev>; \
-//   template <device_t dev = device_t::dynamic>                                                               \
-//   using const_##prefix##_buffer_view_2d = const_##prefix##_buffer_view<2, dev>;                             \
-//   template <device_t dev = device_t::dynamic> using prefix##_buffer_view_3d = prefix##_buffer_view<3, dev>; \
-//   template <device_t dev = device_t::dynamic>                                                               \
-//   using const_##prefix##_buffer_view_3d = const_##prefix##_buffer_view<3, dev>;                             \
-//   template <device_t dev = device_t::dynamic> using prefix##_buffer_view_4d = prefix##_buffer_view<4, dev>; \
-//   template <device_t dev = device_t::dynamic>                                                               \
-//   using const_##prefix##_buffer_view_4d = const_##prefix##_buffer_view<4, dev>
-//
-// MATHPRIM_DECLARE_BUFFER_VIEW(f32_t, f32);
-// MATHPRIM_DECLARE_BUFFER_VIEW(f64_t, f64);
-// MATHPRIM_DECLARE_BUFFER_VIEW(index_t, index);
-// #undef MATHPRIM_DECLARE_BUFFER_VIEW
+
+#define MATHPRIM_INTERNAL_DECLARE_VEC_VIEW(n, t, d)                                                 \
+  using d##_##vec##n##t##_view                                                                      \
+      = basic_view<t##_t, shape_t<-1, n>, stride_t<(n) * sizeof(t##_t), sizeof(t##_t)>, device::d>; \
+  using d##_##vec##n##t##_const_view                                                                \
+      = basic_view<const t##_t, shape_t<-1, n>, stride_t<(n) * sizeof(t##_t), sizeof(t##_t)>, device::d>
+
+MATHPRIM_INTERNAL_DECLARE_VEC_VIEW(2, f32, cpu);
+MATHPRIM_INTERNAL_DECLARE_VEC_VIEW(3, f32, cpu);
+MATHPRIM_INTERNAL_DECLARE_VEC_VIEW(4, f32, cpu);
+MATHPRIM_INTERNAL_DECLARE_VEC_VIEW(2, f64, cpu);
+MATHPRIM_INTERNAL_DECLARE_VEC_VIEW(3, f64, cpu);
+MATHPRIM_INTERNAL_DECLARE_VEC_VIEW(4, f64, cpu);
+MATHPRIM_INTERNAL_DECLARE_VEC_VIEW(2, index, cpu);
+MATHPRIM_INTERNAL_DECLARE_VEC_VIEW(3, index, cpu);
+MATHPRIM_INTERNAL_DECLARE_VEC_VIEW(4, index, cpu);
+MATHPRIM_INTERNAL_DECLARE_VEC_VIEW(2, f32, cuda);
+MATHPRIM_INTERNAL_DECLARE_VEC_VIEW(3, f32, cuda);
+MATHPRIM_INTERNAL_DECLARE_VEC_VIEW(4, f32, cuda);
+MATHPRIM_INTERNAL_DECLARE_VEC_VIEW(2, f64, cuda);
+MATHPRIM_INTERNAL_DECLARE_VEC_VIEW(3, f64, cuda);
+MATHPRIM_INTERNAL_DECLARE_VEC_VIEW(4, f64, cuda);
+MATHPRIM_INTERNAL_DECLARE_VEC_VIEW(2, index, cuda);
+MATHPRIM_INTERNAL_DECLARE_VEC_VIEW(3, index, cuda);
+MATHPRIM_INTERNAL_DECLARE_VEC_VIEW(4, index, cuda);
+#undef MATHPRIM_INTERNAL_DECLARE_VEC_VIEW
+
+#define MATHPRIM_INTERNAL_DECLARE_MAT_VIEW(r, c, t, d)                                                                \
+  using d##_##mat##r##x##c##t##_view                                                                                  \
+      = basic_view<t##_t, shape_t<-1, r, c>, stride_t<(r) * (c) * sizeof(t##_t), (c) * sizeof(t##_t), sizeof(t##_t)>, \
+                   device::d>;                                                                                        \
+  using d##_##mat##r##x##c##t##_const_view                                                                            \
+      = basic_view<const t##_t, shape_t<-1, r, c>,                                                                    \
+                   stride_t<(r) * (c) * sizeof(t##_t), (c) * sizeof(t##_t), sizeof(t##_t)>, device::d>
+MATHPRIM_INTERNAL_DECLARE_MAT_VIEW(2, 2, f32, cpu);
+MATHPRIM_INTERNAL_DECLARE_MAT_VIEW(2, 3, f32, cpu);
+MATHPRIM_INTERNAL_DECLARE_MAT_VIEW(2, 4, f32, cpu);
+MATHPRIM_INTERNAL_DECLARE_MAT_VIEW(3, 2, f32, cpu);
+MATHPRIM_INTERNAL_DECLARE_MAT_VIEW(3, 3, f32, cpu);
+MATHPRIM_INTERNAL_DECLARE_MAT_VIEW(3, 4, f32, cpu);
+MATHPRIM_INTERNAL_DECLARE_MAT_VIEW(4, 2, f32, cpu);
+MATHPRIM_INTERNAL_DECLARE_MAT_VIEW(4, 3, f32, cpu);
+MATHPRIM_INTERNAL_DECLARE_MAT_VIEW(4, 4, f32, cpu);
+MATHPRIM_INTERNAL_DECLARE_MAT_VIEW(2, 2, f64, cpu);
+MATHPRIM_INTERNAL_DECLARE_MAT_VIEW(2, 3, f64, cpu);
+MATHPRIM_INTERNAL_DECLARE_MAT_VIEW(2, 4, f64, cpu);
+MATHPRIM_INTERNAL_DECLARE_MAT_VIEW(3, 2, f64, cpu);
+MATHPRIM_INTERNAL_DECLARE_MAT_VIEW(3, 3, f64, cpu);
+MATHPRIM_INTERNAL_DECLARE_MAT_VIEW(3, 4, f64, cpu);
+MATHPRIM_INTERNAL_DECLARE_MAT_VIEW(4, 2, f64, cpu);
+MATHPRIM_INTERNAL_DECLARE_MAT_VIEW(4, 3, f64, cpu);
+MATHPRIM_INTERNAL_DECLARE_MAT_VIEW(4, 4, f64, cpu);
+MATHPRIM_INTERNAL_DECLARE_MAT_VIEW(2, 2, index, cpu);
+MATHPRIM_INTERNAL_DECLARE_MAT_VIEW(2, 3, index, cpu);
+MATHPRIM_INTERNAL_DECLARE_MAT_VIEW(2, 4, index, cpu);
+MATHPRIM_INTERNAL_DECLARE_MAT_VIEW(3, 2, index, cpu);
+MATHPRIM_INTERNAL_DECLARE_MAT_VIEW(3, 3, index, cpu);
+MATHPRIM_INTERNAL_DECLARE_MAT_VIEW(3, 4, index, cpu);
+MATHPRIM_INTERNAL_DECLARE_MAT_VIEW(4, 2, index, cpu);
+MATHPRIM_INTERNAL_DECLARE_MAT_VIEW(4, 3, index, cpu);
+MATHPRIM_INTERNAL_DECLARE_MAT_VIEW(4, 4, index, cpu);
+
+MATHPRIM_INTERNAL_DECLARE_MAT_VIEW(2, 2, f32, cuda);
+MATHPRIM_INTERNAL_DECLARE_MAT_VIEW(2, 3, f32, cuda);
+MATHPRIM_INTERNAL_DECLARE_MAT_VIEW(2, 4, f32, cuda);
+MATHPRIM_INTERNAL_DECLARE_MAT_VIEW(3, 2, f32, cuda);
+MATHPRIM_INTERNAL_DECLARE_MAT_VIEW(3, 3, f32, cuda);
+MATHPRIM_INTERNAL_DECLARE_MAT_VIEW(3, 4, f32, cuda);
+MATHPRIM_INTERNAL_DECLARE_MAT_VIEW(4, 2, f32, cuda);
+MATHPRIM_INTERNAL_DECLARE_MAT_VIEW(4, 3, f32, cuda);
+MATHPRIM_INTERNAL_DECLARE_MAT_VIEW(4, 4, f32, cuda);
+MATHPRIM_INTERNAL_DECLARE_MAT_VIEW(2, 2, f64, cuda);
+MATHPRIM_INTERNAL_DECLARE_MAT_VIEW(2, 3, f64, cuda);
+MATHPRIM_INTERNAL_DECLARE_MAT_VIEW(2, 4, f64, cuda);
+MATHPRIM_INTERNAL_DECLARE_MAT_VIEW(3, 2, f64, cuda);
+MATHPRIM_INTERNAL_DECLARE_MAT_VIEW(3, 3, f64, cuda);
+MATHPRIM_INTERNAL_DECLARE_MAT_VIEW(3, 4, f64, cuda);
+MATHPRIM_INTERNAL_DECLARE_MAT_VIEW(4, 2, f64, cuda);
+MATHPRIM_INTERNAL_DECLARE_MAT_VIEW(4, 3, f64, cuda);
+MATHPRIM_INTERNAL_DECLARE_MAT_VIEW(4, 4, f64, cuda);
+MATHPRIM_INTERNAL_DECLARE_MAT_VIEW(2, 2, index, cuda);
+MATHPRIM_INTERNAL_DECLARE_MAT_VIEW(2, 3, index, cuda);
+MATHPRIM_INTERNAL_DECLARE_MAT_VIEW(2, 4, index, cuda);
+MATHPRIM_INTERNAL_DECLARE_MAT_VIEW(3, 2, index, cuda);
+MATHPRIM_INTERNAL_DECLARE_MAT_VIEW(3, 3, index, cuda);
+MATHPRIM_INTERNAL_DECLARE_MAT_VIEW(3, 4, index, cuda);
+MATHPRIM_INTERNAL_DECLARE_MAT_VIEW(4, 2, index, cuda);
+MATHPRIM_INTERNAL_DECLARE_MAT_VIEW(4, 3, index, cuda);
+MATHPRIM_INTERNAL_DECLARE_MAT_VIEW(4, 4, index, cuda);
+#undef MATHPRIM_INTERNAL_DECLARE_MAT_VIEW
 
 }  // namespace mathprim

@@ -58,10 +58,6 @@ MATHPRIM_PRIMFUNC bool is_in_bound(const L &shape, const R &index, index_seq<idx
 
 }  // namespace internal
 
-template <index_t... svalues>
-using shape_t = index_pack<svalues...>;
-template <index_t... svalues>
-using stride_t = index_pack<svalues...>;
 template <index_t ndim>
 using dynamic_shape = god::apply_seq_t<index_pack, god::duplicate_t<ndim, keep_dim>>;
 template <index_t ndim>

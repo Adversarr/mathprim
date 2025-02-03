@@ -382,9 +382,19 @@ template <index_t... svalues1, index_t... svalues2>
 struct compile_time_equal<index_pack<svalues1...>, index_pack<svalues2...>, true> {
   static constexpr bool value = ((svalues1 == svalues2 && svalues1 != keep_dim && svalues2 != keep_dim) && ...);
 };
+template <typename lhs, typename rhs, bool dim_equal = lhs::ndim == rhs::ndim>
+struct compile_time_capable : std::false_type {};
+
+template <index_t... svalues1, index_t... svalues2>
+struct compile_time_capable<index_pack<svalues1...>, index_pack<svalues2...>, true> {
+  static constexpr bool value = ((svalues1 == svalues2 || svalues1 == keep_dim || svalues2 == keep_dim) && ...);
+};
 
 template <typename lhs, typename rhs>
 constexpr bool is_compile_time_equal_v = compile_time_equal<lhs, rhs>::value;
+
+template <typename lhs, typename rhs>
+constexpr bool is_compile_time_capable_v = compile_time_capable<lhs, rhs>::value;
 
 template <index_t... svalues1, index_t... svalues2, index_t... idx>
 constexpr MATHPRIM_PRIMFUNC bool equal(const index_pack<svalues1...> lhs, const index_pack<svalues2...> rhs,
@@ -407,6 +417,17 @@ MATHPRIM_PRIMFUNC bool equal(const index_array<ndim> &lhs, const index_array<ndi
 template <index_t ndim, index_t... idx>
 MATHPRIM_PRIMFUNC index_array<ndim> multiply(index_t alpha, index_array<ndim> array, index_seq<idx...>) noexcept {
   return index_array<ndim>{alpha * array[idx]...};
+}
+
+// Cast from one index_pack to another.
+template <typename To, index_t... idx, typename From>
+MATHPRIM_PRIMFUNC To safe_cast_impl(const From &from, index_seq<idx...>) noexcept {
+  return To{from.template get<idx>()...};
+}
+
+template <typename To, typename From, typename = std::enable_if_t<is_compile_time_capable_v<From, To>>>
+MATHPRIM_PRIMFUNC To safe_cast(const From &from) noexcept {
+  return safe_cast_impl<To>(from, make_index_seq<To::ndim>{});
 }
 
 }  // namespace internal

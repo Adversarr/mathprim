@@ -1,8 +1,8 @@
 find_package(GTest REQUIRED)
 
 add_subdirectory(dim_iterator)
- add_subdirectory(cpu_blas)
-# add_subdirectory(hello_world)
+add_subdirectory(cpu_blas)
+add_subdirectory(hello_world)
 # add_subdirectory(omp)
 add_subdirectory(benchmark)
 # add_subdirectory(sparse)

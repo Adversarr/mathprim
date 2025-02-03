@@ -2,6 +2,8 @@
 #include <type_traits>
 
 #include "dim.hpp"
+#include "mathprim/core/defines.hpp"
+#include "mathprim/core/utils/index_pack.hpp"
 
 namespace mathprim {
 
@@ -115,8 +117,18 @@ public:
   MATHPRIM_PRIMFUNC basic_view(pointer data, const sshape &shape, const sstride &stride) noexcept :
       shape_(shape), stride_(stride), data_(data) {}
 
+  // Allow to copy construct
   MATHPRIM_PRIMFUNC basic_view(const basic_view &) noexcept = default;
+  // Allow to move construct
   MATHPRIM_PRIMFUNC basic_view(basic_view &&) noexcept = default;
+
+  template <typename Scalar2, typename sshape2, typename sstride2,
+            typename = std::enable_if_t<std::is_same_v<std::decay_t<Scalar2>, std::decay_t<T>>>>
+  MATHPRIM_PRIMFUNC basic_view(const basic_view<Scalar2, sshape2, sstride2, dev> &other) :
+      basic_view(other.data(), internal::safe_cast<sshape>(other.shape()),
+                 internal::safe_cast<sstride>(other.stride())) {}
+
+  // Do not allow to assign
   MATHPRIM_PRIMFUNC basic_view &operator=(const basic_view &) noexcept = delete;
   MATHPRIM_PRIMFUNC basic_view &operator=(basic_view &&) noexcept = delete;
 
@@ -332,12 +344,14 @@ struct dimension_iterator {
     return current - other.current;
   }
 };
-template <typename device, typename T, typename sshape, typename sstride = internal::default_stride_t<T, sshape>>
+template <typename device = device::cpu, typename T, typename sshape,
+          typename sstride = internal::default_stride_t<T, sshape>>
 basic_view<T, sshape, sstride, device> make_view(T *data, const sshape &shape) {
   return basic_view<T, sshape, sstride, device>(data, shape);
 }
 
-template <typename device, typename T, typename sshape, typename sstride = internal::default_stride_t<T, sshape>>
+template <typename device = device::cpu, typename T, typename sshape,
+          typename sstride = internal::default_stride_t<T, sshape>>
 basic_view<T, sshape, sstride, device> make_view(T *data, const sshape &shape, const sstride &stride) {
   return basic_view<T, sshape, sstride, device>(data, shape, stride);
 }
