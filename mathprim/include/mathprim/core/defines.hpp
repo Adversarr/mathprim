@@ -200,10 +200,10 @@ public:
     return ptr;
   }
   void free(void *ptr) const {
-    static_cast<const Derived *>(this)->free_impl(ptr);
 #if MATHPRIM_VERBOSE_MALLOC
     printf("%s: Free %p\n", name(), ptr);
 #endif
+    static_cast<const Derived *>(this)->free_impl(ptr);
   }
 
   void memset(void *ptr, int value, size_t size) const {

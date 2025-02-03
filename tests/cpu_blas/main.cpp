@@ -58,7 +58,6 @@ GTEST_TEST(blas, gemv) {
 
 GTEST_TEST(blas, gemm) {
   blas::cpu_blas<float> b;
-  blas::cpu_handmade<float> bh;
   blas::cpu_eigen<float> be;
   auto matrix = make_buffer<float>(make_dynamic_shape(4, 3));
   auto matrix2 = make_buffer<float>(make_dynamic_shape(3, 2));

@@ -1,7 +1,6 @@
 #include "mathprim/core/buffer.hpp"
 #include <benchmark/benchmark.h>
 
-#include <iostream>
 #include <mathprim/supports/eigen_dense.hpp>
 #include <mathprim/supports/stringify.hpp>
 
