@@ -9,7 +9,7 @@ add_subdirectory(benchmark)
 #
 if(MATHPRIM_BUILD_TESTS_CUDA)
   add_subdirectory(hello_world_cuda)
-  # add_subdirectory(cublas)
+  add_subdirectory(cublas)
   # if(MATHPRIM_ENABLE_EIGEN)
   #   add_subdirectory(eigen_cuda)
   # endif()

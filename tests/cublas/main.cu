@@ -1,175 +1,92 @@
-#include <iostream>
-#define MATHPRIM_VERBOSE_MALLOC 1
-#define MATHPRIM_CPU_BLAS blas
 #include <math.h>
 
-#include <mathprim/core/backends/cuda.cuh>
-#include <mathprim/core/common.hpp>
-#include <mathprim/core/parallel/cuda.cuh>
-#include <mathprim/supports/stringify.hpp>
-
-#include "mathprim/core/blas.hpp"
-#include "mathprim/core/blas/cublas.cuh"
+#include "mathprim/blas/cublas.cuh"
+#include "mathprim/core/buffer.hpp"
+#include "mathprim/core/devices/cuda.cuh"
+#include "mathprim/parallel/cuda.cuh"
 
 using namespace mathprim;
-static constexpr index_t N = 24;
-
-#define MATHPRIM_EQUAL(a, b)                                                   \
-  if (::abs((a) - (b)) > 1e-6) {                                               \
-    printf("Error " #a "=%f " #b "=%f\n", (a), (b));                           \
-  }
-
-__global__ void setup_x(f32_buffer_view<1, device_t::cuda> x) {
-  auto i = blockIdx.x;
-  x(i) = i;
-}
-
-__global__ void setup_y(f32_buffer_view<1, device_t::cuda> y) {
-  auto i = blockIdx.x;
-  y(i) = N - i;
-}
-
-__global__ void check1(f32_buffer_view<1, device_t::cuda> x) {
-  auto i = blockIdx.x;
-  MATHPRIM_EQUAL(x(i), 2.0f * i);
-}
-
-__global__ void check2(f32_buffer_view<1, device_t::cuda> x) {
-  auto i = blockIdx.x;
-  MATHPRIM_EQUAL(x(i), 2.0f * i + N - i);
-}
-
-__global__ void check3(f32_buffer_view<2, device_t::cuda> a) {
-  auto i = blockIdx.x;
-  auto j = blockIdx.y;
-  MATHPRIM_EQUAL(a(i, j),
-                 2.0f * (i * a.shape(1) + j) + N - (i * a.shape(1) + j));
-}
-
-__global__ void check4(f32_buffer_view<2, device_t::cuda> a) {
-  auto i = blockIdx.x;
-  auto j = blockIdx.y;
-  a(i, j) = 1.0f;
-  MATHPRIM_EQUAL(a(i, j), 1.0f);
-}
-
-__global__ void ones_(f32_buffer_view<1, device_t::cuda> x) {
-  auto i = blockIdx.x;
-  x(i) = 1.0f;
-}
-
-__global__ void check5(f32_buffer_view<1, device_t::cuda> x) {
-  auto i = blockIdx.x;
-  MATHPRIM_EQUAL(x(i), 6.0f);
-}
 
 int main() {
+  auto m34 = make_buffer<float, device::cuda>(shape_t<-1, 4>(3, 4));
+  auto m23 = make_buffer<float, device::cuda>(shape_t<-1, 3>(2, 3));
+  auto m42 = make_buffer<float, device::cuda>(shape_t<-1, 2>(4, 2));
+  auto v3 = make_buffer<float, device::cuda>(shape_t<3>(3));
+  auto v2 = make_buffer<float, device::cuda>(shape_t<2>(2));
+  auto a = m34.view();
+  auto b = m23.view();
+  auto c = m42.view();
+  auto x = v3.view();
+  auto y = v2.view();
 
-  auto x = mathprim::make_buffer<float, device_t::cuda>(N);
-  auto y = mathprim::make_buffer<float, device_t::cuda>(N);
-  auto x_view = x.view();
-  auto y_view = y.view();
+  blas::cublas<float> bl;
+  par::cuda p;
+  p.run(a.shape(), [a] __device__ (auto idx) {
+    auto [i, j] = idx;
+    a(idx) = i + j;
+    printf("a(%d, %d) = %f\n", i, j, a(idx));
+  });
+  p.run(b.shape(), [b] __device__ (auto idx) {
+    auto [i, j] = idx;
+    b(idx) = i + j;
+    printf("b(%d, %d) = %f\n", i, j, b(idx));
+  });
+  p.run(c.shape(), [c] __device__ (auto idx) {
+    auto [i, j] = idx;
+    c(idx) = i + j;
+    printf("c(%d, %d) = %f\n", i, j, c(idx));
+  });
 
-  dim3 grid_dim = {N, 1, 1};
-  dim3 block_dim = {1, 1, 1};
+  p.run(x.shape(), [x] __device__ (auto idx) {
+    auto [i] = idx;
+    x(idx) = i + 1;
+    printf("x(%d) = %f\n", i, x(idx));
+  });
+  p.run(y.shape(), [y] __device__ (auto idx) {
+    auto [i] = idx;
+    y(idx) = i + 1;
+    printf("y(%d) = %f\n", i, y(idx));
+  });
 
-  setup_x<<<grid_dim, block_dim>>>(x_view);
-  setup_y<<<grid_dim, block_dim>>>(y_view);
-  using blas_ = blas::blas_impl_cublas<float>;
-  using parfor_ = parfor<par::cuda>;
+  bl.gemv(1.0, b.as_const(), x.as_const(), 0.0, y);
 
-  blas_::scal(2.0f, x_view);
-  check1<<<grid_dim, block_dim>>>(x_view);
+  // A: [[0, 1, 2, 3], [1, 2, 3, 4], [2, 3, 4, 5]]
+  // B: [[0, 1, 2], [1, 2, 3]]
+  // C: [[0, 1], [1, 2], [2, 3], [3, 4]]
+  // X: [1, 2, 3]
 
-  blas_::axpy(1.0f, y_view.as_const(), x_view);
-  check2<<<grid_dim, block_dim>>>(x_view);
+  // Y = B * X = [[0, 1, 2], [1, 2, 3]] * [1, 2, 3] = [8, 14]
+  p.run(y.shape(), [y] __device__ (auto idx) {
+    auto [i] = idx;
+    printf("%d: %f\n", i, y(idx));
+    y(idx) = i + 1; // Y <- [1, 2]
+  });
 
-  blas_::copy(y_view, x_view.as_const());
-  check2<<<grid_dim, block_dim>>>(y_view);
+  // X = B.T * Y = [[0, 1, 2], [1, 2, 3]].T * [1, 2] = [2, 5, 8]
+  bl.gemv(1.0, b.as_const().transpose(), y.as_const(), 0.0, x);
+  p.run(x.shape(), [x] __device__ (auto idx) {
+    auto [i] = idx;
+    printf("%d: %f\n", i, x(idx));
+    x(idx) = i + 1; // X <- [1, 2, 3]
+  });
 
-  const index_t rows = 4, cols = 6;
-  auto a = mathprim::make_buffer<float, device_t::cuda>(rows, cols);
-  auto a_view = a.view();
-  auto a_1d = a_view.flatten();
+  // C.T = B * A = [[0, 1, 2], [1, 2, 3]] * [[0, 1, 2, 3], [1, 2, 3, 4], [2, 3, 4, 5]] = [[5, 8, 11, 14], [8, 14, 20, 26]]
+  bl.gemm(1.0, b.as_const(), a.as_const(), 0.0, c.transpose());
+  p.run(c.shape(), [c] __device__ (auto idx) {
+    auto [i, j] = idx;
+    printf("(%d, %d): %f\n", i, j, c(idx));
+    c(idx) = i + j; // C.T <- [[0, 1], [1, 2], [2, 3], [3, 4]]
+  });
 
-  blas_::copy(a_1d, y_view.as_const());
-  // for (auto [i, j] : a.shape()) {
-  //   MATHPRIM_EQUAL(a_view(i, j), 2.0f * (i * cols + j) + N - (i * cols +
-  //   j));
-  // }
-  grid_dim = {rows, cols, 1};
-  check3<<<grid_dim, block_dim>>>(a_view);
-  memset(a, 1);
-  // for (auto [i, j] : a.shape()) {
-  //   a_view(i, j) = 1;
-  // }
-  check4<<<grid_dim, block_dim>>>(a_view);
-  auto a_t = a_view.transpose(-1, -2);
+  auto m43 = make_buffer<float, device::cuda>(shape_t<-1, -1>(4, 3));
+  auto d = m43.view();
+  // D = C * B = [[0, 1], [1, 2], [2, 3], [3, 4]] * [[0, 1, 2], [1, 2, 3]] = [[1, 2, 3], [2, 5, 8], [3, 8, 13], [4, 11, 18]]
+  bl.gemm(1.0, c.as_const(), b.as_const(), 0.0, d);
+  p.run(d.shape(), [d] __device__ (auto idx) {
+    auto [i, j] = idx;
+    printf("(%d, %d): %f\n", i, j, d(idx));
+  });
 
-  auto b = mathprim::make_buffer<float, device_t::cuda>(rows),
-       c = mathprim::make_buffer<float, device_t::cuda>(cols);
-  memset(b, 0);
-  auto b_view = b.view(), c_view = c.view();
-  ones_<<<cols, 1>>>(c_view);
-  blas_::gemv(1.0f, a_view.as_const(), c.view().as_const(), 0.0f, b_view);
-  check5<<<rows, 1>>>(b_view);
-  parfor_::for_each(b_view, [] __device__(float &x) { x = 1.0f; });
 
-  blas_::gemv(1.0f, a_t.as_const(), b.view().as_const(), 0.0f, c.view());
-  parfor_::for_each(c_view,
-                    [] __device__(float &x) { MATHPRIM_EQUAL(x, 4.0f); });
-
-  {
-    auto d = mathprim::make_buffer<float, device_t::cuda>(rows, rows);
-    auto d_view = d.view();
-    memset(d, 0);
-    // d <- a * a_t
-    blas_::gemm(1.0f, a_view, a_t, 0.0f, d_view);
-    parfor_::for_each(d_view,
-                      [] __device__(float &x) { MATHPRIM_EQUAL(x, 6.0f); });
-  }
-
-  {
-    constexpr index_t m = 3, n = 4, k = 5;
-    auto a = mathprim::make_buffer<float, device_t::cuda>(m, k);
-    auto b = mathprim::make_buffer<float, device_t::cuda>(k, n);
-    auto c = mathprim::make_buffer<float, device_t::cuda>(m, n);
-
-    auto a_view = a.view(), b_view = b.view(), c_view = c.view();
-    // for (auto [i, j] : a.shape()) {
-    //   a_view(i, j) = i * k + j;
-    // }
-    parfor_::for_each_indexed(a_view, [] __device__(dim<2> ij, float &x) {
-      auto [i, j] = ij;
-      x = i * k + j;
-    });
-    // for (auto [i, j] : b.shape()) {
-    //   b_view(i, j) = i * n + j;
-    // }
-    parfor_::for_each_indexed(b_view, [] __device__(dim<2> ij, float &x) {
-      auto [i, j] = ij;
-      x = i * n + j;
-    });
-    memset(c, 0);
-    blas_::gemm(1.0f, a_view.as_const(), b_view.as_const(), 0.0f, c_view);
-    auto c_gt = mathprim::make_buffer<float>(m, n);
-
-    memset(c, 0);
-    blas_::gemm(1.0f, b_view.transpose(), a_view.transpose(), 0.0f,
-                c_view.transpose());
-    parfor_::for_each_indexed(c_view, [] __device__(dim<2> ij, float &x) {
-      auto [i, j] = ij;
-      printf("%d %d %f\n", i, j, x);
-    });
-
-    try {
-      blas_::gemm(1.0f, a_view.as_const(), b_view.as_const(), 0.0f,
-                  c_view.transpose());
-    } catch (const std::exception &e) {
-      std::cerr << "This should throw: " << e.what() << std::endl;
-    }
-  }
-
-  cudaDeviceSynchronize();
-  return 0;
+  return EXIT_SUCCESS;
 }
