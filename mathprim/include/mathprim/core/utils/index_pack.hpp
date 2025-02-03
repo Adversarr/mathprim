@@ -168,11 +168,11 @@ struct index_array {
             typename = std::enable_if_t<(std::is_integral_v<Integers> && ...) && sizeof...(Integers) == ndim>>
   MATHPRIM_PRIMFUNC explicit index_array(Integers... values) noexcept : data_{static_cast<index_t>(values)...} {}
 
-  MATHPRIM_PRIMFUNC index_array() noexcept = default;
-  MATHPRIM_PRIMFUNC index_array(const index_array &) noexcept = default;
-  MATHPRIM_PRIMFUNC index_array(index_array &&) noexcept = default;
-  MATHPRIM_PRIMFUNC index_array &operator=(const index_array &) noexcept = default;
-  MATHPRIM_PRIMFUNC index_array &operator=(index_array &&) noexcept = default;
+  index_array() noexcept = default;
+  index_array(const index_array &) noexcept = default;
+  index_array(index_array &&) noexcept = default;
+  index_array &operator=(const index_array &) noexcept = default;
+  index_array &operator=(index_array &&) noexcept = default;
 
   MATHPRIM_PRIMFUNC index_t &operator[](index_t i) noexcept {
     return data_[i];
@@ -190,11 +190,11 @@ struct index_array {
 };
 template <>
 struct index_array<0> {
-  MATHPRIM_PRIMFUNC index_array() noexcept = default;
-  MATHPRIM_PRIMFUNC index_array(const index_array &) noexcept = default;
-  MATHPRIM_PRIMFUNC index_array(index_array &&) noexcept = default;
-  MATHPRIM_PRIMFUNC index_array &operator=(const index_array &) noexcept = default;
-  MATHPRIM_PRIMFUNC index_array &operator=(index_array &&) noexcept = default;
+  index_array() noexcept = default;
+  index_array(const index_array &) noexcept = default;
+  index_array(index_array &&) noexcept = default;
+  index_array &operator=(const index_array &) noexcept = default;
+  index_array &operator=(index_array &&) noexcept = default;
   MATHPRIM_PRIMFUNC index_t &operator[](index_t) noexcept;
   MATHPRIM_PRIMFUNC const index_t &operator[](index_t i) const noexcept;
   template <index_t i>
@@ -322,9 +322,9 @@ struct index_pack {
   template <typename... Integers,
             typename = std::enable_if_t<(std::is_integral_v<Integers> && ...) && sizeof...(Integers) == ndim>>
   explicit MATHPRIM_PRIMFUNC index_pack(const Integers &...args) noexcept :
-      dyn_{internal::router<svalues>::assign(args)...} {}
+    dyn_{ internal::router<svalues>::assign(static_cast<index_t>(args))... } {}
 
-  MATHPRIM_PRIMFUNC index_pack(const index_pack &) noexcept = default;
+  index_pack(const index_pack &) noexcept = default;
 
   MATHPRIM_PRIMFUNC index_t &operator[](index_t i) noexcept {
     MATHPRIM_ASSERT(-ndim <= i && i < ndim && "Index out of range.");

@@ -49,7 +49,7 @@ public:
   template <typename sshape2, typename sstride2,
             typename
             = std::enable_if_t<internal::can_cast_v<sshape2, sshape> && internal::can_cast_v<sstride2, sstride>>>
-  basic_buffer(basic_buffer<T, sshape2, sstride, dev> &&other) :  // NOLINT: explicit
+  basic_buffer(basic_buffer<T, sshape2, sstride2, dev> &&other) :  // NOLINT: explicit
       shape_(other.shape()), stride_(other.stride()), data_(other.data()) {
     other.data_ = nullptr;
   }

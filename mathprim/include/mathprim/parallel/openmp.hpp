@@ -15,11 +15,9 @@ namespace par {
 class openmp : public parfor<openmp> {
 public:
   template <typename Fn, index_t... sgrids, index_t... sblocks>
-  void run_impl(const index_pack<sgrids...>& grid_dim, const index_pack<sblocks...>& block_dim,
-                Fn&& fn) const noexcept {
+  void run_impl(index_pack<sgrids...> grid_dim, index_pack<sblocks...> block_dim, Fn fn) const noexcept {
     const index_t total = grid_dim.numel();
-    const index_t threads = static_cast<index_t>(omp_get_max_threads());
-#pragma omp parallel for schedule(static) firstprivate(fn, total, threads, grid_dim, block_dim)
+#pragma omp parallel for schedule(static) firstprivate(fn, total, grid_dim, block_dim)
     for (index_t i = 0; i < total; ++i) {
       auto grid_id = ind2sub(grid_dim, i);
       for (auto block_id : block_dim) {
@@ -29,11 +27,9 @@ public:
   }
 
   template <typename Fn, index_t... sgrids>
-  void run_impl(const index_pack<sgrids...>& grid_dim, Fn&& fn) const noexcept {
+  void run_impl(index_pack<sgrids...> grid_dim, Fn fn) const noexcept {
     const index_t total = grid_dim.numel();
-    const index_t threads = static_cast<index_t>(omp_get_max_threads());
-    const index_t chunk_size = total / threads;
-#pragma omp parallel for schedule(static) firstprivate(fn, total, threads, grid_dim, chunk_size)
+#pragma omp parallel for schedule(static) firstprivate(fn, total, grid_dim)
     for (index_t i = 0; i < total; ++i) {
       auto grid_id = ind2sub(grid_dim, i);
       fn(grid_id);

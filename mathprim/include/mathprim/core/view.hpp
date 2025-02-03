@@ -67,7 +67,7 @@ template <index_t i, index_t j, typename pack>
 using transpose_impl_t = god::to_pack<internal::transpose_t<i, j, typename pack::seq>>;
 
 template <index_t i, index_t j, typename pack, index_t... idx>
-transpose_impl_t<i, j, pack> transpose_impl(const pack &src, index_seq<idx...>) {
+constexpr MATHPRIM_PRIMFUNC transpose_impl_t<i, j, pack> transpose_impl(const pack &src, index_seq<idx...>) {
   return transpose_impl_t<i, j, pack>{src.template get<(idx == i ? j : (idx == j ? i : idx))>()...};
 }
 
@@ -75,7 +75,7 @@ transpose_impl_t<i, j, pack> transpose_impl(const pack &src, index_seq<idx...>) 
 
 // Transpose
 template <index_t i, index_t j, typename pack>
-god::to_pack<internal::transpose_t<i, j, typename pack::seq>> transpose(const pack &src) {
+constexpr MATHPRIM_PRIMFUNC god::to_pack<internal::transpose_t<i, j, typename pack::seq>> transpose(const pack &src) {
   static_assert(i < pack::ndim && j < pack::ndim, "The indices must be less than the dimension.");
   return internal::transpose_impl<i, j>(src, make_index_seq<pack::ndim>{});
 }
@@ -118,9 +118,9 @@ public:
       shape_(shape), stride_(stride), data_(data) {}
 
   // Allow to copy construct
-  MATHPRIM_PRIMFUNC basic_view(const basic_view &) noexcept = default;
+  basic_view(const basic_view &) noexcept = default;
   // Allow to move construct
-  MATHPRIM_PRIMFUNC basic_view(basic_view &&) noexcept = default;
+  basic_view(basic_view &&) noexcept = default;
 
   template <typename Scalar2, typename sshape2, typename sstride2,
             typename = std::enable_if_t<std::is_same_v<std::decay_t<Scalar2>, std::decay_t<T>>>>
@@ -129,8 +129,8 @@ public:
                  internal::safe_cast<sstride>(other.stride())) {}
 
   // Do not allow to assign
-  MATHPRIM_PRIMFUNC basic_view &operator=(const basic_view &) noexcept = delete;
-  MATHPRIM_PRIMFUNC basic_view &operator=(basic_view &&) noexcept = delete;
+  basic_view &operator=(const basic_view &) noexcept = delete;
+  basic_view &operator=(basic_view &&) noexcept = delete;
 
   ///////////////////////////////////////////////////////////////////////////////
   /// Meta data
