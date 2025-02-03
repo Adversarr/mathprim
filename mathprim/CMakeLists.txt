@@ -3,7 +3,7 @@ target_include_directories(mathprim INTERFACE ${CMAKE_CURRENT_LIST_DIR}/include)
 
 if(MATHPRIM_ENABLE_WARNINGS)
 if(MSVC)
-  target_compile_options(mathprim INTERFACE /W4)
+  target_compile_options(mathprim INTERFACE $<$<COMPILE_LANGUAGE:CXX>:/W4>)
 else()
   target_compile_options(mathprim INTERFACE $<$<COMPILE_LANGUAGE:CXX>:-Wall -Wextra -pedantic>)
   target_compile_options(mathprim INTERFACE $<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=-Wall,-Wextra>)
