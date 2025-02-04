@@ -254,8 +254,8 @@ struct cublas : public basic_blas<cublas<T>, T, device::cuda> {
     throw std::runtime_error("Not implemented");
   }
 
-  // // Level 2
-  // // y <- alpha * A * x + beta * y
+  // Level 2
+  // y <- alpha * A * x + beta * y
   template <typename sshape_A, typename sstride_A, typename sshape_x, typename sstride_x, typename sshape_y,
             typename sstride_y>
   void gemv_impl(T alpha, const_type<sshape_A, sstride_A> A, const_type<sshape_x, sstride_x> x, T beta,
@@ -291,9 +291,8 @@ struct cublas : public basic_blas<cublas<T>, T, device::cuda> {
     }
   }
 
-  //
-  // // Level 3
-  // // C <- alpha * A * B + beta * C
+  // Level 3
+  // C <- alpha * A * B + beta * C
   template <typename sshape_A, typename sstride_A, typename sshape_B, typename sstride_B, typename sshape_C,
             typename sstride_C>
   void gemm_impl(T alpha, const_type<sshape_A, sstride_A> A, const_type<sshape_B, sstride_B> B, T beta,
@@ -305,7 +304,7 @@ struct cublas : public basic_blas<cublas<T>, T, device::cuda> {
     int lda = a_op == internal::matrix_op::none ? A.stride(0) / sizeof(T) : A.stride(1) / sizeof(T);
     int ldb = b_op == internal::matrix_op::none ? B.stride(0) / sizeof(T) : B.stride(1) / sizeof(T);
     int ldc = c_op == internal::matrix_op::none ? C.stride(0) / sizeof(T) : C.stride(1) / sizeof(T);
-    
+
     // If c_op == none, then C is row-major, do C.T <- alpha * B.T * A.T + beta * C.T
     int m = 0, n = 0, k = 0;
     k = a_op == internal::matrix_op::none ? A.shape(1) : A.shape(0);
@@ -313,20 +312,33 @@ struct cublas : public basic_blas<cublas<T>, T, device::cuda> {
     n = C.shape(1);
 
     if constexpr (std::is_same_v<T, float>) {
-      if (c_op == internal::matrix_op::none) { // row major.
+      if (c_op == internal::matrix_op::none) {  // row major.
         cublasOperation_t opA = a_op == internal::matrix_op::none ? CUBLAS_OP_N : CUBLAS_OP_T;
         cublasOperation_t opB = b_op == internal::matrix_op::none ? CUBLAS_OP_N : CUBLAS_OP_T;
         // transpose A, B, C, and do: C.T <- alpha op(B.T) op(A.T) + beta C.T
-        MATHPRIM_INTERNAL_CUBLAS_CHECK(cublasSgemm(handle, opB, opA, n, m, k, &alpha, B.data(), ldb, A.data(), lda,
-                                                   &beta, C.data(), ldc));
-      } else { // C is column major, i.e. C is a transpose view.
+        MATHPRIM_INTERNAL_CUBLAS_CHECK(
+            cublasSgemm(handle, opB, opA, n, m, k, &alpha, B.data(), ldb, A.data(), lda, &beta, C.data(), ldc));
+      } else {  // C is column major, i.e. C is a transpose view.
         cublasOperation_t opA = a_op == internal::matrix_op::none ? CUBLAS_OP_T : CUBLAS_OP_N;
         cublasOperation_t opB = b_op == internal::matrix_op::none ? CUBLAS_OP_T : CUBLAS_OP_N;
         // C.T <- alpha * op(A) * op(B) + beta * C.T
-        MATHPRIM_INTERNAL_CUBLAS_CHECK(cublasSgemm(handle, opA, opB, m, n, k, &alpha, A.data(), lda, B.data(), ldb,
-                                                   &beta, C.data(), ldc));
+        MATHPRIM_INTERNAL_CUBLAS_CHECK(
+            cublasSgemm(handle, opA, opB, m, n, k, &alpha, A.data(), lda, B.data(), ldb, &beta, C.data(), ldc));
       }
     } else if constexpr (std::is_same_v<T, double>) {
+      if (c_op == internal::matrix_op::none) {  // row major.
+        cublasOperation_t opA = a_op == internal::matrix_op::none ? CUBLAS_OP_N : CUBLAS_OP_T;
+        cublasOperation_t opB = b_op == internal::matrix_op::none ? CUBLAS_OP_N : CUBLAS_OP_T;
+        // transpose A, B, C, and do: C.T <- alpha op(B.T) op(A.T) + beta C.T
+        MATHPRIM_INTERNAL_CUBLAS_CHECK(
+            cublasDgemm(handle, opB, opA, n, m, k, &alpha, B.data(), ldb, A.data(), lda, &beta, C.data(), ldc));
+      } else {  // C is column major, i.e. C is a transpose view.
+        cublasOperation_t opA = a_op == internal::matrix_op::none ? CUBLAS_OP_T : CUBLAS_OP_N;
+        cublasOperation_t opB = b_op == internal::matrix_op::none ? CUBLAS_OP_T : CUBLAS_OP_N;
+        // C.T <- alpha * op(A) * op(B) + beta * C.T
+        MATHPRIM_INTERNAL_CUBLAS_CHECK(
+            cublasDgemm(handle, opA, opB, m, n, k, &alpha, A.data(), lda, B.data(), ldb, &beta, C.data(), ldc));
+      }
     } else {
       static_assert(::mathprim::internal::always_false_v<T>, "Unsupported type");
     }
