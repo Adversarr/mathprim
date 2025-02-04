@@ -29,35 +29,10 @@ std::ostream& operator<<(std::ostream& os, const index_array<ndim>& pack) {
   return os;
 }
 
-// template <typename T, index_t N, device_t dev>
-// std::ostream& operator<<(std::ostream& os, const basic_buffer<T, N, dev>& buffer) {
-//   os << "buffer(" << static_cast<const void*>(buffer.data());
-//   os << ", shape=(";
-//   for (index_t i = 0; i < N; ++i) {
-//     os << buffer.shape()[i];
-//     os << ", ";
-//   }
-//   os << "), stride=(";
-//   for (index_t i = 0; i < N; ++i) {
-//     os << buffer.stride()[i] << ", ";
-//   }
-//   os << "), device=" << buffer.device() << ")";
-//   return os;
-// }
-//
-// template <typename T, index_t N, device_t dev>
-// std::ostream& operator<<(std::ostream& os, const basic_view<T, N, dev>& view) {
-//   os << "view(" << static_cast<const void*>(view.data());
-//   os << ", shape=(";
-//   for (index_t i = 0; i < N; ++i) {
-//     os << view.shape()[i] << ", ";
-//   }
-//   os << "), stride=(";
-//   for (index_t i = 0; i < N; ++i) {
-//     os << view.stride()[i] << ", ";
-//   }
-//   os << "), device=" << view.device() << ")";
-//   return os;
-// }
+template <typename T, typename sshape, typename sstride, typename dev>
+std::ostream& operator<<(std::ostream& os, const basic_view<T, sshape, sstride, dev>& view) {
+  os << "view<data=" << view.data() << ", shape=" << view.shape() << ", stride=" << view.stride() << ", dev=" << dev{}.name() << ">";
+  return os;
+}
 
 }  // namespace mathprim

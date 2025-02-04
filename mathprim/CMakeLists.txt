@@ -52,3 +52,7 @@ if(MATHPRIM_ENABLE_OPENMP)
   target_link_libraries(mathprim INTERFACE OpenMP::OpenMP_CXX)
   target_compile_definitions(mathprim INTERFACE MATHPRIM_ENABLE_OPENMP)
 endif()
+
+if(MATHPRIM_ENABLE_NANOBIND)
+  add_subdirectory(nb)
+endif()

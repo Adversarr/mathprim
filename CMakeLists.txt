@@ -33,27 +33,30 @@ else()
 endif()
 
 # Test if blas is available
-find_package(BLAS)
+find_package(BLAS QUIET)
 if(BLAS_FOUND)
   set(MATHPRIM_INTERNAL_ENABLE_BLAS ${MATHPRIM_MASTER_PROJECT})
 else()
   set(MATHPRIM_INTERNAL_ENABLE_BLAS OFF)
 endif()
 
-find_package(Eigen3)
+find_package(Eigen3 QUIET)
 if(Eigen3_FOUND)
   set(MATHPRIM_INTERNAL_ENABLE_EIGEN ${MATHPRIM_MASTER_PROJECT})
 else()
   set(MATHPRIM_INTERNAL_ENABLE_EIGEN OFF)
 endif()
 
+
 option(MATHPRIM_ENABLE_WARNINGS "Enable compiler warnings" ${MATHPRIM_MASTER_PROJECT})
 option(MATHPRIM_ENABLE_EIGEN "Enable Eigen" OFF)
 option(MATHPRIM_ENABLE_BLAS "Enable BLAS" ${MATPRIM_INTERNAL_ENABLE_BLAS})
 option(MATHPRIM_ENABLE_OPENMP "Enable OpenMP" ON)
 option(MATHPRIM_ENABLE_CUDA "Enable CUDA" ${MATHPRIM_ENABLE_CUDA_TEST})
+option(MATHPRIM_ENABLE_NANOBIND "Enable nanobind" OFF)
 option(MATHPRIM_BUILD_TESTS "Build tests" ${MATHPRIM_MASTER_PROJECT})
 option(MATHPRIM_BUILD_TESTS_CUDA "Build cuda tests" ${MATHPRIM_ENABLE_CUDA_TEST})
+set(MATHPRIM_REPO_ROOT ${CMAKE_CURRENT_LIST_DIR})
 
 if(MATHPRIM_BUILD_TESTS_CUDA)
   if (NOT MATHPRIM_ENABLE_CUDA)
@@ -69,6 +72,10 @@ if(MATHPRIM_BUILD_TESTS_CUDA)
   endif()
 
   enable_language(CUDA)
+endif()
+
+if(MATHPRIM_ENABLE_NANOBIND)
+  add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/ext/nanobind)
 endif()
 
 add_subdirectory(mathprim)
