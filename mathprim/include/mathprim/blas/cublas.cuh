@@ -248,6 +248,7 @@ struct cublas : public basic_blas<cublas<T>, T, device::cuda> {
   void emul_impl(T alpha, const_type<sshape_x, sstride_x> x, T beta, view_type<sshape_y, sstride_y> y) {
     throw std::runtime_error("Not implemented");
   }
+
   // y = alpha * x / y + beta * y
   template <typename sshape_x, typename sstride_x, typename sshape_y, typename sstride_y>
   void ediv_impl(T alpha, const_type<sshape_x, sstride_x> x, T beta, view_type<sshape_y, sstride_y> y) {

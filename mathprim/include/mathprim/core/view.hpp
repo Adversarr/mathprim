@@ -124,7 +124,7 @@ public:
 
   template <typename Scalar2, typename sshape2, typename sstride2,
             typename = std::enable_if_t<std::is_same_v<std::decay_t<Scalar2>, std::decay_t<T>>>>
-  MATHPRIM_PRIMFUNC basic_view(const basic_view<Scalar2, sshape2, sstride2, dev> &other) : // NOLINT: implicit convert
+  MATHPRIM_PRIMFUNC basic_view(const basic_view<Scalar2, sshape2, sstride2, dev> &other) :  // NOLINT: implicit convert
       basic_view(other.data(), internal::safe_cast<sshape>(other.shape()),
                  internal::safe_cast<sstride>(other.stride())) {}
 
@@ -344,6 +344,10 @@ struct dimension_iterator {
     return current - other.current;
   }
 };
+
+template <typename T, typename sshape, typename device>
+using continuous_view = basic_view<T, sshape, internal::default_stride_t<T, sshape>, device>;
+
 template <typename device = device::cpu, typename T, typename sshape,
           typename sstride = internal::default_stride_t<T, sshape>>
 basic_view<T, sshape, sstride, device> make_view(T *data, const sshape &shape) {

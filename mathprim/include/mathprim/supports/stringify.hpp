@@ -1,8 +1,6 @@
 #pragma once
 
 #include <ostream>
-#include <sstream>
-#include <string>
 
 #include "mathprim/core/common.hpp"  // IWYU pragma: export
 #include "mathprim/core/defines.hpp"
@@ -31,7 +29,13 @@ std::ostream& operator<<(std::ostream& os, const index_array<ndim>& pack) {
 
 template <typename T, typename sshape, typename sstride, typename dev>
 std::ostream& operator<<(std::ostream& os, const basic_view<T, sshape, sstride, dev>& view) {
-  os << "view<data=" << view.data() << ", shape=" << view.shape() << ", stride=" << view.stride() << ", dev=" << dev{}.name() << ">";
+  if (view.is_contiguous()) {
+    os << "view<data=" << view.data() << ", shape=" << view.shape() << ", sshape=" << sshape()
+       << ", dev=" << dev{}.name() << ">";
+  } else {
+    os << "view<data=" << view.data() << ", shape=" << view.shape() << ", sshape=" << sshape()
+       << ", stride=" << view.stride() << ", dev=" << dev{}.name() << ">";
+  }
   return os;
 }
 

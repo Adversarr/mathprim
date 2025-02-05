@@ -94,6 +94,13 @@ struct apply_seq<instanciation, index_seq<args...>> {
   using type = instanciation<args...>;
 };
 
+template <template <index_t> class transform, typename seq>
+struct apply_elem;
+template <template <index_t> class transform, index_t... args>
+struct apply_elem<transform, index_seq<args...>> {
+  using type = index_seq<transform<args>::value...>;
+};
+
 template <typename seq>
 struct numel;
 template <index_t front>
@@ -135,6 +142,8 @@ template <typename seq>
 constexpr index_t numel_v = numel<seq>::value;
 template <template <index_t...> class instanciation, typename seq>
 using apply_seq_t = typename apply_seq<instanciation, seq>::type;
+template <template <index_t> class transform, typename seq>
+using apply_elem_t = typename apply_elem<transform, seq>::type;
 template <index_t value, typename seq>
 using prepend_t = typename prepend<value, seq>::type;
 template <index_t cnt, index_t value>
@@ -322,7 +331,7 @@ struct index_pack {
   template <typename... Integers,
             typename = std::enable_if_t<(std::is_integral_v<Integers> && ...) && sizeof...(Integers) == ndim>>
   explicit MATHPRIM_PRIMFUNC index_pack(const Integers &...args) noexcept :
-    dyn_{ internal::router<svalues>::assign(static_cast<index_t>(args))... } {}
+      dyn_{internal::router<svalues>::assign(static_cast<index_t>(args))...} {}
 
   index_pack(const index_pack &) noexcept = default;
 
