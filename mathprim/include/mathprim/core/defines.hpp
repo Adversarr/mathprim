@@ -243,7 +243,7 @@ public:
     return "cpu";
   }
 };
-class cuda; // Include the <mathprim/core/devices/cuda.hpp> for the definition.
+class cuda;  // Include the <mathprim/core/devices/cuda.cuh> for the definition.
 
 template <typename T>
 struct is_device : std::false_type {};
@@ -263,7 +263,7 @@ struct basic_memcpy;
 
 template <>
 struct basic_memcpy<cpu, cpu> {
-  void operator()(void *dst, const void *src, size_t size) {
+  void operator()(void *dst, const void *src, size_t size) const noexcept {
     std::memcpy(dst, src, size);
   }
 };
@@ -280,19 +280,17 @@ namespace par {
 ///////////////////////////////////////////////////////////////////////////////
 /// Errors
 ///////////////////////////////////////////////////////////////////////////////
-// NOLINTBEGIN
 #define MATHPRIM_INTERNAL_DECLARE_ERROR(name, derived) \
-  class name : public std::derived {                   \
+  class name final : public std::derived {             \
   public:                                              \
     using std::derived::derived;                       \
   }
-// NOLINTEND
 
 MATHPRIM_INTERNAL_DECLARE_ERROR(memcpy_error, runtime_error);
 MATHPRIM_INTERNAL_DECLARE_ERROR(shape_error, runtime_error);
 #undef MATHPRIM_INTERNAL_DECLARE_ERROR
 
-#define MATHPRIM_INTERNAL_CUDA_ASSERT(cond, msg)                                        \
+#define MATHPRIM_CUDA_ASSERT(cond, msg)                                                 \
   do {                                                                                  \
     if (!(cond)) {                                                                      \
       printf("%s:%d::CUDA assertion(" #cond ") failed: %s\n", __FILE__, __LINE__, msg); \
@@ -321,7 +319,8 @@ template <index_t N>
 struct index_array;
 template <index_t... svalues>
 struct index_pack;
-template <index_t... args> struct index_seq {};
+template <index_t... args>
+struct index_seq {};
 template <index_t... svalues>
 using shape_t = index_pack<svalues...>;
 template <index_t... svalues>
@@ -334,11 +333,6 @@ using stride_t = index_pack<svalues...>;
  */
 template <typename T, typename sshape, typename sstride, typename dev>
 class basic_buffer;
-
-/// @brief The buffer backend traits.
-/// TODO: necessary?
-template <typename dev>
-struct buffer_backend_traits;
 
 /// @brief view of a buffer.
 template <typename T, typename sshape, typename sstride, typename dev>
@@ -381,14 +375,11 @@ using blas_select_t = typename blas_select<T, dev>::type;
 
 ///////////////////////////////////////////////////////////////////////////////
 /// Aliases.
-/// TODO: fill.
 ///////////////////////////////////////////////////////////////////////////////
 
-#define MATHPRIM_INTERNAL_DECLARE_VEC_VIEW(n, t, d)                                                 \
-  using d##_##vec##n##t##_view_t                                                                    \
-      = basic_view<t##_t, shape_t<-1, n>, stride_t<(n) * sizeof(t##_t), sizeof(t##_t)>, device::d>; \
-  using d##_##vec##n##t##_const_view_t                                                              \
-      = basic_view<const t##_t, shape_t<-1, n>, stride_t<(n) * sizeof(t##_t), sizeof(t##_t)>, device::d>
+#define MATHPRIM_INTERNAL_DECLARE_VEC_VIEW(n, t, d)                                                   \
+  using d##_##vec##n##t##_view_t = basic_view<t##_t, shape_t<n>, stride_t<sizeof(t##_t)>, device::d>; \
+  using d##_##vec##n##t##_const_view_t = basic_view<const t##_t, shape_t<n>, stride_t<sizeof(t##_t)>, device::d>
 
 MATHPRIM_INTERNAL_DECLARE_VEC_VIEW(2, f32, cpu);
 MATHPRIM_INTERNAL_DECLARE_VEC_VIEW(3, f32, cpu);
@@ -410,13 +401,11 @@ MATHPRIM_INTERNAL_DECLARE_VEC_VIEW(3, index, cuda);
 MATHPRIM_INTERNAL_DECLARE_VEC_VIEW(4, index, cuda);
 #undef MATHPRIM_INTERNAL_DECLARE_VEC_VIEW
 
-#define MATHPRIM_INTERNAL_DECLARE_MAT_VIEW(r, c, t, d)                                                                \
-  using d##_##mat##r##x##c##t##_view_t                                                                                \
-      = basic_view<t##_t, shape_t<-1, r, c>, stride_t<(r) * (c) * sizeof(t##_t), (c) * sizeof(t##_t), sizeof(t##_t)>, \
-                   device::d>;                                                                                        \
-  using d##_##mat##r##x##c##t##_const_view_t                                                                          \
-      = basic_view<const t##_t, shape_t<-1, r, c>,                                                                    \
-                   stride_t<(r) * (c) * sizeof(t##_t), (c) * sizeof(t##_t), sizeof(t##_t)>, device::d>
+#define MATHPRIM_INTERNAL_DECLARE_MAT_VIEW(r, c, t, d)                                             \
+  using d##_##mat##r##x##c##t##_view_t                                                             \
+      = basic_view<t##_t, shape_t<r, c>, stride_t<(c) * sizeof(t##_t), sizeof(t##_t)>, device::d>; \
+  using d##_##mat##r##x##c##t##_const_view_t                                                       \
+      = basic_view<const t##_t, shape_t<r, c>, stride_t<(c) * sizeof(t##_t), sizeof(t##_t)>, device::d>
 MATHPRIM_INTERNAL_DECLARE_MAT_VIEW(2, 2, f32, cpu);
 MATHPRIM_INTERNAL_DECLARE_MAT_VIEW(2, 3, f32, cpu);
 MATHPRIM_INTERNAL_DECLARE_MAT_VIEW(2, 4, f32, cpu);

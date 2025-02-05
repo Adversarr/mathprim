@@ -41,10 +41,17 @@ void test_view_nb(nb::ndarray<T, shape, dev> arr) {
   }
 }
 
+auto test_field_f32x3() {
+  mp::field_t<mathprim::cpu_vec3f32_const_view_t> view(nullptr, mp::shape_t<-1, 3>(4, 3));
+  return nbex::to_nb_array_standard(view);
+}
+
 NB_MODULE(pymathprim, m) {
   m.def("add", &add);
   m.def("print_mat_view", &print_mat_view);
   m.def("test_view", &test_view<float, mp::shape_t<4>, mp::device::cpu>, nb::rv_policy::reference);
+  m.def("test_view_nb", &test_view_nb<float, nb::shape<-1, 3>, nb::device::cpu>);
   m.def("test_view_nb", &test_view_nb<float, nb::shape<-1, -1>, nb::device::cpu>);
   m.def("test_view_cu", &test_view_nb<float, nb::shape<-1, -1>, nb::device::cuda>);
+  m.def("test_field_f32x3", &test_field_f32x3, nb::rv_policy::reference);
 }

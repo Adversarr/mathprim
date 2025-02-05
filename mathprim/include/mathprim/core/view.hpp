@@ -71,6 +71,22 @@ constexpr MATHPRIM_PRIMFUNC transpose_impl_t<i, j, pack> transpose_impl(const pa
   return transpose_impl_t<i, j, pack>{src.template get<(idx == i ? j : (idx == j ? i : idx))>()...};
 }
 
+template <typename view_type>
+struct field_impl;
+template <typename T, typename sshape, typename sstride, typename device>
+struct field_impl<basic_view<T, sshape, sstride, device>> {
+  using new_shape = god::to_pack<god::prepend_t<keep_dim, typename sshape::seq>>;
+  static constexpr index_t old_stride_first = god::car_v<typename sstride::seq>;
+  static constexpr index_t old_shape_first = god::car_v<typename sshape::seq>;
+  static constexpr index_t new_stride_first
+      = (old_shape_first == keep_dim || old_stride_first == keep_dim) ? keep_dim : old_stride_first * old_shape_first;
+  using new_stride = god::to_pack<god::prepend_t<new_stride_first, typename sstride::seq>>;
+  using type = basic_view<T, new_shape, new_stride, device>;
+};
+
+template <typename view_type>
+using field_t = typename field_impl<view_type>::type;
+
 }  // namespace internal
 
 // Transpose
@@ -347,6 +363,8 @@ struct dimension_iterator {
 
 template <typename T, typename sshape, typename device>
 using continuous_view = basic_view<T, sshape, internal::default_stride_t<T, sshape>, device>;
+template <typename base_view>
+using field_t = internal::field_t<base_view>;
 
 template <typename device = device::cpu, typename T, typename sshape,
           typename sstride = internal::default_stride_t<T, sshape>>
