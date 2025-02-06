@@ -13,22 +13,22 @@ GTEST_TEST(view, iteration) {
     p[i] = i + 1;
   }
 
-  auto view = make_view<device::cpu>(p, shape);
-  auto value0 = view(0, 0, 0);
+  auto v = view<device::cpu>(p, shape);
+  auto value0 = v(0, 0, 0);
 
   auto t = transpose<1, 2>(shape);
-  auto transpose_view = view.transpose();
+  auto transpose_view = v.transpose();
 
   for (int i = 0; i < 4; ++i) {
     for (int j = 0; j < 3; ++j) {
       for (int k = 0; k < 2; ++k) {
-        ASSERT_EQ(view(i, j, k), transpose_view(i, k, j));
-        ASSERT_EQ(i * 6 + j * 2 + k + 1, view(i, j, k));
+        ASSERT_EQ(v(i, j, k), transpose_view(i, k, j));
+        ASSERT_EQ(i * 6 + j * 2 + k + 1, v(i, j, k));
       }
     }
   }
 
-  ASSERT_TRUE(view.is_contiguous());
+  ASSERT_TRUE(v.is_contiguous());
   ASSERT_FALSE(transpose_view.is_contiguous());
 
   ASSERT_EQ(value0, 1);
@@ -43,37 +43,37 @@ GTEST_TEST(view, iteration) {
   }
 
   {
-    auto view2 = view[1];
+    auto view2 = v[1];
     auto [j2, k2] = view2.stride();
     ASSERT_EQ(j2, 8);
     ASSERT_EQ(k2, 4);
     for (int j = 0; j < 3; ++j) {
       for (int k = 0; k < 2; ++k) {
-        ASSERT_EQ(view(1, j, k), view2(j, k));
+        ASSERT_EQ(v(1, j, k), view2(j, k));
       }
     }
   }
 
   {
-    auto view2 = view.slice<1>(1);
+    auto view2 = v.slice<1>(1);
     auto [j2, k2] = view2.stride();
     ASSERT_EQ(j2, 24);
     ASSERT_EQ(k2, 4);
     for (int i = 0; i < 4; ++i) {
       for (int k = 0; k < 2; ++k) {
-        ASSERT_EQ(view(i, 1, k), view2(i, k));
+        ASSERT_EQ(v(i, 1, k), view2(i, k));
       }
     }
   }
 
   {
-    for (auto view2 : view) {
+    for (auto view2 : v) {
       auto [j2, k2] = view2.stride();
       ASSERT_EQ(j2, 8);
       ASSERT_EQ(k2, 4);
       for (int j = 0; j < 3; ++j) {
         for (int k = 0; k < 2; ++k) {
-          ASSERT_EQ(view(0, j, k), view2(j, k));
+          ASSERT_EQ(v(0, j, k), view2(j, k));
         }
       }
       break;
@@ -91,7 +91,8 @@ GTEST_TEST(buffer, creation) {
   }
 
   {
-    auto buf = make_buffer<int>(make_dynamic_shape(4, 3, 2));
+    using namespace mathprim::literal;
+    auto buf = make_buffer<int>(4, 3, 2_s);
     auto [i, j, k] = buf.stride();
     ASSERT_EQ(i, 24);
     ASSERT_EQ(j, 8);
@@ -129,7 +130,7 @@ GTEST_TEST(blas, handmade) {
   }
 
   blas::cpu_handmade<float> b;
-  b.copy(buf.view(), make_view<device::cpu>(p, make_dynamic_shape(4, 3, 2)).as_const());
+  b.copy(buf.view(), view<device::cpu>(p, make_dynamic_shape(4, 3, 2)).as_const());
   for (int i = 0; i < 24; ++i) {
     auto idx = ind2sub(buf.shape(), i);
     ASSERT_EQ(buf.view()(idx), i + 1);
@@ -140,7 +141,7 @@ GTEST_TEST(blas, handmade) {
     ASSERT_EQ(buf.view()(idx), (i + 1) * 2);
   }
 
-  b.swap(buf.view(), make_view<device::cpu>(p, make_dynamic_shape(4, 3, 2)));
+  b.swap(buf.view(), view<device::cpu>(p, make_dynamic_shape(4, 3, 2)));
   for (int i = 0; i < 24; ++i) {
     auto idx = ind2sub(buf.shape(), i);
     ASSERT_EQ(buf.view()(idx), i + 1);
@@ -175,8 +176,7 @@ GTEST_TEST(blas, handmade) {
 
     auto out = make_buffer<float>(make_dynamic_shape(4, 2));
     auto out_view = out.view();
-    b.gemm(1.0f, matrix.const_view(), matrix2.const_view(),
-           0.0f, out_view);
+    b.gemm(1.0f, matrix.const_view(), matrix2.const_view(), 0.0f, out_view);
     for (int i = 0; i < 4; ++i) {
       for (int j = 0; j < 2; ++j) {
         ASSERT_EQ(out_view(i, j), hand[i][j]);

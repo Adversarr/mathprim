@@ -3,12 +3,8 @@
 #include <thrust/for_each.h>
 #include <thrust/iterator/counting_iterator.h>
 
-#include <cuda/std/tuple>
-
-#include "mathprim/core/defines.hpp"
-#include "mathprim/core/dim.hpp"
-#include "mathprim/core/utils/cuda_utils.cuh"
-#include "mathprim/parallel/parallel.hpp"
+#include "mathprim/core/devices/cuda.cuh"
+#include "mathprim/parallel/parallel.hpp" // IWYU pragma: export
 
 namespace mathprim {
 

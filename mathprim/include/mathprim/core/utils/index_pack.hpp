@@ -264,6 +264,27 @@ struct index_iterator {
     return !(*this == other);
   }
 };
+
+template <typename T>
+MATHPRIM_PRIMFUNC void swap_(T &lhs, T &rhs) noexcept {
+#ifdef __CUDA_ARCH__
+  T tmp = lhs;
+  lhs = rhs;
+  rhs = tmp;
+#else
+  T tmp = std::move(lhs);
+  lhs = std::move(rhs);
+  rhs = std::move(tmp);
+#endif
+}
+
+template <index_t ndim>
+void swap_impl(index_array<ndim> &lhs, index_array<ndim> &rhs) noexcept {
+  for (index_t i = 0; i < ndim; ++i) {
+    swap_<index_t>(lhs[i], rhs[i]);
+  }
+}
+
 }  // namespace internal
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -473,6 +494,14 @@ MATHPRIM_PRIMFUNC To safe_cast(const From &from) noexcept {
   return safe_cast_impl<To>(from, make_index_seq<To::ndim>{});
 }
 
+template <typename from, typename to>
+struct is_castable;
+template <index_t... from_values, index_t... to_values>
+struct is_castable<index_pack<from_values...>, index_pack<to_values...>> {
+  static constexpr bool value = ((from_values == to_values || from_values == keep_dim || to_values == keep_dim) && ...);
+};
+template <typename from, typename to>
+static constexpr bool is_castable_v = is_castable<from, to>::value;
 }  // namespace internal
 
 template <index_t... svalues, index_t... svalues2>

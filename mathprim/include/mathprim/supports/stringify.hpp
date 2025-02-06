@@ -1,9 +1,7 @@
 #pragma once
 
 #include <ostream>
-
-#include "mathprim/core/common.hpp"  // IWYU pragma: export
-#include "mathprim/core/defines.hpp"
+#include "mathprim/core/view.hpp"
 
 namespace mathprim {
 

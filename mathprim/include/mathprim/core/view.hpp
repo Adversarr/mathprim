@@ -366,16 +366,38 @@ using continuous_view = basic_view<T, sshape, internal::default_stride_t<T, ssha
 template <typename base_view>
 using field_t = internal::field_t<base_view>;
 
+///////////////////////////////////////////////////////////////////////////////
+/// Create views
+///////////////////////////////////////////////////////////////////////////////
+
 template <typename device = device::cpu, typename T, typename sshape,
           typename sstride = internal::default_stride_t<T, sshape>>
-basic_view<T, sshape, sstride, device> make_view(T *data, const sshape &shape) {
+basic_view<T, sshape, sstride, device> view(T *data, const sshape &shape) {
   return basic_view<T, sshape, sstride, device>(data, shape);
 }
 
 template <typename device = device::cpu, typename T, typename sshape,
           typename sstride = internal::default_stride_t<T, sshape>>
-basic_view<T, sshape, sstride, device> make_view(T *data, const sshape &shape, const sstride &stride) {
+basic_view<T, sshape, sstride, device> view(T *data, const sshape &shape, const sstride &stride) {
   return basic_view<T, sshape, sstride, device>(data, shape, stride);
+}
+
+///////////////////////////////////////////////////////////////////////////////
+/// Memcpy between continuous views.
+///////////////////////////////////////////////////////////////////////////////
+template <typename T1, typename sshape1, typename sstride1, typename dev1, typename T2, typename sshape2,
+          typename sstride2, typename dev2>
+void view_copy(basic_view<T1, sshape1, sstride1, dev1> dst, basic_view<T2, sshape2, sstride2, dev2> src) {
+  if (!src.is_contiguous() || !dst.is_contiguous()) {
+    throw std::runtime_error("The source or destination view is not contiguous.");
+  }
+
+  const auto total = src.numel() * sizeof(T1);
+  const auto avail = dst.numel() * sizeof(T2);
+  if (avail < total) {
+    throw std::runtime_error("The destination buffer is too small.");
+  }
+  device::basic_memcpy<dev2, dev1>{}(dst.data(), src.data(), total);
 }
 
 }  // namespace mathprim

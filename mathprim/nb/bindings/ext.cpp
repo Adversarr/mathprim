@@ -15,7 +15,7 @@ namespace mp = mathprim;
 
 void print_mat_view(nb::ndarray<float, nb::shape<-1, -1>>& matrix) {
   float* data = matrix.data();
-  auto view = mp::make_view(data, mp::shape_t<-1, -1>(matrix.shape(0), matrix.shape(1)),
+  auto view = mp::view(data, mp::shape_t<-1, -1>(matrix.shape(0), matrix.shape(1)),
                             mp::stride_t<-1, -1>(matrix.stride(0) * 4, matrix.stride(1) * 4));
   std::cout << view << std::endl;
 }

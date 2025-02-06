@@ -1,5 +1,4 @@
 #pragma once
-#include <cuda_device_runtime_api.h>
 #ifndef MATHPRIM_ENABLE_CUDA
 #  error "This file should be included only when cuda is enabled."
 #endif
@@ -52,9 +51,27 @@ struct device_traits<cuda> {
 };
 
 template <>
+struct basic_memcpy<cuda, cpu> {
+  void operator()(void *dst, const void *src, size_t size) const {
+    if (const auto status = cudaMemcpy(dst, src, size, cudaMemcpyDeviceToHost); status != cudaSuccess) {
+      throw cuda_error(status);
+    }
+  }
+};
+
+template <>
 struct basic_memcpy<cpu, cuda> {
   void operator()(void *dst, const void *src, size_t size) const {
     if (const auto status = cudaMemcpy(dst, src, size, cudaMemcpyHostToDevice); status != cudaSuccess) {
+      throw cuda_error(status);
+    }
+  }
+};
+
+template <>
+struct basic_memcpy<cuda, cuda> {
+  void operator()(void *dst, const void *src, size_t size) const {
+    if (const auto status = cudaMemcpy(dst, src, size, cudaMemcpyDeviceToDevice); status != cudaSuccess) {
       throw cuda_error(status);
     }
   }

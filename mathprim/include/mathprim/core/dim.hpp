@@ -5,10 +5,19 @@
 
 #pragma once
 
+#include <type_traits>
+
 #include "defines.hpp"
 #include "utils/index_pack.hpp"
 
 namespace mathprim {
+
+template <index_t ndim>
+using dynamic_shape = god::apply_seq_t<index_pack, god::duplicate_t<ndim, keep_dim>>;
+template <index_t ndim>
+using dynamic_stride = god::apply_seq_t<index_pack, god::duplicate_t<ndim, keep_dim>>;
+template <index_t ndim>
+using dim_t = dynamic_shape<ndim>;
 
 ///////////////////////////////////////////////////////////////////////////////
 /// Enhance from pack to shape and strides
@@ -19,9 +28,6 @@ template <typename T>
 struct is_index_pack : std::false_type {};
 template <index_t... svalues>
 struct is_index_pack<index_pack<svalues...>> : std::true_type {};
-
-template <index_t ndim>
-using dim_t = index_array<ndim>;
 
 template <typename T, typename seq>
 struct default_stride;
@@ -59,12 +65,116 @@ MATHPRIM_PRIMFUNC bool is_in_bound(const L &shape, const R &index, index_seq<idx
   return ((index.template get<idx>() >= 0 && index.template get<idx>() < shape.template get<idx>()) && ...);
 }
 
+
+template <index_t svalue>
+struct holder {
+  MATHPRIM_PRIMFUNC index_t operator*() const noexcept {
+    return svalue;
+  }
+};
+
+template <>
+struct holder<keep_dim> {
+  MATHPRIM_PRIMFUNC holder(index_t value) : value_(value) {}  // NOLINT
+  MATHPRIM_PRIMFUNC index_t operator*() const noexcept {
+    return value_;
+  }
+  index_t value_;
+};
+
+template <typename Integer> struct can_hold : std::is_integral<Integer> {};
+template <index_t svalue> struct can_hold<holder<svalue>> : std::true_type {};
+template <typename T>
+constexpr bool can_hold_v = can_hold<T>::value;
+template <typename T, bool is_integral = std::is_integral_v<std::decay_t<T>>>
+struct to_holder_impl;
+template <typename T>
+struct to_holder_impl<T, true> {
+  template <typename Integer>
+  static MATHPRIM_PRIMFUNC holder<keep_dim> impl(Integer value) noexcept {
+    return holder<keep_dim>{static_cast<index_t>(value)};
+  }
+  using type = holder<keep_dim>;
+};
+
+template <index_t svalue>
+struct to_holder_impl<holder<svalue>, false> {
+  static MATHPRIM_PRIMFUNC holder<svalue> impl(const holder<svalue> &value) noexcept {
+    return value;
+  }
+  using type = holder<svalue>;
+};
+
+template <typename T>
+MATHPRIM_PRIMFUNC typename to_holder_impl<T>::type to_holder(T value) noexcept {
+  return to_holder_impl<T>::impl(value);
+}
+
+template <typename... Args>
+struct holders_to_shape_impl;
+template <index_t FrontValue>
+struct holders_to_shape_impl<holder<FrontValue>> {
+  using type = index_seq<FrontValue>;
+};
+template <typename Front, typename... Args>
+struct holders_to_shape_impl<Front, Args...> {
+  using front_type = typename holders_to_shape_impl<Front>::type;
+  using last_type = typename holders_to_shape_impl<Args...>::type;
+  using type = god::prepend_t<god::car_v<front_type>, last_type>;
+};
+template <typename... Args>
+using holders_to_shape_t = god::to_pack<typename holders_to_shape_impl<Args...>::type>;
+
+template <typename... Holders>
+holders_to_shape_t<Holders...> make_shape_from_holders(Holders... holders) {
+  return holders_to_shape_t<Holders...>{(*holders)...};
+}
+
 }  // namespace internal
 
-template <index_t ndim>
-using dynamic_shape = god::apply_seq_t<index_pack, god::duplicate_t<ndim, keep_dim>>;
-template <index_t ndim>
-using dynamic_stride = god::apply_seq_t<index_pack, god::duplicate_t<ndim, keep_dim>>;
+template <typename... Args>
+dynamic_shape<sizeof...(Args)> make_dynamic_shape(Args &&...args) noexcept {
+  return dynamic_shape<sizeof...(Args)>{std::forward<Args>(args)...};
+}
+
+namespace literal {
+
+template <index_t base, index_t alpha>
+struct pow_impl {
+  static_assert(alpha >= 0, "The exponent must be non-negative.");
+  static_assert(base >= 0, "The base must be non-negative.");
+  static constexpr index_t value = base * pow_impl<base, alpha - 1>::value;
+};
+template <index_t base>
+struct pow_impl<base, 0> {
+  static constexpr index_t value = 1;
+};
+
+template <char... Args>
+struct parse_int_impl;
+template <char Head>
+struct parse_int_impl<Head> {
+  static constexpr index_t value = Head - '0';
+};
+template <char Head, char... Tail>
+struct parse_int_impl<Head, Tail...> {
+  static constexpr index_t value = parse_int_impl<Tail...>::value + pow_impl<10, sizeof...(Tail)>::value * (Head - '0');
+};
+
+template <char... Args>
+constexpr index_t parse_int = parse_int_impl<Args...>::value;
+
+template <char... Args>
+MATHPRIM_PRIMFUNC constexpr auto operator""_s() {
+  return internal::holder<parse_int<Args...>>{};
+}
+
+}  // namespace literal
+
+template <typename... Args>
+auto make_shape(Args ...args) {
+  return internal::make_shape_from_holders(internal::to_holder<Args>(std::forward<Args>(args))...);
+}
 
 template <typename T, index_t... svalues>
 MATHPRIM_PRIMFUNC internal::default_stride_t<T, index_pack<svalues...>> make_default_stride(
@@ -133,10 +243,5 @@ MATHPRIM_MAKE_SHAPE_MAT(4, 4);
 
 #undef MATHPRIM_MAKE_SHAPE_MAT
 #undef MATHPRIM_MAKE_SHAPE_VEC
-
-template <typename... Args>
-dynamic_shape<sizeof...(Args)> make_dynamic_shape(Args &&...args) noexcept {
-  return dynamic_shape<sizeof...(Args)>{std::forward<Args>(args)...};
-}
 
 }  // namespace mathprim

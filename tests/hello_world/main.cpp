@@ -1,11 +1,13 @@
 #include <mathprim/core/buffer.hpp>
-#include <mathprim/core/common.hpp>
+#include <mathprim/supports/view_from/stl.hpp>
 
 using namespace mathprim;
+using namespace mathprim::literal;
 
 int main() {
   float buf[4] = {1.0f, 2.0f, 3.0f, 4.0f};
-  auto v = make_view(buf, shape_t<4>());
+  auto v = view(buf, shape_t<4>());
+  // auto v2 = view(buf);
   // const view:
   basic_view<const float, shape_t<4>, stride_t<4>, device::cpu> v2 = v;
   // Should fail:
@@ -14,4 +16,7 @@ int main() {
   basic_view<const float, shape_t<-1>, stride_t<4>, device::cpu> dyn_1 = v;
   // Should fail:
   // basic_view<float, shape_t<-1>, stride_t<4>, device::cpu> non_const = dyn_1;
+
+  int n = 4;
+  make_shape(41_s, n);
 }
