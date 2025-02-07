@@ -7,7 +7,7 @@
 #include <cstring>
 #include <memory>  // IWYU pragma: export
 #include <stdexcept>
-#include <type_traits>
+#include <type_traits>  // IWYU pragma: export
 
 ///////////////////////////////////////////////////////////////////////////////
 /// General Options
@@ -33,14 +33,6 @@
 
 #define MATHPRIM_CONCAT_IMPL(a, b) a##b
 #define MATHPRIM_CONCAT(a, b) MATHPRIM_CONCAT_IMPL(a, b)
-#ifndef MATHPRIM_CPU_BLAS
-#  ifdef MATHPRIM_ENABLE_BLAS
-#    define MATHPRIM_CPU_BLAS blas
-#  else
-#    define MATHPRIM_CPU_BLAS handmade
-#  endif
-#endif
-#define MATHPRIM_INTERNAL_CPU_BLAS_FALLBACK MATHPRIM_CONCAT(cpu_, MATHPRIM_CPU_BLAS)
 
 ///////////////////////////////////////////////////////////////////////////////
 /// Feature detection
@@ -156,10 +148,6 @@ using index_t = std::int32_t;  ///< Type for indexing with 32-bit indices.
 #  define MATHPRIM_INDEX_MAX 0x7FFFFFFF
 #endif
 
-constexpr size_t to_size(index_t i) {
-  return static_cast<size_t>(i);
-}
-
 using f32_t = float;   ///< Type for 32-bit floating point numbers.
 using f64_t = double;  ///< Type for 64-bit floating point numbers.
 
@@ -176,19 +164,26 @@ using c64_t = complex<f64_t>;  ///< Type for 64-bit complex numbers.
 /// Constants.
 ///////////////////////////////////////////////////////////////////////////////
 
-// Indicates this dimension does not exist logically. must be zero.
-constexpr index_t no_dim = 0;
-
 // Indicates this dimension does not change under some operation.
 constexpr index_t keep_dim = -1;
-constexpr index_t dynamic_dim = -1;
 
-// TODO: currently, we only support cpu and gpu backends.
+///////////////////////////////////////////////////////////////////////////////
+/// Device: CPU, CUDA, etc.
+///////////////////////////////////////////////////////////////////////////////
 namespace device {  // i.e. backends.
+
+template <typename T>
+struct device_traits;
 
 template <typename Derived>
 class basic_device {
 public:
+  /**
+   * @brief Allocate memory on the device.
+   *
+   * @param size in bytes.
+   * @return void* pointer to the allocated memory. guaranteed to be aligned.
+   */
   void *malloc(size_t size) const {
     void *ptr = static_cast<const Derived *>(this)->malloc_impl(size);
     if (!ptr) {
@@ -197,16 +192,50 @@ public:
 #if MATHPRIM_VERBOSE_MALLOC
     printf("%s: Allocated %zu bytes\n", name(), size);
 #endif
+
+#ifndef NDEBUG
+    // Check alignment.
+    const auto align = device_traits<Derived>::alloc_alignment;
+    if (align > 0) {
+      MATHPRIM_ASSERT(reinterpret_cast<uintptr_t>(ptr) % align == 0 && "Alignment error.");
+    }
+#endif
     return ptr;
   }
+
+  /**
+   * @brief Free memory on the device.
+   *
+   * @param ptr
+   */
   void free(void *ptr) const {
+    if (!ptr) {
+      fprintf(stderr, "(WARN) %s: Freeing nullptr\n", name());
+      return;
+    }
+
 #if MATHPRIM_VERBOSE_MALLOC
     printf("%s: Free %p\n", name(), ptr);
 #endif
     static_cast<const Derived *>(this)->free_impl(ptr);
   }
 
+  /**
+   * @brief Set memory to a value.
+   *
+   * @param ptr Pointer to the memory, must not be nullptr.
+   * @param value value to set.
+   * @param size size in bytes.
+   */
   void memset(void *ptr, int value, size_t size) const {
+    if (!ptr) {
+      throw std::invalid_argument{"Memsetting nullptr"};
+    }
+
+    if (size == 0) {
+      return;
+    }
+
     static_cast<const Derived *>(this)->memset_impl(ptr, value, size);
   }
 
@@ -216,15 +245,20 @@ public:
 };
 
 class cpu;
+
 // This implementation is too essential to be here.
 class cpu : public basic_device<cpu> {
 public:
   void *malloc_impl(size_t size) const {
 #if defined(_MSC_VER)
-    return _aligned_malloc(size, MATHPRIM_BACKEND_CPU_ALIGNMENT);
+    void *ptr = _aligned_malloc(size, MATHPRIM_BACKEND_CPU_ALIGNMENT);
 #else
-    return std::aligned_alloc(MATHPRIM_BACKEND_CPU_ALIGNMENT, size);
+    void *ptr = std::aligned_alloc(MATHPRIM_BACKEND_CPU_ALIGNMENT, size);
 #endif
+    if (!ptr) {
+      throw std::bad_alloc{};
+    }
+    return ptr;
   }
 
   void free_impl(void *ptr) const noexcept {
@@ -243,15 +277,9 @@ public:
     return "cpu";
   }
 };
-class cuda;  // Include the <mathprim/core/devices/cuda.cuh> for the definition.
 
-template <typename T>
-struct is_device : std::false_type {};
-template <typename Derived>
-struct is_device<basic_device<Derived>> : std::true_type {};
-
-template <typename T>
-struct device_traits;
+// Include the <mathprim/core/devices/cuda.cuh> for the definition.
+class cuda;
 
 template <>
 struct device_traits<cpu> {
@@ -269,13 +297,6 @@ struct basic_memcpy<cpu, cpu> {
 };
 
 }  // namespace device
-
-namespace par {
-// class seq;
-// class stl;
-// class openmp;
-// class cuda;
-}  // namespace par
 
 ///////////////////////////////////////////////////////////////////////////////
 /// Errors
@@ -300,27 +321,15 @@ MATHPRIM_INTERNAL_DECLARE_ERROR(shape_error, runtime_error);
 ///////////////////////////////////////////////////////////////////////////////
 /// Forward Declarations.
 ///////////////////////////////////////////////////////////////////////////////
-
-// TODO:
-// 1. should we use a simpler approach for blas
-// 2. remove from here.
-
-/// @brief BLAS backend
-namespace blas {
-template <typename T>
-struct cpu_handmade;
-template <typename T>
-struct blas_impl_cpu_blas;
-template <typename T>
-struct blas_impl_cpu_eigen;
-}  // namespace blas
-
 template <index_t N>
 struct index_array;
 template <index_t... svalues>
 struct index_pack;
 template <index_t... args>
-struct index_seq {};
+struct index_seq {
+  static constexpr index_t ndim = sizeof...(args);
+};
+
 template <index_t... svalues>
 using shape_t = index_pack<svalues...>;
 template <index_t... svalues>
@@ -330,15 +339,32 @@ using stride_t = index_pack<svalues...>;
  * @brief general buffer type.
  *
  * @tparam T the data type, need to be plain-old-data.
+ * @tparam sshape the shape of the buffer.
+ * @tparam sstride the stride of the buffer.
+ * @tparam dev the device type.
  */
 template <typename T, typename sshape, typename sstride, typename dev>
 class basic_buffer;
 
-/// @brief view of a buffer.
+/**
+ * @brief general view type.
+ *
+ * @tparam T the data type, need to be plain-old-data.
+ * @tparam sshape the shape of the buffer.
+ * @tparam sstride the stride of the buffer.
+ * @tparam dev the device type.
+ */
 template <typename T, typename sshape, typename sstride, typename dev>
 class basic_view;
 
-/// @brief iterator for buffer view.
+/**
+ * @brief iterator for view.
+ *
+ * @tparam T the data type, need to be plain-old-data.
+ * @tparam sshape the shape of the buffer.
+ * @tparam sstride the stride of the buffer.
+ * @tparam dev the device type.
+ */
 template <typename T, typename sshape, typename sstride, typename dev>
 struct dimension_iterator;
 
@@ -348,30 +374,10 @@ struct dimension_iterator;
 /// @brief Parallel backend implementation.
 
 /// @brief Parallel for loop
+namespace par {
 template <class par_impl>
 struct parfor;
-
-///////////////////////////////////////////////////////////////////////////////
-/// BLAS
-///////////////////////////////////////////////////////////////////////////////
-/// @brief BLAS backend selection fallback, do not use this to select backend.
-template <typename T, typename dev>
-struct blas_select_fallback;
-
-template <typename T>
-struct blas_select_fallback<T, device::cpu> {
-  // using type = blas::MATHPRIM_INTERNAL_CPU_BLAS_FALLBACK<T>;
-};
-
-/// @brief BLAS backend selection (for user selection)
-template <typename T, typename dev>
-struct blas_select {
-  using type = typename blas_select_fallback<T, dev>::type;
-};
-
-/// @brief BLAS backend selection (shortcut)
-template <typename T, typename dev>
-using blas_select_t = typename blas_select<T, dev>::type;
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 /// Aliases.

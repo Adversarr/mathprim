@@ -22,7 +22,7 @@ constexpr MATHPRIM_PRIMFUNC T *apply_byte_offset(T *data, index_t offset) noexce
   }
 }
 
-// flatten
+// Flatten
 template <typename seq>
 struct flatten;
 template <index_t front>
@@ -36,15 +36,15 @@ struct flatten<index_seq<front, args...>> {
 template <typename seq>
 constexpr index_t flatten_v = flatten<seq>::value;
 
+// Slice a pack
 template <index_t i, typename pack>
 using slice_t = god::to_pack<god::remove_t<i, typename pack::seq>>;
-
 template <index_t i, typename pack, index_t... seq>
 constexpr MATHPRIM_PRIMFUNC slice_t<i, pack> slice_impl(const pack &full, index_seq<seq...> /*seq*/) noexcept {
   return slice_t<i, pack>((full.template get<(seq < i ? seq : seq + 1)>())...);
 }
 
-// transpose
+// Transpose two dimension
 template <index_t i, index_t j, typename seq>
 struct transpose;
 template <index_t i, index_t j, index_t... svalues>
@@ -71,6 +71,7 @@ constexpr MATHPRIM_PRIMFUNC transpose_impl_t<i, j, pack> transpose_impl(const pa
   return transpose_impl_t<i, j, pack>{src.template get<(idx == i ? j : (idx == j ? i : idx))>()...};
 }
 
+// Extend a pack
 template <typename view_type>
 struct field_impl;
 template <typename T, typename sshape, typename sstride, typename device>
@@ -206,7 +207,6 @@ public:
     return stride_ == make_default_stride<T>(shape_);
   }
 
-  // TODO: Maybe we should iterate over internal data?
   auto begin() const noexcept {
     return dimension_iterator<T, sshape, sstride, dev>(*this, 0);
   }
@@ -243,6 +243,17 @@ public:
     return operator()(index_array<ndim>(static_cast<index_t>(args)...));
   }
 
+  /////////////////////////////////////////////////////////////////////////////
+  // View Transforms
+  /////////////////////////////////////////////////////////////////////////////
+
+  /**
+   * @brief Transpose the view.
+   *
+   * @tparam i
+   * @tparam j
+   * @return The transposed view.
+   */
   template <index_t i = ndim - 1, index_t j = ndim - 2>
   MATHPRIM_PRIMFUNC
       basic_view<T, internal::transpose_impl_t<i, j, sshape>, internal::transpose_impl_t<i, j, sstride>, dev>
@@ -250,6 +261,12 @@ public:
     return {data_, ::mathprim::transpose<i, j>(shape_), ::mathprim::transpose<i, j>(stride_)};
   }
 
+  /**
+   * @brief Slice the view.
+   *
+   * @tparam i
+   * @return The sliced view.
+   */
   template <index_t i = 0>
   MATHPRIM_PRIMFUNC basic_view<T, internal::slice_t<i, sshape>, internal::slice_t<i, sstride>, dev> slice(
       index_t batch = 0) const noexcept {
@@ -257,6 +274,39 @@ public:
             ::mathprim::slice<i>(stride_)};
   }
 
+  /**
+   * @brief Flatten the view.
+   *
+   * @return The flattened view.
+   */
+  MATHPRIM_PRIMFUNC basic_view<T, shape_t<internal::flatten_v<typename sshape::seq>>,
+                               stride_t<god::last_v<typename sstride::seq>>, dev>
+  flatten() const noexcept {
+#ifndef NDEBUG
+    const auto drop_last_shape = internal::slice_impl<ndim - 1>(shape_, make_index_seq<ndim - 1>{});
+    const auto drop_last_stride = internal::slice_impl<ndim - 1>(stride_, make_index_seq<ndim - 1>{});
+    MATHPRIM_ASSERT(make_default_stride<T>(drop_last_shape) == drop_last_stride);
+#endif
+    return {data_, shape_t<internal::flatten_v<typename sshape::seq>>{shape_.numel()},
+            stride_t<god::last_v<typename sstride::seq>>{stride_.template get<ndim - 1>()}};
+  }
+
+  basic_view<T, shape_t<internal::flatten_v<typename sshape::seq>>, stride_t<god::last_v<typename sstride::seq>>, dev>
+  safe_flatten() const {
+    const auto drop_last_shape = internal::slice_impl<ndim - 1>(shape_, make_index_seq<ndim - 1>{});
+    const auto drop_last_stride = internal::slice_impl<ndim - 1>(stride_, make_index_seq<ndim - 1>{});
+    if (make_default_stride<T>(drop_last_shape) != drop_last_stride) {
+      throw shape_error("The view is not contiguous enough for flatten.");
+    }
+
+    return flatten();
+  }
+
+  /**
+   * @brief Construct a const view with same data.
+   *
+   * @return MATHPRIM_PRIMFUNC
+   */
   MATHPRIM_PRIMFUNC basic_view<const T, sshape, sstride, dev> as_const() const {
     return {data_, shape_, stride_};
   }
@@ -362,7 +412,7 @@ struct dimension_iterator {
 };
 
 template <typename T, typename sshape, typename device>
-using continuous_view = basic_view<T, sshape, internal::default_stride_t<T, sshape>, device>;
+using continuous_view = basic_view<T, sshape, default_stride_t<T, sshape>, device>;
 template <typename base_view>
 using field_t = internal::field_t<base_view>;
 
@@ -370,14 +420,12 @@ using field_t = internal::field_t<base_view>;
 /// Create views
 ///////////////////////////////////////////////////////////////////////////////
 
-template <typename device = device::cpu, typename T, typename sshape,
-          typename sstride = internal::default_stride_t<T, sshape>>
+template <typename device = device::cpu, typename T, typename sshape, typename sstride = default_stride_t<T, sshape>>
 basic_view<T, sshape, sstride, device> view(T *data, const sshape &shape) {
   return basic_view<T, sshape, sstride, device>(data, shape);
 }
 
-template <typename device = device::cpu, typename T, typename sshape,
-          typename sstride = internal::default_stride_t<T, sshape>>
+template <typename device = device::cpu, typename T, typename sshape, typename sstride = default_stride_t<T, sshape>>
 basic_view<T, sshape, sstride, device> view(T *data, const sshape &shape, const sstride &stride) {
   return basic_view<T, sshape, sstride, device>(data, shape, stride);
 }

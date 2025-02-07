@@ -8,6 +8,7 @@ using namespace mathprim;
 
 int main() {
   auto matrix = make_buffer<float, device::cuda>(4, 4);
+  auto mat2 = make_buffer<half, device::cuda>(4, 4);
   auto host_matrix = make_buffer<float>(4, 4);
   auto m = matrix.view();
   auto hm = host_matrix.view();

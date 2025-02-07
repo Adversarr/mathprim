@@ -1,7 +1,7 @@
 #pragma once
 #include "mathprim/core/dim.hpp"
 
-namespace mathprim {
+namespace mathprim::par {
 
 // template <typename T, index_t N, device_t dev, index_t batch_dim> struct vmap_arg {
 //   const basic_view<T, N, dev> view_;
@@ -75,8 +75,6 @@ struct parfor {
   //   }
 };
 
-namespace par {
-
 class seq : public parfor<seq> {
 public:
   template <typename Fn, index_t... sgrids, index_t... sblocks>
@@ -97,5 +95,4 @@ public:
   }
 };
 
-}  // namespace par
-}  // namespace mathprim
+}  // namespace mathprim::par

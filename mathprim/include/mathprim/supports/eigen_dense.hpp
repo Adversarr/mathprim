@@ -176,8 +176,7 @@ template <typename EigenMatrix, bool is_const, typename device>
 using matrix_view_t
     = basic_view<std::conditional_t<is_const, const typename EigenMatrix::Scalar, typename EigenMatrix::Scalar>,
                  from_eigen_shape_t<EigenMatrix>,
-                 ::mathprim::internal::default_stride_t<typename EigenMatrix::Scalar, from_eigen_shape_t<EigenMatrix>>,
-                 device>;
+                 ::mathprim::default_stride_t<typename EigenMatrix::Scalar, from_eigen_shape_t<EigenMatrix>>, device>;
 
 /// Determine a proper type for mapped vector
 template <typename T, int rows, typename dev>

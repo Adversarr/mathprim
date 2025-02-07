@@ -17,25 +17,23 @@ struct cpu_eigen : public basic_blas<cpu_eigen<T>, T, device::cpu> {
   template <typename sshape, typename sstride>
   using const_type = basic_view<const T, sshape, sstride, device::cpu>;
 
-  using Scalar = T;
-
   template <typename sshape_dst, typename sstride_dst, typename sshape_src, typename sstride_src>
   void copy_impl(view_type<sshape_dst, sstride_dst> dst, const_type<sshape_src, sstride_src> src) {
-    auto map_dst = eigen_support::amap(dst);
-    auto map_src = eigen_support::amap(src);
+    auto map_dst = eigen_support::amap(dst.safe_flatten());
+    auto map_src = eigen_support::amap(src.safe_flatten());
     map_dst = map_src;
   }
 
   template <typename sshape, typename sstride>
   void scal_impl(T alpha, view_type<sshape, sstride> src) {
-    auto map_src = eigen_support::amap(src);
+    auto map_src = eigen_support::amap(src.safe_flatten());
     map_src *= alpha;
   }
 
   template <typename sshape_src, typename sstride_src, typename sshape_dst, typename sstride_dst>
   void swap_impl(view_type<sshape_src, sstride_src> src, view_type<sshape_dst, sstride_dst> dst) {
-    auto map_src = eigen_support::amap(src);
-    auto map_dst = eigen_support::amap(dst);
+    auto map_src = eigen_support::amap(src.safe_flatten());
+    auto map_dst = eigen_support::amap(dst.safe_flatten());
     if constexpr (sshape_src::ndim == 2) {
       for (index_t i = 0; i < src.shape(0); ++i) {
         for (index_t j = 0; j < src.shape(1); ++j) {
@@ -51,33 +49,33 @@ struct cpu_eigen : public basic_blas<cpu_eigen<T>, T, device::cpu> {
 
   template <typename sshape_x, typename sstride_x, typename sshape_y, typename sstride_y>
   void axpy_impl(T alpha, const_type<sshape_x, sstride_x> x, view_type<sshape_y, sstride_y> y) {
-    auto map_x = eigen_support::amap(x);
-    auto map_y = eigen_support::amap(y);
+    auto map_x = eigen_support::amap(x.safe_flatten());
+    auto map_y = eigen_support::amap(y.safe_flatten());
     map_y += alpha * map_x;
   }
 
   template <typename sshape_x, typename sstride_x, typename sshape_y, typename sstride_y>
   T dot_impl(const_type<sshape_x, sstride_x> x, const_type<sshape_y, sstride_y> y) {
-    auto map_x = eigen_support::amap(x);
-    auto map_y = eigen_support::amap(y);
+    auto map_x = eigen_support::amap(x.safe_flatten());
+    auto map_y = eigen_support::amap(y.safe_flatten());
     return map_x.dot(map_y);
   }
 
   template <typename sshape, typename sstride>
   T norm_impl(const_type<sshape, sstride> x) {
-    auto map_x = eigen_support::amap(x);
+    auto map_x = eigen_support::amap(x.safe_flatten());
     return map_x.norm();
   }
 
   template <typename sshape, typename sstride>
   T asum_impl(const_type<sshape, sstride> x) {
-    auto map_x = eigen_support::amap(x);
+    auto map_x = eigen_support::amap(x.safe_flatten());
     return map_x.cwiseAbs().sum();
   }
 
   template <typename sshape, typename sstride>
   index_t amax_impl(const_type<sstride, sshape> x) {
-    auto map_x = eigen_support::amap(x);
+    auto map_x = eigen_support::amap(x.safe_flatten());
     Eigen::Index max_index;
     map_x.cwiseAbs().maxCoeff(max_index);
     return static_cast<index_t>(max_index);
@@ -87,15 +85,15 @@ struct cpu_eigen : public basic_blas<cpu_eigen<T>, T, device::cpu> {
   // y = alpha * x * y + beta * y
   template <typename sshape_x, typename sstride_x, typename sshape_y, typename sstride_y>
   void emul_impl(T alpha, const_type<sshape_x, sstride_x> x, T beta, view_type<sshape_y, sstride_y> y) {
-    auto map_x = eigen_support::amap(x);
-    auto map_y = eigen_support::amap(y);
+    auto map_x = eigen_support::amap(x.safe_flatten());
+    auto map_y = eigen_support::amap(y.safe_flatten());
     map_y = (alpha * map_x.array() * map_y.array() + beta * map_y.array()).matrix();
   }
   // y = alpha * x / y + beta * y
   template <typename sshape_x, typename sstride_x, typename sshape_y, typename sstride_y>
   void ediv_impl(T alpha, const_type<sshape_x, sstride_x> x, T beta, view_type<sshape_y, sstride_y> y) {
-    auto map_x = eigen_support::amap(x);
-    auto map_y = eigen_support::amap(y);
+    auto map_x = eigen_support::amap(x.safe_flatten());
+    auto map_y = eigen_support::amap(y.safe_flatten());
     map_y = (alpha * map_x.array() / map_y.array() + beta * map_y.array()).matrix();
   }
 

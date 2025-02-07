@@ -100,7 +100,7 @@ GTEST_TEST(buffer, creation) {
   }
 
   {
-    auto buf = make_buffer<int>(make_dynamic_shape(4, 3, 2));
+    auto buf = make_buffer<int>(make_dshape(4, 3, 2));
     auto view = buf.view();
     for (int i = 0; i < 4; ++i) {
       for (int j = 0; j < 3; ++j) {
@@ -123,14 +123,14 @@ GTEST_TEST(buffer, creation) {
 }
 
 GTEST_TEST(blas, handmade) {
-  auto buf = make_buffer<float>(make_dynamic_shape(4, 3, 2));
+  auto buf = make_buffer<float>(make_dshape(4, 3, 2));
   float p[24];
   for (int i = 0; i < 24; ++i) {
     p[i] = static_cast<float>(i + 1);
   }
 
   blas::cpu_handmade<float> b;
-  b.copy(buf.view(), view<device::cpu>(p, make_dynamic_shape(4, 3, 2)).as_const());
+  b.copy(buf.view(), view<device::cpu>(p, make_dshape(4, 3, 2)).as_const());
   for (int i = 0; i < 24; ++i) {
     auto idx = ind2sub(buf.shape(), i);
     ASSERT_EQ(buf.view()(idx), i + 1);
@@ -141,18 +141,18 @@ GTEST_TEST(blas, handmade) {
     ASSERT_EQ(buf.view()(idx), (i + 1) * 2);
   }
 
-  b.swap(buf.view(), view<device::cpu>(p, make_dynamic_shape(4, 3, 2)));
+  b.swap(buf.view(), view<device::cpu>(p, make_dshape(4, 3, 2)));
   for (int i = 0; i < 24; ++i) {
     auto idx = ind2sub(buf.shape(), i);
     ASSERT_EQ(buf.view()(idx), i + 1);
   }
 
   ASSERT_TRUE(blas::internal::is_capable_vector<float>(buf.shape(), buf.stride()));
-  ASSERT_FALSE(blas::internal::is_capable_vector<float>(make_dynamic_shape(4, 3, 2), make_dynamic_shape(24, 16, 4)));
+  ASSERT_FALSE(blas::internal::is_capable_vector<float>(make_dshape(4, 3, 2), make_dshape(24, 16, 4)));
 
   {
-    auto matrix = make_buffer<float>(make_dynamic_shape(4, 3));
-    auto matrix2 = make_buffer<float>(make_dynamic_shape(3, 2));
+    auto matrix = make_buffer<float>(make_dshape(4, 3));
+    auto matrix2 = make_buffer<float>(make_dshape(3, 2));
     for (int i = 0; i < 4; ++i) {
       for (int j = 0; j < 3; ++j) {
         matrix.view()(i, j) = float(i + j);
@@ -174,7 +174,7 @@ GTEST_TEST(blas, handmade) {
       }
     }
 
-    auto out = make_buffer<float>(make_dynamic_shape(4, 2));
+    auto out = make_buffer<float>(make_dshape(4, 2));
     auto out_view = out.view();
     b.gemm(1.0f, matrix.const_view(), matrix2.const_view(), 0.0f, out_view);
     for (int i = 0; i < 4; ++i) {

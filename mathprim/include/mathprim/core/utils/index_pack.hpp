@@ -29,6 +29,17 @@ struct cdr<index_seq<front, args...>> {
   using type = index_seq<args...>;
 };
 
+template <typename seq>
+struct last;
+template <index_t front>
+struct last<index_seq<front>> {
+  static constexpr index_t value = front;
+};
+template <index_t front, index_t... args>
+struct last<index_seq<front, args...>> {
+  static constexpr index_t value = last<index_seq<args...>>::value;
+};
+
 template <index_t, typename seq>
 struct prepend;
 template <index_t value, index_t... args>
@@ -134,6 +145,8 @@ struct arithmetic_seq<index_seq<lhs...>, index_seq<rhs...>> {
 /// Aliases:
 template <typename seq>
 constexpr index_t car_v = car<seq>::value;
+template <typename seq>
+constexpr index_t last_v = last<seq>::value;
 template <typename seq>
 using cdr_t = typename cdr<seq>::type;
 template <typename seq, index_t n>

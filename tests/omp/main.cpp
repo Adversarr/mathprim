@@ -5,8 +5,8 @@
 using namespace mathprim;
 
 int main() {
-  dynamic_shape<2> grid_dim{4, 3};
-  dynamic_shape<2> block_dim{2, 2};
+  dshape<2> grid_dim{4, 3};
+  dshape<2> block_dim{2, 2};
 
   std::mutex mtx;
   par::openmp{}.run(grid_dim, block_dim, [&mtx](auto grid_id, auto block_id) {

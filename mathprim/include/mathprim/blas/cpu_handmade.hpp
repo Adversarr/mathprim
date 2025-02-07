@@ -146,7 +146,7 @@ struct cpu_handmade : public basic_blas<cpu_handmade<T>, T, device::cpu> {
     }
 
     // Blocking parameters (adjusted based on L1 cache size)
-    constexpr index_t block_size = 64;
+    constexpr index_t block_size = 16;
     T block[block_size][block_size];  // Stack memory allocation
 
     // Blocked computation

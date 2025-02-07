@@ -30,7 +30,7 @@ auto value0 = view(0, 0, 0);
 ### View from buffer.
 
 ```cpp
-auto buf = make_buffer<int>(make_dynamic_shape(4, 3, 2));
+auto buf = make_buffer<int>(4, 3, 2);
 auto view = buf.view();
 for (int i = 0; i < 4; ++i) {
   for (int j = 0; j < 3; ++j) {
@@ -43,7 +43,7 @@ for (int i = 0; i < 4; ++i) {
 
 for (const auto &vi : view) {
   for (int j = 0; j < 3; ++j) {
-    for (int k = 0; k < 2; ++k) {2
+    for (int k = 0; k < 2; ++k) {
       EXPECT_EQ(view(0, j, k), j * 2 + k + 1);
     }
   }
@@ -72,7 +72,7 @@ parfor.run(view.shape(), [view]__device__(auto idx)  {
   auto [i, j] = idx;
   printf("Lambda view[%d, %d] = %f\n", i, j, view(i, j));
 });
-parfor.run(dynamic_shape<4>(10, 4, 1, 1), [view] __device__ (auto idx)  {
+parfor.run(dshape<4>(10, 4, 1, 1), [view] __device__ (auto idx)  {
   auto [i, j, k, l] = idx;
   printf("Lambda view[%d, %d, %d, %d] = %f\n", i, j, k, l, view(i, j));
 });

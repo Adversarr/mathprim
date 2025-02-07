@@ -5,12 +5,13 @@
 #include <iostream>
 
 #define MATHPRIM_VERBOSE_MALLOC 1
-#include <mathprim/core/common.hpp>
+#include <mathprim/core/buffer.hpp>
 #include <mathprim/core/devices/cuda.cuh>
 #include <mathprim/parallel/cuda.cuh>
 // #include <mathprim/supports/stringify.hpp>
 
 using namespace mathprim;
+using namespace mathprim::literal;
 
 __global__ void set_value(float *ptr, int size) {
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -20,7 +21,7 @@ __global__ void set_value(float *ptr, int size) {
   }
 }
 
-__global__ void get_value(cuda_vec4f32_const_view_t view) {
+__global__ void get_value(field_t<cuda_vec4f32_const_view_t> view) {
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (idx == 0) {
     printf("view.size() = %d\n", view.size());
@@ -35,7 +36,7 @@ __global__ void get_value(cuda_vec4f32_const_view_t view) {
 }
 
 int main() {
-  auto buf = make_buffer<float, device::cuda>(shape_t<-1, 4>(10, 4));
+  auto buf = make_buffer<float, device::cuda>(10, 4_s);
   auto view = buf.view();
   std::cout << view.size() << std::endl;
   auto [i, j] = view.shape();
@@ -45,12 +46,12 @@ int main() {
 
   par::cuda parfor;
 
-  parfor.run(view.shape(), [view]__device__(index_array<2> idx)  {
+  parfor.run(view.shape(), [view] __device__(index_array<2> idx) {
     auto [i, j] = idx;
     printf("Lambda view[%d, %d] = %f\n", i, j, view(i, j));
   });
 
-  parfor.run(dynamic_shape<4>(10, 4, 1, 1), [view]__device__(index_array<4> idx)  {
+  parfor.run(dshape<4>(10, 4, 1, 1), [view] __device__(index_array<4> idx) {
     auto [i, j, k, l] = idx;
     printf("Lambda view[%d, %d, %d, %d] = %f\n", i, j, k, l, view(i, j));
   });

@@ -12,12 +12,14 @@
 
 namespace mathprim {
 
+/// @brief Fully dynamic shape.
 template <index_t ndim>
-using dynamic_shape = god::apply_seq_t<index_pack, god::duplicate_t<ndim, keep_dim>>;
+using dshape = god::apply_seq_t<index_pack, god::duplicate_t<ndim, keep_dim>>;
+/// @brief Fully dynamic stride.
 template <index_t ndim>
-using dynamic_stride = god::apply_seq_t<index_pack, god::duplicate_t<ndim, keep_dim>>;
+using dstride = god::apply_seq_t<index_pack, god::duplicate_t<ndim, keep_dim>>;
 template <index_t ndim>
-using dim_t = dynamic_shape<ndim>;
+using dim_t = dshape<ndim>;
 
 ///////////////////////////////////////////////////////////////////////////////
 /// Enhance from pack to shape and strides
@@ -31,6 +33,11 @@ struct is_index_pack<index_pack<svalues...>> : std::true_type {};
 
 template <typename T, typename seq>
 struct default_stride;
+template <typename T>
+struct default_stride<T, index_seq<>> {
+  using type = index_seq<>;
+};
+
 template <typename T, index_t single>
 struct default_stride<T, index_seq<single>> {
   static_assert((sizeof(T) > static_cast<size_t>(0)), "The type must have a size.");
@@ -65,7 +72,6 @@ MATHPRIM_PRIMFUNC bool is_in_bound(const L &shape, const R &index, index_seq<idx
   return ((index.template get<idx>() >= 0 && index.template get<idx>() < shape.template get<idx>()) && ...);
 }
 
-
 template <index_t svalue>
 struct holder {
   MATHPRIM_PRIMFUNC index_t operator*() const noexcept {
@@ -82,8 +88,10 @@ struct holder<keep_dim> {
   index_t value_;
 };
 
-template <typename Integer> struct can_hold : std::is_integral<Integer> {};
-template <index_t svalue> struct can_hold<holder<svalue>> : std::true_type {};
+template <typename Integer>
+struct can_hold : std::is_integral<Integer> {};
+template <index_t svalue>
+struct can_hold<holder<svalue>> : std::true_type {};
 template <typename T>
 constexpr bool can_hold_v = can_hold<T>::value;
 template <typename T, bool is_integral = std::is_integral_v<std::decay_t<T>>>
@@ -130,15 +138,6 @@ holders_to_shape_t<Holders...> make_shape_from_holders(Holders... holders) {
   return holders_to_shape_t<Holders...>{(*holders)...};
 }
 
-}  // namespace internal
-
-template <typename... Args>
-dynamic_shape<sizeof...(Args)> make_dynamic_shape(Args &&...args) noexcept {
-  return dynamic_shape<sizeof...(Args)>{std::forward<Args>(args)...};
-}
-
-namespace literal {
-
 template <index_t base, index_t alpha>
 struct pow_impl {
   static_assert(alpha >= 0, "The exponent must be non-negative.");
@@ -154,6 +153,7 @@ template <char... Args>
 struct parse_int_impl;
 template <char Head>
 struct parse_int_impl<Head> {
+  static_assert('0' <= Head && Head <= '9', "The input must be a digit.");
   static constexpr index_t value = Head - '0';
 };
 template <char Head, char... Tail>
@@ -164,22 +164,60 @@ struct parse_int_impl<Head, Tail...> {
 template <char... Args>
 constexpr index_t parse_int = parse_int_impl<Args...>::value;
 
+}  // namespace internal
+
+template <typename... Args>
+dshape<sizeof...(Args)> make_dshape(Args &&...args) noexcept {
+  return dshape<sizeof...(Args)>{std::forward<Args>(args)...};
+}
+
+namespace literal {
+
+/**
+ * @brief Create a holder from a string literal integer.
+ *
+ * @tparam Args
+ * @return MATHPRIM_PRIMFUNC constexpr
+ */
 template <char... Args>
 MATHPRIM_PRIMFUNC constexpr auto operator""_s() {
-  return internal::holder<parse_int<Args...>>{};
+  return internal::holder<::mathprim::internal::parse_int<Args...>>{};
 }
 
 }  // namespace literal
 
+/**
+ * @brief Create a shape from the given arguments.
+ *
+ * @tparam Args can be integer or holder.
+ * @param args
+ * @return shape_t<...> as static as possible, depending on the input.
+ */
 template <typename... Args>
-auto make_shape(Args ...args) {
+auto make_shape(Args... args) {
   return internal::make_shape_from_holders(internal::to_holder<Args>(std::forward<Args>(args))...);
 }
 
+/**
+ * @brief Default stride for a given shape, in bytes.
+ * 
+ * @tparam T 
+ * @tparam pack 
+ */
+template <typename T, typename pack>
+using default_stride_t = internal::default_stride_t<T, pack>;
+
+/**
+ * @brief Calculate the byte offset from the subscript.
+ * 
+ * @tparam T Scalar type.
+ * @tparam svalues 
+ * @param shape 
+ * @return default_stride_t<T, index_pack<svalues...>>  
+ */
 template <typename T, index_t... svalues>
-MATHPRIM_PRIMFUNC internal::default_stride_t<T, index_pack<svalues...>> make_default_stride(
-    index_pack<svalues...> shape) {
-  using Ret = internal::default_stride_t<T, index_pack<svalues...>>;
+MATHPRIM_PRIMFUNC default_stride_t<T, index_pack<svalues...>> make_default_stride(index_pack<svalues...> shape) {
+  using Ret = default_stride_t<T, index_pack<svalues...>>;
   Ret stride;
   if constexpr (Ret::fully_static) {
     return stride;
@@ -210,6 +248,14 @@ MATHPRIM_PRIMFUNC index_array<index_pack<svalues...>::ndim> ind2sub(const shape_
   return sub;
 }
 
+/**
+ * @brief Check if the index is in bound.
+ * 
+ * @tparam svalues 
+ * @param shape 
+ * @param index 
+ * @return MATHPRIM_PRIMFUNC 
+ */
 template <index_t... svalues>
 MATHPRIM_PRIMFUNC bool is_in_bound(const shape_t<svalues...> &shape,
                                    const index_array<sizeof...(svalues)> &index) noexcept {

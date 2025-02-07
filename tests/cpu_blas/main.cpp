@@ -12,11 +12,11 @@ GTEST_TEST(blas, gemv) {
   blas::cpu_blas<float> bb;
   blas::cpu_handmade<float> b;
   blas::cpu_eigen<float> be;
-  auto Ab = make_buffer<float>(make_dynamic_shape(4, 3));
-  auto xb = make_buffer<float>(make_dynamic_shape(3));
-  auto wb = make_buffer<float>(make_dynamic_shape(3));
-  auto yb = make_buffer<float>(make_dynamic_shape(4));
-  auto zb = make_buffer<float>(make_dynamic_shape(4));
+  auto Ab = make_buffer<float>(make_dshape(4, 3));
+  auto xb = make_buffer<float>(make_dshape(3));
+  auto wb = make_buffer<float>(make_dshape(3));
+  auto yb = make_buffer<float>(make_dshape(4));
+  auto zb = make_buffer<float>(make_dshape(4));
   auto a = Ab.view();
   auto x = xb.view();
   auto y = yb.view();
@@ -59,8 +59,8 @@ GTEST_TEST(blas, gemv) {
 GTEST_TEST(blas, gemm) {
   blas::cpu_blas<float> b;
   blas::cpu_eigen<float> be;
-  auto matrix = make_buffer<float>(make_dynamic_shape(4, 3));
-  auto matrix2 = make_buffer<float>(make_dynamic_shape(3, 2));
+  auto matrix = make_buffer<float>(make_dshape(4, 3));
+  auto matrix2 = make_buffer<float>(make_dshape(3, 2));
   for (int i = 0; i < 4; ++i) {
     for (int j = 0; j < 3; ++j) {
       matrix.view()(i, j) = i + j;
@@ -82,7 +82,7 @@ GTEST_TEST(blas, gemm) {
     }
   }
 
-  auto out = make_buffer<float>(make_dynamic_shape(4, 2));
+  auto out = make_buffer<float>(make_dshape(4, 2));
   auto out_view = out.view();
   b.gemm(1.0f, matrix.const_view(), matrix2.const_view(),
          0.0f, out_view);
