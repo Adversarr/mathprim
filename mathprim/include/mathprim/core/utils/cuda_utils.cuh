@@ -22,7 +22,7 @@
 
 namespace mathprim {
 
-#define MATHPRIM_INTERNAL_CUDA_CHECK_SUCCESS(expr)                                                                 \
+#define MATHPRIM_CUDA_CHECK_SUCCESS(expr)                                                                 \
   do {                                                                                                             \
     cudaError_t err = (expr);                                                                                      \
     if (err != cudaSuccess) {                                                                                      \

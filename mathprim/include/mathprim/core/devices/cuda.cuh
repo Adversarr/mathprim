@@ -31,7 +31,7 @@ public:
   }
 
   void free_impl(void *ptr) const noexcept {
-    MATHPRIM_INTERNAL_CUDA_CHECK_SUCCESS(cudaFree(ptr));
+    MATHPRIM_CUDA_CHECK_SUCCESS(cudaFree(ptr));
   }
 
   void memset_impl(void *ptr, int value, size_t size) const {

@@ -6,14 +6,15 @@ add_subdirectory(cpu_blas)
 add_subdirectory(hello_world)
 add_subdirectory(omp)
 add_subdirectory(benchmark)
-# add_subdirectory(sparse)
-#
+
 if(MATHPRIM_BUILD_TESTS_CUDA)
   add_subdirectory(hello_world_cuda)
   add_subdirectory(cublas)
-   if(MATHPRIM_ENABLE_EIGEN)
-     add_subdirectory(eigen_cuda)
-   endif()
+  add_subdirectory(cuda_training_series)
+
+  if(MATHPRIM_ENABLE_EIGEN)
+    add_subdirectory(eigen_cuda)
+  endif()
 endif()
 
 if(MATHPRIM_ENABLE_EIGEN)
