@@ -18,7 +18,7 @@ int main() {
     hm(idx) = idx[0] + idx[1] * 2;
   });
 
-  view_copy(m, hm);
+  copy(m, hm);
   auto mm = eigen_support::cmap(m.as_const());
   pf.run(m.shape(), [mm] __device__(const auto &i) {
     printf("mm(%d, %d) = %f\n", i[0], i[1], mm(i[0], i[1]));

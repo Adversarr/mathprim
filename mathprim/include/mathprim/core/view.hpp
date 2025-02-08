@@ -122,6 +122,8 @@ public:
   using indexing_type
       = std::conditional_t<ndim == 1, reference,
                            basic_view<T, internal::slice_t<0, sshape>, internal::slice_t<0, sstride>, dev>>;
+  static constexpr bool is_contiguous_at_compile_time
+      = internal::is_compile_time_equal_v<sstride, default_stride_t<T, sshape>>;
 
   ///////////////////////////////////////////////////////////////////////////////
   /// Constructors
@@ -223,7 +225,11 @@ public:
     MATHPRIM_ASSERT(data_ != nullptr);
     MATHPRIM_ASSERT(i >= 0 && i < shape(0));
     if constexpr (ndim == 1) {
-      return *internal::apply_byte_offset<T>(data_, i * stride_.template get<0>());
+      if constexpr (is_contiguous_at_compile_time) {
+        return data_[i];
+      } else {
+        return *internal::apply_byte_offset<T>(data_, i * stride_.template get<0>());
+      }
     } else {
       return slice<0>(i);
     }
@@ -234,7 +240,11 @@ public:
     MATHPRIM_ASSERT(data_ != nullptr);
     MATHPRIM_ASSERT(is_in_bound(shape_, index));
     const index_t offset = byte_offset(stride_, index);
-    return *internal::apply_byte_offset<T>(data_, offset);
+    if constexpr (ndim == 1 && is_contiguous_at_compile_time) {
+      return data_[offset];
+    } else {
+      return *internal::apply_byte_offset<T>(data_, offset);
+    }
   }
 
   template <typename... Args,
@@ -447,7 +457,7 @@ basic_view<T, sshape, sstride, device> view(T *data, const sshape &shape, const 
 ///////////////////////////////////////////////////////////////////////////////
 template <typename T1, typename sshape1, typename sstride1, typename dev1, typename T2, typename sshape2,
           typename sstride2, typename dev2>
-void view_copy(basic_view<T1, sshape1, sstride1, dev1> dst, basic_view<T2, sshape2, sstride2, dev2> src) {
+void copy(basic_view<T1, sshape1, sstride1, dev1> dst, basic_view<T2, sshape2, sstride2, dev2> src) {
   if (!src.is_contiguous() || !dst.is_contiguous()) {
     throw std::runtime_error("The source or destination view is not contiguous.");
   }

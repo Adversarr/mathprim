@@ -130,6 +130,7 @@ struct arithmetic_op {
   static constexpr index_t minus = (lhs > 0 && rhs > 0) ? lhs - rhs : keep_dim;
   static constexpr index_t multiply = (lhs > 0 && rhs > 0) ? lhs * rhs : keep_dim;
   static constexpr index_t divide = (lhs > 0 && rhs > 0) ? lhs / rhs : keep_dim;
+  static constexpr index_t up_div = (lhs > 0 && rhs > 0) ? (lhs + rhs - 1) / rhs : keep_dim;
 };
 
 template <typename lhs_seq, typename rhs_seq>
@@ -140,6 +141,7 @@ struct arithmetic_seq<index_seq<lhs...>, index_seq<rhs...>> {
   using minus = index_seq<arithmetic_op<lhs, rhs>::minus...>;
   using multiply = index_seq<arithmetic_op<lhs, rhs>::multiply...>;
   using divide = index_seq<arithmetic_op<lhs, rhs>::divide...>;
+  using up_div = index_seq<arithmetic_op<lhs, rhs>::up_div...>;
 };
 
 /// Aliases:
@@ -171,6 +173,9 @@ using arithmetic_seq_plus
 template <typename lhs, typename rhs>
 using arithmetic_seq_multiply
     = apply_seq_t<index_pack, typename arithmetic_seq<typename lhs::seq, typename rhs::seq>::multiply>;
+template <typename lhs, typename rhs>
+using arithmetic_seq_up_div
+    = apply_seq_t<index_pack, typename arithmetic_seq<typename lhs::seq, typename rhs::seq>::up_div>;
 template <index_t value, typename seq>
 using append_t = typename append<value, seq>::type;
 
@@ -222,6 +227,33 @@ struct index_array<0> {
   template <index_t i>
   MATHPRIM_PRIMFUNC index_t get() const noexcept;
 };
+
+template <index_t ndim>
+MATHPRIM_PRIMFUNC index_array<ndim> operator*(const index_array<ndim> &lhs, const index_array<ndim>& rhs) noexcept {
+  index_array<ndim> result;
+  for (index_t i = 0; i < ndim; ++i) {
+    result[i] = lhs[i] * rhs[i];
+  }
+  return result;
+}
+
+template <index_t ndim>
+MATHPRIM_PRIMFUNC index_array<ndim> operator+(const index_array<ndim> &lhs, const index_array<ndim>& rhs) noexcept {
+  index_array<ndim> result;
+  for (index_t i = 0; i < ndim; ++i) {
+    result[i] = lhs[i] + rhs[i];
+  }
+  return result;
+}
+
+template <index_t ndim>
+MATHPRIM_PRIMFUNC index_array<ndim> up_div(const index_array<ndim> &array, const index_array<ndim> &divisor) noexcept {
+  index_array<ndim> result;
+  for (index_t i = 0; i < ndim; ++i) {
+    result[i] = (array[i] + divisor[i] - 1) / divisor[i];
+  }
+  return result;
+}
 
 // Iterators for index_array and index_pack
 namespace internal {
@@ -549,9 +581,17 @@ constexpr MATHPRIM_PRIMFUNC bool operator!=(const index_pack<svalues1...> &lhs,
 }
 
 template <index_t... svalues1, index_t... svalues2>
-constexpr MATHPRIM_PRIMFUNC god::arithmetic_seq_plus<index_seq<svalues1...>, index_seq<svalues2...>> operator+(
+constexpr MATHPRIM_PRIMFUNC god::arithmetic_seq_plus<index_pack<svalues1...>, index_pack<svalues2...>> operator+(
     const index_pack<svalues1...> &lhs, const index_pack<svalues2...> &rhs) noexcept {
-  return index_pack<svalues1...>(internal::plus(lhs, rhs, make_index_seq<sizeof...(svalues1)>{}));
+  return god::arithmetic_seq_plus<index_pack<svalues1...>, index_pack<svalues2...>>(
+      internal::plus(lhs, rhs, make_index_seq<sizeof...(svalues1)>{}));
+}
+
+template <index_t... svalues1, index_t... svalues2>
+constexpr MATHPRIM_PRIMFUNC god::arithmetic_seq_up_div<index_pack<svalues1...>, index_pack<svalues2...>> up_div(
+    const index_pack<svalues1...> &lhs, const index_pack<svalues2...> &rhs) noexcept {
+  return god::arithmetic_seq_up_div<index_pack<svalues1...>, index_pack<svalues2...>>(
+      up_div(lhs.to_array(), rhs.to_array()));
 }
 
 }  // namespace mathprim

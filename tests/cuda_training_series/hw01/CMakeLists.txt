@@ -1,2 +1,3 @@
 add_executable(cts_hw01_01 01.cu)
-target_link_libraries(cts_hw01_01 PRIVATE mathprim)
+add_executable(cts_hw01_02 02.cu)
+add_executable(cts_hw01_03 03.cu)
