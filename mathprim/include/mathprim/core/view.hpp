@@ -13,6 +13,13 @@ namespace mathprim {
 namespace internal {
 
 // Apply byte offset
+template <index_t... svalues, index_t ndim, index_t... seq>
+MATHPRIM_PRIMFUNC index_t byte_offset2(const stride_t<svalues...> &stride, const index_array<ndim> &subscript,
+                                       index_seq<seq...> /*seq*/) noexcept {
+  return ((stride.template get<seq>() * subscript.template get<seq>()) + ...);
+}
+
+// Apply byte offset
 template <typename T>
 constexpr MATHPRIM_PRIMFUNC T *apply_byte_offset(T *data, index_t offset) noexcept {
   if constexpr (std::is_const_v<T>) {
@@ -239,10 +246,16 @@ public:
   MATHPRIM_PRIMFUNC reference operator()(const index_array<ndim> &index) const noexcept {
     MATHPRIM_ASSERT(data_ != nullptr);
     MATHPRIM_ASSERT(is_in_bound(shape_, index));
-    const index_t offset = byte_offset(stride_, index);
     if constexpr (ndim == 1 && is_contiguous_at_compile_time) {
-      return data_[offset];
+      return data_[index[0]];
+    } else if constexpr (god::last_v<index_seq<sstride_values...>> != keep_dim
+               && god::last_v<index_seq<sshape_values...>> % sizeof(T) == 0) {
+      constexpr index_t last = god::last_v<index_seq<sstride_values...>> / sizeof(T);
+      const index_t offset = internal::byte_offset2(stride_, index, make_index_seq<ndim - 1>{});
+      auto *ptr = internal::apply_byte_offset<T>(data_, offset);
+      return *(ptr + last);
     } else {
+      const index_t offset = byte_offset(stride_, index);
       return *internal::apply_byte_offset<T>(data_, offset);
     }
   }
