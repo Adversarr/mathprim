@@ -146,8 +146,8 @@ public:
                  internal::safe_cast<sstride>(other.stride())) {}
 
   // Do not allow to assign
-  basic_view &operator=(const basic_view &) noexcept = delete;
-  basic_view &operator=(basic_view &&) noexcept = delete;
+  basic_view &operator=(const basic_view &) noexcept = default;
+  basic_view &operator=(basic_view &&) noexcept = default;
 
   ///////////////////////////////////////////////////////////////////////////////
   /// Meta data
@@ -312,23 +312,28 @@ public:
   }
 
 private:
-  const sshape shape_;
-  const sstride stride_;
+  sshape shape_;
+  sstride stride_;
   T *data_;
 };
 
 template <typename T, typename sshape, typename sstride, typename dev>
 struct dimension_iterator {
   using view_type = basic_view<T, sshape, sstride, dev>;
-  using value_type = typename view_type::indexing_type;
-  using reference = value_type;
-  using pointer = value_type *;
+  using indexing_type = typename view_type::indexing_type;
+  using value_type = std::remove_reference_t<indexing_type>;
+  using reference = indexing_type;
   using difference_type = index_t;
   using iterator_category = std::random_access_iterator_tag;
   view_type view;
   index_t current;
 
   MATHPRIM_PRIMFUNC dimension_iterator(const view_type &view, index_t current) : view(view), current(current) {}
+  MATHPRIM_PRIMFUNC dimension_iterator() noexcept : view{}, current{0} {}
+  dimension_iterator(const dimension_iterator &) noexcept = default;
+  dimension_iterator(dimension_iterator &&) noexcept = default;
+  dimension_iterator &operator=(const dimension_iterator &) noexcept = default;
+  dimension_iterator &operator=(dimension_iterator &&) noexcept = default;
 
   MATHPRIM_PRIMFUNC reference operator*() const noexcept {
     return view[current];
@@ -410,6 +415,13 @@ struct dimension_iterator {
     return current - other.current;
   }
 };
+
+// n + I
+template <typename T, typename sshape, typename sstride, typename dev>
+MATHPRIM_PRIMFUNC dimension_iterator<T, sshape, sstride, dev> operator+(
+    index_t n, const dimension_iterator<T, sshape, sstride, dev> &it) {
+  return it + n;
+}
 
 template <typename T, typename sshape, typename device>
 using continuous_view = basic_view<T, sshape, default_stride_t<T, sshape>, device>;

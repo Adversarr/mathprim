@@ -368,6 +368,9 @@ struct index_pack {
       dyn_{internal::router<svalues>::assign(static_cast<index_t>(args))...} {}
 
   index_pack(const index_pack &) noexcept = default;
+  index_pack(index_pack &&) noexcept = default;
+  index_pack &operator=(const index_pack &) noexcept = default;
+  index_pack &operator=(index_pack &&) noexcept = default;
 
   MATHPRIM_PRIMFUNC index_t &operator[](index_t i) noexcept {
     MATHPRIM_ASSERT(-ndim <= i && i < ndim && "Index out of range.");
@@ -476,6 +479,8 @@ constexpr bool is_compile_time_capable_v = compile_time_capable<lhs, rhs>::value
 template <index_t... svalues1, index_t... svalues2, index_t... idx>
 constexpr MATHPRIM_PRIMFUNC bool equal(const index_pack<svalues1...> lhs, const index_pack<svalues2...> rhs,
                                        const index_seq<idx...> & /*loop*/) {
+  MATHPRIM_UNUSED(lhs);
+  MATHPRIM_UNUSED(rhs);
   constexpr bool is_static_equal = ((svalues1 == svalues2 || svalues1 == keep_dim || svalues2 == keep_dim) && ...);
   return is_static_equal && ((lhs.template get<idx>() == rhs.template get<idx>()) && ...);
 }

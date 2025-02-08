@@ -1,6 +1,6 @@
 #include <mathprim/core/buffer.hpp>
 #include <mathprim/supports/view_from/stl.hpp>
-
+#include <iterator>
 using namespace mathprim;
 using namespace mathprim::literal;
 
@@ -16,6 +16,9 @@ int main() {
   basic_view<const float, shape_t<-1>, stride_t<4>, device::cpu> dyn_1 = v;
   // Should fail:
   // basic_view<float, shape_t<-1>, stride_t<4>, device::cpu> non_const = dyn_1;
+
+  using T = decltype(v.begin());
+  static_assert(std::random_access_iterator<T>, "");
 
   int n = 4;
   make_shape(41_s, n);

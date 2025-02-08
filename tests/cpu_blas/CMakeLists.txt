@@ -1,4 +1,5 @@
 if(MATHPRIM_ENABLE_BLAS)
     add_executable(cpu_blas main.cpp)
     target_link_libraries(cpu_blas PRIVATE mathprim  GTest::gtest_main)
+    add_test(NAME cpu_blas COMMAND cpu_blas)
 endif()
