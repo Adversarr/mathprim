@@ -1,4 +1,5 @@
 #pragma once
+#include <cuda/stream_ref>
 #include <thrust/execution_policy.h>
 #include <thrust/for_each.h>
 #include <thrust/iterator/counting_iterator.h>
@@ -12,7 +13,8 @@ namespace par {
 
 namespace internal {
 
-template <typename sgrid_t, typename sblock_t, bool IsNaive = (sgrid_t::ndim <= 3 && sblock_t::ndim <= 3)>
+template <typename sgrid_t, typename sblock_t,
+          bool IsNaive = (sgrid_t::ndim <= 3 && sblock_t::ndim <= 3)>
 struct launcher;
 
 template <typename CudaT>
@@ -66,37 +68,41 @@ __global__ void do_work_naive(Fn fn) {
 template <index_t... sgrids, index_t... sblocks>
 struct launcher<index_pack<sgrids...>, index_pack<sblocks...>, true> {
   template <typename Fn>
-  void run(const index_pack<sgrids...> &grids, const index_pack<sblocks...> &blocks, Fn &&fn) const noexcept {
+  void run(const index_pack<sgrids...> &grids,
+           const index_pack<sblocks...> &blocks, Fn &&fn) const noexcept {
     dim3 grid_dim;
     to_cuda(grids.to_array(), grid_dim);
     dim3 block_dim;
     to_cuda(blocks.to_array(), block_dim);
 
-    do_work_naive<sizeof...(sgrids), sizeof...(sblocks)><<<grid_dim, block_dim>>>(fn);
+    do_work_naive<sizeof...(sgrids), sizeof...(sblocks)>
+        <<<grid_dim, block_dim>>>(fn);
   }
 
   template <typename Fn>
   void run(const index_pack<sgrids...> &grids, Fn &&fn) const noexcept {
     auto begin = thrust::make_counting_iterator(0);
     auto end = thrust::make_counting_iterator(grids.numel());
-    thrust::for_each(thrust::device, begin, end, [fn, grids] __device__(index_t idx) {
-      fn(ind2sub(grids, idx));
-    });
+    thrust::for_each(
+        thrust::device, begin, end,
+        [fn, grids] __device__(index_t idx) { fn(ind2sub(grids, idx)); });
   }
 };
 
 template <index_t... sgrids, index_t... sblocks>
 struct launcher<index_pack<sgrids...>, index_pack<sblocks...>, false> {
   template <typename Fn>
-  void run(const index_pack<sgrids...> &grids, const index_pack<sblocks...> &blocks, Fn &&fn) const noexcept {
+  void run(const index_pack<sgrids...> &grids,
+           const index_pack<sblocks...> &blocks, Fn &&fn) const noexcept {
     auto total_grids = grids.numel(), total_blocks = blocks.numel();
     auto beg = thrust::make_counting_iterator(0);
     auto end = thrust::make_counting_iterator(total_grids * total_blocks);
-    thrust::for_each(thrust::device, beg, end, [fn, grids, blocks] __device__(index_t idx) {
-      auto block_idx = idx / total_blocks;
-      auto thread_idx = idx % total_blocks;
-      fn(ind2sub(grids, block_idx), ind2sub(blocks, thread_idx));
-    });
+    thrust::for_each(
+        thrust::device, beg, end, [fn, grids, blocks] __device__(index_t idx) {
+          auto block_idx = idx / total_blocks;
+          auto thread_idx = idx % total_blocks;
+          fn(ind2sub(grids, block_idx), ind2sub(blocks, thread_idx));
+        });
   }
 
   template <typename Fn>
@@ -104,27 +110,35 @@ struct launcher<index_pack<sgrids...>, index_pack<sblocks...>, false> {
     auto total_grids = grids.numel();
     auto beg = thrust::make_counting_iterator(0);
     auto end = thrust::make_counting_iterator(total_grids);
-    thrust::for_each(thrust::device, beg, end, [fn, grids] __device__(index_t idx) {
-      fn(ind2sub(grids, idx));
-    });
+    thrust::for_each(
+        thrust::device, beg, end,
+        [fn, grids] __device__(index_t idx) { fn(ind2sub(grids, idx)); });
   }
 };
 
-}  // namespace internal
+} // namespace internal
 
 class cuda {
 public:
+  cuda() = default;
+  explicit cuda(::cuda::stream_ref stream) : stream_{stream} {}
+
   template <typename Fn, index_t... sgrids, index_t... sblocks>
-  void run(const index_pack<sgrids...> &grid_dim, const index_pack<sblocks...> &block_dim, Fn &&fn) const noexcept {
-    internal::launcher<index_pack<sgrids...>, index_pack<sblocks...>>{}.run(grid_dim, block_dim, fn);
+  void run(const index_pack<sgrids...> &grid_dim,
+           const index_pack<sblocks...> &block_dim, Fn &&fn) const noexcept {
+    internal::launcher<index_pack<sgrids...>, index_pack<sblocks...>>{}.run(
+        grid_dim, block_dim, fn);
   }
 
   template <typename Fn, index_t... sgrids>
   void run(const index_pack<sgrids...> &grid_dim, Fn &&fn) const noexcept {
     internal::launcher<index_pack<sgrids...>, index_pack<>>{}.run(grid_dim, fn);
   }
+
+private:
+  ::cuda::stream_ref stream_; ///< CUDA stream: default stream
 };
 
-}  // namespace par
+} // namespace par
 
-}  // namespace mathprim
+} // namespace mathprim

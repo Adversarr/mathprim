@@ -172,7 +172,7 @@ struct basic_blas {
 
   template <typename sshape, typename sstride>
   Scalar asum(const_type<sshape, sstride> x) {
-    if (!internal::is_capable_vector<Scalar>(x)) {
+    if (!internal::is_capable_vector(x)) {
       throw std::runtime_error("Incompatible views for BLAS asum.");
     }
 

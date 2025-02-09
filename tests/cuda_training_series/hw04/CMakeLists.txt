@@ -1,0 +1,1 @@
+add_executable(cts_hw04_01 01.cu)
