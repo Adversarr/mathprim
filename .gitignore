@@ -18,3 +18,4 @@ __pycache__
 
 .vs
 .vscode
+/CMakeSettings.json
