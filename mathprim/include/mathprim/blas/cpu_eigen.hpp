@@ -2,9 +2,9 @@
 
 #include <cmath>
 
+#include "mathprim/blas/blas.hpp"
 #include "mathprim/core/defines.hpp"
 #include "mathprim/supports/eigen_dense.hpp"
-#include "mathprim/blas/blas.hpp"
 
 namespace mathprim {
 namespace blas {
@@ -82,19 +82,15 @@ struct cpu_eigen : public basic_blas<cpu_eigen<T>, T, device::cpu> {
   }
 
   // element-wise operatons
-  // y = alpha * x * y + beta * y
-  template <typename sshape_x, typename sstride_x, typename sshape_y, typename sstride_y>
-  void emul_impl(T alpha, const_type<sshape_x, sstride_x> x, T beta, view_type<sshape_y, sstride_y> y) {
+  // Y <- alpha * A * X + beta * Y
+  template <typename sshape_a, typename sstride_a, typename sshape_x, typename sstride_x, typename sshape_y,
+            typename sstride_y>
+  void emul_impl(T alpha, const_type<sshape_a, sstride_a> a, const_type<sshape_x, sstride_x> x, T beta,
+            view_type<sshape_y, sstride_y> y) {
     auto map_x = eigen_support::amap(x.safe_flatten());
     auto map_y = eigen_support::amap(y.safe_flatten());
-    map_y = (alpha * map_x.array() * map_y.array() + beta * map_y.array()).matrix();
-  }
-  // y = alpha * x / y + beta * y
-  template <typename sshape_x, typename sstride_x, typename sshape_y, typename sstride_y>
-  void ediv_impl(T alpha, const_type<sshape_x, sstride_x> x, T beta, view_type<sshape_y, sstride_y> y) {
-    auto map_x = eigen_support::amap(x.safe_flatten());
-    auto map_y = eigen_support::amap(y.safe_flatten());
-    map_y = (alpha * map_x.array() / map_y.array() + beta * map_y.array()).matrix();
+    auto map_a = eigen_support::amap(a.safe_flatten());
+    map_y = (alpha * map_x.array() * map_a.array() + beta * map_y.array()).matrix();
   }
 
   // // Level 2
@@ -127,7 +123,6 @@ struct cpu_eigen : public basic_blas<cpu_eigen<T>, T, device::cpu> {
     }
   }
 
-
   // // Level 3
   // // C <- alpha * A * B + beta * C
   template <typename sshape_A, typename sstride_A, typename sshape_B, typename sstride_B, typename sshape_C,
@@ -149,7 +144,7 @@ struct cpu_eigen : public basic_blas<cpu_eigen<T>, T, device::cpu> {
         auto map_B = eigen_support::cmap(b_transpose);
         auto map_C = eigen_support::cmap(c_transpose);
         map_C *= beta;
-        map_C += alpha * map_A * map_B; // C.T += alpha * A.T * B.T <=> C += alpha * B * A
+        map_C += alpha * map_A * map_B;  // C.T += alpha * A.T * B.T <=> C += alpha * B * A
       } else {
         auto map_A = eigen_support::amap(A);
         auto map_B = eigen_support::amap(B);

@@ -7,20 +7,19 @@
 #include "mathprim/core/defines.hpp"
 #ifdef MATHPRIM_BLAS_VENDOR_APPLE
 #  include <Accelerate/Accelerate.h>
-#ifndef CBLAS_INT
-#  define CBLAS_INT int
-#endif
+#  ifndef CBLAS_INT
+#    define CBLAS_INT int
+#  endif
 #else
-#ifdef MATHPRIM_BLAS_VENDOR_OPENBLAS
-#  include <openblas/cblas.h>
-#ifndef CBLAS_INT
-#  define CBLAS_INT blasint
+#  ifdef MATHPRIM_BLAS_VENDOR_OPENBLAS
+#    include <openblas/cblas.h>
+#    ifndef CBLAS_INT
+#      define CBLAS_INT blasint
+#    endif
+#  else
+#    include <cblas.h>
+#  endif
 #endif
-#else
-#  include <cblas.h>
-#endif
-#endif
-
 
 #include <cmath>
 #include <type_traits>
@@ -180,19 +179,25 @@ struct cpu_blas : public basic_blas<cpu_blas<T>, T, device::cpu> {
 
   // element-wise operatons
   // y = x * y
-  template <typename sshape_x, typename sstride_x, typename sshape_y, typename sstride_y>
-  void emul_impl(T alpha, const_type<sshape_x, sstride_x> x, T beta, view_type<sshape_y, sstride_y> y) {
-    auto shape = x.shape();
-    for (auto sub : shape) {
-      y(sub) = y(sub) * beta + y(sub) * alpha * x(sub);
-    }
-  }
-  // y = x / y
-  template <typename sshape_x, typename sstride_x, typename sshape_y, typename sstride_y>
-  void ediv_impl(T alpha, const_type<sshape_x, sstride_x> x, T beta, view_type<sshape_y, sstride_y> y) {
-    auto shape = x.shape();
-    for (auto sub : shape) {
-      y(sub) = y(sub) / beta + y(sub) / alpha / x(sub);
+  template <typename sshape_a, typename sstride_a, typename sshape_x, typename sstride_x, typename sshape_y,
+            typename sstride_y>
+  void emul_impl(Scalar alpha, const_type<sshape_a, sstride_a> a, const_type<sshape_x, sstride_x> x, Scalar beta,
+                 view_type<sshape_y, sstride_y> y) {
+    auto m = x.numel();
+    CBLAS_INT stride_a = internal::vec_stride(a);
+    CBLAS_INT stride_x = internal::vec_stride(x);
+    CBLAS_INT stride_y = internal::vec_stride(y);
+
+    const Scalar *ptr_a = a.data(), *ptr_x = x.data();
+    Scalar *ptr_y = y.data();
+    if constexpr (std::is_same_v<Scalar, float>) {
+      cblas_sgbmv(CblasRowMajor, CblasNoTrans, m, m, 0, 0, alpha, ptr_a, stride_a, ptr_x, stride_x, beta, ptr_y,
+                  stride_y);
+    } else if constexpr (std::is_same_v<Scalar, double>) {
+      cblas_dgbmv(CblasRowMajor, CblasNoTrans, m, m, 0, 0, alpha, ptr_a, stride_a, ptr_x, stride_x, beta, ptr_y,
+                  stride_y);
+    } else {
+      static_assert(::mathprim::internal::always_false_v<Scalar>, "Unsupported type for BLAS emul.");
     }
   }
 

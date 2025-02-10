@@ -94,21 +94,14 @@ struct cpu_handmade : public basic_blas<cpu_handmade<T>, T, device::cpu> {
     return index;
   }
 
-  // element-wise operatons
-  // y = alpha * x * y + beta * y
-  template <typename sshape_x, typename sstride_x, typename sshape_y, typename sstride_y>
-  void emul_impl(T alpha, const_type<sshape_x, sstride_x> x, T beta, view_type<sshape_y, sstride_y> y) {
+  // Y <- alpha * A * X + beta * Y
+  template <typename sshape_a, typename sstride_a, typename sshape_x, typename sstride_x, typename sshape_y,
+            typename sstride_y>
+  void emul(Scalar alpha, const_type<sshape_a, sstride_a> a, const_type<sshape_x, sstride_x> x, Scalar beta,
+            view_type<sshape_y, sstride_y> y) {
     auto shape = x.shape();
     for (auto sub : shape) {
-      y(sub) = y(sub) * beta + y(sub) * alpha * x(sub);
-    }
-  }
-  // y = alpha * x / y + beta * y
-  template <typename sshape_x, typename sstride_x, typename sshape_y, typename sstride_y>
-  void ediv_impl(T alpha, const_type<sshape_x, sstride_x> x, T beta, view_type<sshape_y, sstride_y> y) {
-    auto shape = x.shape();
-    for (auto sub : shape) {
-      y(sub) = y(sub) / beta + y(sub) / alpha / x(sub);
+      y(sub) = y(sub) * beta + alpha * a(sub) * x(sub);
     }
   }
 

@@ -210,21 +210,28 @@ struct cublas : public basic_blas<cublas<T>, T, device::cuda> {
     return result - 1; // cublas uses 1-based indexing
   }
 
-  // element-wise operatons
-  // y = alpha * x * y + beta * y
-  template <typename sshape_x, typename sstride_x, typename sshape_y,
-            typename sstride_y>
-  void emul_impl(T alpha, const_type<sshape_x, sstride_x> x, T beta,
+  // Y <- alpha * A * X + beta * Y
+  template <typename sshape_a, typename sstride_a, typename sshape_x,
+            typename sstride_x, typename sshape_y, typename sstride_y>
+  void emul_impl(Scalar alpha, const_type<sshape_a, sstride_a> a,
+                 const_type<sshape_x, sstride_x> x, Scalar beta,
                  view_type<sshape_y, sstride_y> y) {
-    throw std::runtime_error("Not implemented");
-  }
-
-  // y = alpha * x / y + beta * y
-  template <typename sshape_x, typename sstride_x, typename sshape_y,
-            typename sstride_y>
-  void ediv_impl(T alpha, const_type<sshape_x, sstride_x> x, T beta,
-                 view_type<sshape_y, sstride_y> y) {
-    throw std::runtime_error("Not implemented");
+    auto *handle = internal::get_cublas_handle();
+    auto inc_a = a.stride(-1) / sizeof(T);
+    auto inc_x = x.stride(-1) / sizeof(T);
+    auto inc_y = y.stride(-1) / sizeof(T);
+    if constexpr (std::is_same_v<T, float>) {
+      MATHPRIM_INTERNAL_CUBLAS_CHECK(cublasSgbmv(
+          handle, CUBLAS_OP_N, x.size(), x.size(), 0, 0, &alpha, a.data(),
+          inc_a, x.data(), inc_x, &beta, y.data(), inc_y));
+    } else if constexpr (std::is_same_v<T, double>) {
+      MATHPRIM_INTERNAL_CUBLAS_CHECK(cublasDgbmv(
+          handle, CUBLAS_OP_N, x.size(), x.size(), 0, 0, &alpha, a.data(),
+          inc_a, x.data(), inc_x, &beta, y.data(), inc_y));
+    } else {
+      static_assert(::mathprim::internal::always_false_v<T>,
+                    "Unsupported type");
+    }
   }
 
   // Level 2

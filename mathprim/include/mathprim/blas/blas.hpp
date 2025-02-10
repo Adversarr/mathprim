@@ -188,25 +188,20 @@ struct basic_blas {
     return static_cast<Derived *>(this)->amax_impl(x);
   }
 
-  template <typename sshape_x, typename sstride_x, typename sshape_y, typename sstride_y>
-  void emul(Scalar alpha, const_type<sshape_x, sstride_x> x, Scalar beta, view_type<sshape_y, sstride_y> y) {
-    if (!internal::is_capable_vector(x)) {
+  // Y <- alpha * A * X + beta * Y
+  template <typename sshape_a, typename sstride_a, typename sshape_x, typename sstride_x, typename sshape_y,
+            typename sstride_y>
+  void emul(Scalar alpha, const_type<sshape_a, sstride_a> a, const_type<sshape_x, sstride_x> x, Scalar beta,
+            view_type<sshape_y, sstride_y> y) {
+    if (!internal::is_capable_vector(a)) {
+      throw std::runtime_error("Incompatible views for BLAS emul. (a)");
+    } else if (!internal::is_capable_vector(x)) {
       throw std::runtime_error("Incompatible views for BLAS emul. (x)");
     } else if (!internal::is_capable_vector(y)) {
       throw std::runtime_error("Incompatible views for BLAS emul. (y)");
     }
 
-    static_cast<Derived *>(this)->emul_impl(alpha, x, beta, y);
-  }
-
-  template <typename sshape_x, typename sstride_x, typename sshape_y, typename sstride_y>
-  void ediv(Scalar alpha, const_type<sshape_x, sstride_x> x, Scalar beta, view_type<sshape_y, sstride_y> y) {
-    if (!internal::is_capable_vector(x)) {
-      throw std::runtime_error("Incompatible views for BLAS ediv. (x)");
-    } else if (!internal::is_capable_vector(y)) {
-      throw std::runtime_error("Incompatible views for BLAS ediv. (y)");
-    }
-    static_cast<Derived *>(this)->ediv_impl(alpha, x, beta, y);
+    static_cast<Derived *>(this)->emul_impl(alpha, a, x, beta, y);
   }
 
   template <typename sshape_A, typename sstride_A, typename sshape_x, typename sstride_x, typename sshape_y,
