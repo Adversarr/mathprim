@@ -31,22 +31,22 @@ struct is_index_pack : std::false_type {};
 template <index_t... svalues>
 struct is_index_pack<index_pack<svalues...>> : std::true_type {};
 
-template <typename T, typename seq>
+template <typename seq>
 struct default_stride;
-template <typename T>
-struct default_stride<T, index_seq<>> {
+
+template <>
+struct default_stride<index_seq<>> {
   using type = index_seq<>;
 };
 
-template <typename T, index_t single>
-struct default_stride<T, index_seq<single>> {
-  static_assert((sizeof(T) > static_cast<size_t>(0)), "The type must have a size.");
+template <index_t single>
+struct default_stride<index_seq<single>> {
   using type = index_seq<1>;  // Continuous.
 };
 
-template <typename T, index_t front, index_t... args>
-struct default_stride<T, index_seq<front, args...>> {
-  using last_strides = typename default_stride<T, index_seq<args...>>::type;
+template <index_t front, index_t... args>
+struct default_stride<index_seq<front, args...>> {
+  using last_strides = typename default_stride<index_seq<args...>>::type;
   static constexpr index_t last_stride = god::car<last_strides>::value;
   static constexpr index_t last_dim = god::car<index_seq<args...>>::value;
   using type = typename god::prepend<(last_dim == keep_dim ? keep_dim : last_dim * last_stride), last_strides>::type;
@@ -55,11 +55,11 @@ struct default_stride<T, index_seq<front, args...>> {
 // Aliases:
 template <typename T>
 constexpr bool is_index_pack_v = is_index_pack<T>::value;
-template <typename T, typename pack>
-using default_stride_t = god::to_pack<typename default_stride<T, typename pack::seq>::type>;
+template <typename pack>
+using default_stride_t = god::to_pack<typename default_stride<typename pack::seq>::type>;
 
-template <typename T, typename shape, typename stride>
-constexpr bool is_continuous_compile_time_v = internal::is_compile_time_equal_v<default_stride_t<T, shape>, stride>;
+template <typename shape, typename stride>
+constexpr bool is_continuous_compile_time_v = internal::is_compile_time_equal_v<default_stride_t<shape>, stride>;
 
 template <index_t... svalues, index_t ndim, index_t... seq>
 MATHPRIM_PRIMFUNC index_t sub2ind(const index_pack<svalues...> &stride, const index_array<ndim> &subscript,
@@ -204,8 +204,8 @@ auto make_shape(Args... args) {
  * @tparam T
  * @tparam pack
  */
-template <typename T, typename pack>
-using default_stride_t = internal::default_stride_t<T, pack>;
+template <typename pack>
+using default_stride_t = internal::default_stride_t<pack>;
 
 /**
  * @brief Calculate the byte offset from the subscript.
@@ -213,11 +213,11 @@ using default_stride_t = internal::default_stride_t<T, pack>;
  * @tparam T Scalar type.
  * @tparam svalues
  * @param shape
- * @return default_stride_t<T, index_pack<svalues...>>
+ * @return default_stride_t<index_pack<svalues...>>
  */
 template <typename T, index_t... svalues>
-MATHPRIM_PRIMFUNC default_stride_t<T, index_pack<svalues...>> make_default_stride(index_pack<svalues...> shape) {
-  using Ret = default_stride_t<T, index_pack<svalues...>>;
+MATHPRIM_PRIMFUNC default_stride_t<index_pack<svalues...>> make_default_stride(index_pack<svalues...> shape) {
+  using Ret = default_stride_t<index_pack<svalues...>>;
   Ret stride;
   if constexpr (Ret::fully_static) {
     return stride;

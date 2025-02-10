@@ -175,8 +175,8 @@ using from_eigen_shape_t = std::conditional_t<
 template <typename EigenMatrix, bool is_const, typename device>
 using matrix_view_t
     = basic_view<std::conditional_t<is_const, const typename EigenMatrix::Scalar, typename EigenMatrix::Scalar>,
-                 from_eigen_shape_t<EigenMatrix>,
-                 ::mathprim::default_stride_t<typename EigenMatrix::Scalar, from_eigen_shape_t<EigenMatrix>>, device>;
+                 from_eigen_shape_t<EigenMatrix>, ::mathprim::default_stride_t<from_eigen_shape_t<EigenMatrix>>,
+                 device>;
 
 /// Determine a proper type for mapped vector
 template <typename T, int rows, typename dev>
@@ -230,12 +230,11 @@ MATHPRIM_PRIMFUNC matrix_map_t<Scalar, to_eigen_v<s_rows>, to_eigen_v<s_cols>, d
 }
 
 template <typename Scalar, index_t s_rows, index_t s_cols, index_t outer_stride, index_t inner_stride, typename dev>
-MATHPRIM_PRIMFUNC std::conditional_t<::mathprim::internal::is_continuous_compile_time_v<
-                                         Scalar, shape_t<s_rows, s_cols>, stride_t<outer_stride, inner_stride>>,
+MATHPRIM_PRIMFUNC std::conditional_t<::mathprim::internal::is_continuous_compile_time_v<shape_t<s_rows, s_cols>, stride_t<outer_stride, inner_stride>>,
                                      matrix_cmap_t<Scalar, to_eigen_v<s_rows>, to_eigen_v<s_cols>, dev>,
                                      matrix_map_t<Scalar, to_eigen_v<s_rows>, to_eigen_v<s_cols>, dev>>
 amap(basic_view<Scalar, shape_t<s_rows, s_cols>, stride_t<outer_stride, inner_stride>, dev> view) noexcept {
-  if constexpr (::mathprim::internal::is_continuous_compile_time_v<Scalar, shape_t<s_rows, s_cols>,
+  if constexpr (::mathprim::internal::is_continuous_compile_time_v<shape_t<s_rows, s_cols>,
                                                                    stride_t<outer_stride, inner_stride>>) {
     return cmap<Scalar, s_rows, s_cols, outer_stride, inner_stride, dev>(view);
   } else {
@@ -245,10 +244,10 @@ amap(basic_view<Scalar, shape_t<s_rows, s_cols>, stride_t<outer_stride, inner_st
 
 template <typename Scalar, index_t s_rows, index_t inner_stride, typename dev>
 MATHPRIM_PRIMFUNC std::conditional_t<
-    ::mathprim::internal::is_continuous_compile_time_v<Scalar, shape_t<s_rows>, stride_t<inner_stride>>,
+    ::mathprim::internal::is_continuous_compile_time_v<shape_t<s_rows>, stride_t<inner_stride>>,
     vector_cmap_t<Scalar, to_eigen_v<s_rows>, dev>, vector_map_t<Scalar, to_eigen_v<s_rows>, dev>>
 amap(basic_view<Scalar, shape_t<s_rows>, stride_t<inner_stride>, dev> view) noexcept {
-  if constexpr (::mathprim::internal::is_continuous_compile_time_v<Scalar, shape_t<s_rows>, stride_t<inner_stride>>) {
+  if constexpr (::mathprim::internal::is_continuous_compile_time_v<shape_t<s_rows>, stride_t<inner_stride>>) {
     return cmap<Scalar, s_rows, inner_stride, dev>(view);
   } else {
     return map<Scalar, s_rows, inner_stride, dev>(view);

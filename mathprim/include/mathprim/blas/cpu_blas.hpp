@@ -35,7 +35,7 @@ constexpr CBLAS_TRANSPOSE invert(CBLAS_TRANSPOSE from) {
 
 template <typename Scalar, typename sshape, typename sstride, typename device>
 constexpr CBLAS_INT vec_stride(basic_view<Scalar, sshape, sstride, device> view) {
-  return view.stride(-1); // / static_cast<index_t>(sizeof(Scalar));
+  return view.stride(-1);
 }
 
 constexpr CBLAS_TRANSPOSE to_blas(matrix_op mat_op) {

@@ -112,8 +112,7 @@ public:
   using indexing_type
       = std::conditional_t<ndim == 1, reference,
                            basic_view<T, internal::slice_t<0, sshape>, internal::slice_t<0, sstride>, dev>>;
-  static constexpr bool is_contiguous_at_compile_time
-      = internal::is_compile_time_equal_v<sstride, default_stride_t<T, sshape>>;
+  static constexpr bool is_contiguous_at_compile_time = internal::is_continuous_compile_time_v<sshape, sstride>;
 
   ///////////////////////////////////////////////////////////////////////////////
   /// Constructors
@@ -425,7 +424,7 @@ MATHPRIM_PRIMFUNC dimension_iterator<T, sshape, sstride, dev> operator+(
 }
 
 template <typename T, typename sshape, typename device>
-using continuous_view = basic_view<T, sshape, default_stride_t<T, sshape>, device>;
+using continuous_view = basic_view<T, sshape, default_stride_t<sshape>, device>;
 template <typename base_view>
 using field_t = internal::field_t<base_view>;
 
@@ -433,12 +432,12 @@ using field_t = internal::field_t<base_view>;
 /// Create views
 ///////////////////////////////////////////////////////////////////////////////
 
-template <typename device = device::cpu, typename T, typename sshape, typename sstride = default_stride_t<T, sshape>>
+template <typename device = device::cpu, typename T, typename sshape, typename sstride = default_stride_t<sshape>>
 basic_view<T, sshape, sstride, device> view(T *data, const sshape &shape) {
   return basic_view<T, sshape, sstride, device>(data, shape);
 }
 
-template <typename device = device::cpu, typename T, typename sshape, typename sstride = default_stride_t<T, sshape>>
+template <typename device = device::cpu, typename T, typename sshape, typename sstride = default_stride_t<sshape>>
 basic_view<T, sshape, sstride, device> view(T *data, const sshape &shape, const sstride &stride) {
   return basic_view<T, sshape, sstride, device>(data, shape, stride);
 }

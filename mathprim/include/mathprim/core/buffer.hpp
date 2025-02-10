@@ -155,7 +155,7 @@ private:
 };
 
 template <typename T, typename sshape, typename dev>
-using continuous_buffer = basic_buffer<T, sshape, default_stride_t<T, sshape>, dev>;
+using continuous_buffer = basic_buffer<T, sshape, default_stride_t<sshape>, dev>;
 
 /**
  * @brief The default creator for a buffer.
@@ -167,7 +167,7 @@ using continuous_buffer = basic_buffer<T, sshape, default_stride_t<T, sshape>, d
 template <typename T, typename dev = device::cpu, typename sshape>
 continuous_buffer<T, sshape, dev> make_buffer(const sshape &shape) {
   auto ptr = static_cast<T *>(dev{}.malloc(sizeof(T) * mathprim::numel(shape)));
-  return basic_buffer<T, sshape, default_stride_t<T, sshape>, dev>(ptr, shape);
+  return basic_buffer<T, sshape, default_stride_t<sshape>, dev>(ptr, shape);
 }
 
 /**

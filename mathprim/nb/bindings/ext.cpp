@@ -23,7 +23,7 @@ void print_mat_view(nb::ndarray<float, nb::shape<-1, -1>>& matrix) {
   std::cout << view << std::endl;
 }
 
-template <typename T, typename sshape, typename dev, typename sstride = mp::default_stride_t<T, sshape>>
+template <typename T, typename sshape, typename dev, typename sstride = mp::default_stride_t<sshape>>
 auto test_view() {
   static T* data = nullptr;
   mp::basic_view<T, sshape, sstride, dev> view(data, sshape());
