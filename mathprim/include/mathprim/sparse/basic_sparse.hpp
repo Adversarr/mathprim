@@ -12,48 +12,47 @@ enum class sparse_format {
 
 enum class sparse_property {
   general,
-  symmetric,    // currently, we do not support symmetric uplo compression
+  symmetric,  // currently, we do not support symmetric uplo compression
   hermitian,
   skew_symmetric
 };
 
-template <typename Scalar, device_t dev, sparse_format format> class basic_sparse_view {
+template <typename Scalar, typename device>
+class basic_sparse_view {
 public:
+  using values_view = continuous_view<Scalar, shape_t<keep_dim>, device>;
+  using ptrs_view = continuous_view<index_t, shape_t<keep_dim>, device>;
 
 private:
-  const basic_view<Scalar, 1, dev> values_;
-  const basic_view<index_t, 1, dev> outer_ptrs_;
-  const basic_view<index_t, 1, dev> inner_indices_;
+  values_view values_;
+  ptrs_view outer_ptrs_;
+  ptrs_view inner_indices_;
 
   index_t rows_;
   index_t cols_;
   index_t nnz_;
-  sparse_property property_;
+  sparse_property property_{sparse_property::general};
+  bool transpose_{false};
 };
 
-template <typename Scalar, device_t dev> class basic_sparse_storage {
+// Sparse BLAS basic API.
+template <typename Scalar, typename device>
+class sparse_blas_base {
 public:
-  explicit basic_sparse_storage(index_t rows, index_t cols, index_t nnz) noexcept :
-      rows_(rows), cols_(cols), nnz_(nnz) {}
+  using vector_view = continuous_view<Scalar, shape_t<keep_dim>, device>;
+  using const_vector_view = continuous_view<const Scalar, shape_t<keep_dim>, device>;
+  using sparse_view = basic_sparse_view<Scalar, device>;
+  using const_sparse_view = basic_sparse_view<const Scalar, device>;
+  explicit sparse_blas_base(const_sparse_view matrix_view) : mat_(matrix_view) {}
 
-  index_t rows() const noexcept {
-    return rows_;
-  }
-  index_t cols() const noexcept {
-    return cols_;
-  }
-  index_t nnz() const noexcept {
-    return nnz_;
-  }
+  // y = alpha * A * x + beta * y.
+  virtual void gemv(Scalar alpha, const_vector_view x, Scalar beta, vector_view y) = 0;
 
-private:
-  basic_buffer<Scalar, 1, dev> values_;
-  basic_buffer<index_t, 1, dev> outer_ptrs_;
-  basic_buffer<index_t, 1, dev> inner_indices_;
+  // // <x, y>_A = x^T * A * y.
+  // virtual Scalar inner(const_vector_view x, const_vector_view y) = 0;
 
-  index_t rows_;
-  index_t cols_;
-  index_t nnz_;
+protected:
+  const_sparse_view mat_;
 };
 
 }  // namespace mathprim::sparse
