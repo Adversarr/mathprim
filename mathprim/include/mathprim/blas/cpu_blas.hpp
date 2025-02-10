@@ -35,7 +35,7 @@ constexpr CBLAS_TRANSPOSE invert(CBLAS_TRANSPOSE from) {
 
 template <typename Scalar, typename sshape, typename sstride, typename device>
 constexpr CBLAS_INT vec_stride(basic_view<Scalar, sshape, sstride, device> view) {
-  return view.stride(-1) / static_cast<index_t>(sizeof(Scalar));
+  return view.stride(-1); // / static_cast<index_t>(sizeof(Scalar));
 }
 
 constexpr CBLAS_TRANSPOSE to_blas(matrix_op mat_op) {
@@ -212,14 +212,14 @@ struct cpu_blas : public basic_blas<cpu_blas<T>, T, device::cpu> {
     auto mat_op = internal::to_blas(internal::get_matrix_op(A));
     CBLAS_INT lda = 0;
     if (mat_op == CblasNoTrans) {
-      lda = A.stride(-2) / static_cast<index_t>(sizeof(T));
+      lda = A.stride(-2);
     } else {
-      lda = A.stride(-1) / static_cast<index_t>(sizeof(T));
+      lda = A.stride(-1);
       std::swap(n, m);  // Transpose the matrix.
     }
 
-    CBLAS_INT incx = x.stride(-1) / static_cast<index_t>(sizeof(T));
-    CBLAS_INT incy = y.stride(-1) / static_cast<index_t>(sizeof(T));
+    CBLAS_INT incx = x.stride(-1);
+    CBLAS_INT incy = y.stride(-1);
     if constexpr (std::is_same_v<Scalar, float>) {
       cblas_sgemv(CblasRowMajor, mat_op, n, m, alpha, A.data(), lda, x.data(), incx, beta, y.data(), incy);
     } else if constexpr (std::is_same_v<Scalar, double>) {
@@ -249,18 +249,18 @@ struct cpu_blas : public basic_blas<cpu_blas<T>, T, device::cpu> {
     auto mat_op_B = internal::to_blas(internal::get_matrix_op(B));
     CBLAS_INT lda = 0;
     CBLAS_INT ldb = 0;
-    CBLAS_INT ldc = C.stride(-2) / static_cast<index_t>(sizeof(T));
+    CBLAS_INT ldc = C.stride(-2);
 
     if (mat_op_A == CblasNoTrans) {
-      lda = A.stride(-2) / static_cast<index_t>(sizeof(T));
+      lda = A.stride(-2);
     } else {
-      lda = A.stride(-1) / static_cast<index_t>(sizeof(T));
+      lda = A.stride(-1);
     }
 
     if (mat_op_B == CblasNoTrans) {
-      ldb = B.stride(-2) / static_cast<index_t>(sizeof(T));
+      ldb = B.stride(-2);
     } else {
-      ldb = B.stride(-1) / static_cast<index_t>(sizeof(T));
+      ldb = B.stride(-1);
     }
 
     if constexpr (std::is_same_v<T, float>) {

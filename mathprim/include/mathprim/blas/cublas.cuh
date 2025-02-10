@@ -67,8 +67,8 @@ struct cublas : public basic_blas<cublas<T>, T, device::cuda> {
   void copy_impl(view_type<sshape_dst, sstride_dst> dst,
                  const_type<sshape_src, sstride_src> src) {
     auto *handle = internal::get_cublas_handle();
-    auto inc_dst = dst.stride(-1) / sizeof(T);
-    auto inc_src = src.stride(-1) / sizeof(T);
+    auto inc_dst = dst.stride(-1);
+    auto inc_src = src.stride(-1);
     if constexpr (std::is_same_v<T, float>) {
       MATHPRIM_INTERNAL_CUBLAS_CHECK(cublasScopy(handle, src.size(), src.data(),
                                                  inc_src, dst.data(), inc_dst));
@@ -84,7 +84,7 @@ struct cublas : public basic_blas<cublas<T>, T, device::cuda> {
   template <typename sshape, typename sstride>
   void scal_impl(T alpha, view_type<sshape, sstride> src) {
     auto *handle = internal::get_cublas_handle();
-    auto inc_src = src.stride(-1) / sizeof(T);
+    auto inc_src = src.stride(-1);
     if constexpr (std::is_same_v<T, float>) {
       MATHPRIM_INTERNAL_CUBLAS_CHECK(
           cublasSscal(handle, src.size(), &alpha, src.data(), inc_src));
@@ -102,8 +102,8 @@ struct cublas : public basic_blas<cublas<T>, T, device::cuda> {
   void swap_impl(view_type<sshape_src, sstride_src> src,
                  view_type<sshape_dst, sstride_dst> dst) {
     auto *handle = internal::get_cublas_handle();
-    auto inc_src = src.stride(-1) / sizeof(T);
-    auto inc_dst = dst.stride(-1) / sizeof(T);
+    auto inc_src = src.stride(-1);
+    auto inc_dst = dst.stride(-1);
     if constexpr (std::is_same_v<T, float>) {
       MATHPRIM_INTERNAL_CUBLAS_CHECK(cublasSswap(handle, src.size(), src.data(),
                                                  inc_src, dst.data(), inc_dst));
@@ -121,8 +121,8 @@ struct cublas : public basic_blas<cublas<T>, T, device::cuda> {
   void axpy_impl(T alpha, const_type<sshape_x, sstride_x> x,
                  view_type<sshape_y, sstride_y> y) {
     auto *handle = internal::get_cublas_handle();
-    auto inc_x = x.stride(-1) / sizeof(T);
-    auto inc_y = y.stride(-1) / sizeof(T);
+    auto inc_x = x.stride(-1);
+    auto inc_y = y.stride(-1);
     if constexpr (std::is_same_v<T, float>) {
       MATHPRIM_INTERNAL_CUBLAS_CHECK(cublasSaxpy(
           handle, x.size(), &alpha, x.data(), inc_x, y.data(), inc_y));
@@ -140,8 +140,8 @@ struct cublas : public basic_blas<cublas<T>, T, device::cuda> {
   T dot_impl(const_type<sshape_x, sstride_x> x,
              const_type<sshape_y, sstride_y> y) {
     auto *handle = internal::get_cublas_handle();
-    auto inc_x = x.stride(-1) / sizeof(T);
-    auto inc_y = y.stride(-1) / sizeof(T);
+    auto inc_x = x.stride(-1);
+    auto inc_y = y.stride(-1);
     T result;
     if constexpr (std::is_same_v<T, float>) {
       MATHPRIM_INTERNAL_CUBLAS_CHECK(cublasSdot(
@@ -159,7 +159,7 @@ struct cublas : public basic_blas<cublas<T>, T, device::cuda> {
   template <typename sshape, typename sstride>
   T norm_impl(const_type<sshape, sstride> x) {
     auto *handle = internal::get_cublas_handle();
-    auto inc_x = x.stride(-1) / sizeof(T);
+    auto inc_x = x.stride(-1);
     T result;
     if constexpr (std::is_same_v<T, float>) {
       MATHPRIM_INTERNAL_CUBLAS_CHECK(
@@ -177,7 +177,7 @@ struct cublas : public basic_blas<cublas<T>, T, device::cuda> {
   template <typename sshape, typename sstride>
   T asum_impl(const_type<sshape, sstride> x) {
     auto *handle = internal::get_cublas_handle();
-    auto inc_x = x.stride(-1) / sizeof(T);
+    auto inc_x = x.stride(-1);
     T result;
     if constexpr (std::is_same_v<T, float>) {
       MATHPRIM_INTERNAL_CUBLAS_CHECK(
@@ -195,7 +195,7 @@ struct cublas : public basic_blas<cublas<T>, T, device::cuda> {
   template <typename sshape, typename sstride>
   index_t amax_impl(const_type<sshape, sstride> x) {
     auto *handle = internal::get_cublas_handle();
-    auto inc_x = x.stride(-1) / sizeof(T);
+    auto inc_x = x.stride(-1);
     int result;
     if constexpr (std::is_same_v<T, float>) {
       MATHPRIM_INTERNAL_CUBLAS_CHECK(
@@ -217,9 +217,9 @@ struct cublas : public basic_blas<cublas<T>, T, device::cuda> {
                  const_type<sshape_x, sstride_x> x, Scalar beta,
                  view_type<sshape_y, sstride_y> y) {
     auto *handle = internal::get_cublas_handle();
-    auto inc_a = a.stride(-1) / sizeof(T);
-    auto inc_x = x.stride(-1) / sizeof(T);
-    auto inc_y = y.stride(-1) / sizeof(T);
+    auto inc_a = a.stride(-1);
+    auto inc_x = x.stride(-1);
+    auto inc_y = y.stride(-1);
     if constexpr (std::is_same_v<T, float>) {
       MATHPRIM_INTERNAL_CUBLAS_CHECK(cublasSgbmv(
           handle, CUBLAS_OP_N, x.size(), x.size(), 0, 0, &alpha, a.data(),
@@ -242,20 +242,20 @@ struct cublas : public basic_blas<cublas<T>, T, device::cuda> {
                  const_type<sshape_x, sstride_x> x, T beta,
                  view_type<sshape_y, sstride_y> y) {
     auto *handle = internal::get_cublas_handle();
-    auto inc_x = x.stride(-1) / sizeof(T);
-    auto inc_y = y.stride(-1) / sizeof(T);
+    auto inc_x = x.stride(-1);
+    auto inc_y = y.stride(-1);
     auto a_op = internal::get_matrix_op(A);
     int lda = 0, cols = 0, rows = 0;
     cublasOperation_t op;
 
     // Our API is row-major, so we need to transpose the matrix
     if (a_op == internal::matrix_op::none) {
-      lda = A.stride(0) / sizeof(T);
+      lda = A.stride(0);
       rows = A.shape(1);
       cols = A.shape(0);
       op = CUBLAS_OP_T;
     } else {
-      lda = A.stride(1) / sizeof(T);
+      lda = A.stride(1);
       rows = A.shape(0);
       cols = A.shape(1);
       op = CUBLAS_OP_N;
@@ -286,12 +286,12 @@ struct cublas : public basic_blas<cublas<T>, T, device::cuda> {
     auto a_op = internal::get_matrix_op(A);
     auto b_op = internal::get_matrix_op(B);
     auto c_op = internal::get_matrix_op(C);
-    int lda = a_op == internal::matrix_op::none ? A.stride(0) / sizeof(T)
-                                                : A.stride(1) / sizeof(T);
-    int ldb = b_op == internal::matrix_op::none ? B.stride(0) / sizeof(T)
-                                                : B.stride(1) / sizeof(T);
-    int ldc = c_op == internal::matrix_op::none ? C.stride(0) / sizeof(T)
-                                                : C.stride(1) / sizeof(T);
+    int lda = a_op == internal::matrix_op::none ? A.stride(0)
+                                                : A.stride(1);
+    int ldb = b_op == internal::matrix_op::none ? B.stride(0)
+                                                : B.stride(1);
+    int ldc = c_op == internal::matrix_op::none ? C.stride(0)
+                                                : C.stride(1);
 
     // If c_op == none, then C is row-major, do C.T <- alpha * B.T * A.T + beta
     // * C.T

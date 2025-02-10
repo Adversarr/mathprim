@@ -12,23 +12,6 @@ namespace mathprim {
 ///////////////////////////////////////////////////////////////////////////////
 namespace internal {
 
-// Apply byte offset
-template <index_t... svalues, index_t ndim, index_t... seq>
-MATHPRIM_PRIMFUNC index_t byte_offset2(const stride_t<svalues...> &stride, const index_array<ndim> &subscript,
-                                       index_seq<seq...> /*seq*/) noexcept {
-  return ((stride.template get<seq>() * subscript.template get<seq>()) + ...);
-}
-
-// Apply byte offset
-template <typename T>
-constexpr MATHPRIM_PRIMFUNC T *apply_byte_offset(T *data, index_t offset) noexcept {
-  if constexpr (std::is_const_v<T>) {
-    return reinterpret_cast<T *>(reinterpret_cast<const char *>(data) + offset);
-  } else {
-    return reinterpret_cast<T *>(reinterpret_cast<char *>(data) + offset);
-  }
-}
-
 // Flatten
 template <typename seq>
 struct flatten;
@@ -235,7 +218,8 @@ public:
       if constexpr (is_contiguous_at_compile_time) {
         return data_[i];
       } else {
-        return *internal::apply_byte_offset<T>(data_, i * stride_.template get<0>());
+        index_t offset = i * stride_.template get<0>();
+        return data_[offset];
       }
     } else {
       return slice<0>(i);
@@ -248,15 +232,9 @@ public:
     MATHPRIM_ASSERT(is_in_bound(shape_, index));
     if constexpr (ndim == 1 && is_contiguous_at_compile_time) {
       return data_[index[0]];
-    } else if constexpr (god::last_v<index_seq<sstride_values...>> != keep_dim
-               && god::last_v<index_seq<sshape_values...>> % sizeof(T) == 0) {
-      constexpr index_t last = god::last_v<index_seq<sstride_values...>> / sizeof(T);
-      const index_t offset = internal::byte_offset2(stride_, index, make_index_seq<ndim - 1>{});
-      auto *ptr = internal::apply_byte_offset<T>(data_, offset);
-      return *(ptr + last);
     } else {
-      const index_t offset = byte_offset(stride_, index);
-      return *internal::apply_byte_offset<T>(data_, offset);
+      const index_t offset = sub2ind(stride_, index);
+      return data_[offset];
     }
   }
 
@@ -293,8 +271,8 @@ public:
   template <index_t i = 0>
   MATHPRIM_PRIMFUNC basic_view<T, internal::slice_t<i, sshape>, internal::slice_t<i, sstride>, dev> slice(
       index_t batch = 0) const noexcept {
-    return {internal::apply_byte_offset(data_, batch * stride_.template get<i>()), ::mathprim::slice<i>(shape_),
-            ::mathprim::slice<i>(stride_)};
+    auto offset = batch * stride_.template get<i>();
+    return {data_ + offset, ::mathprim::slice<i>(shape_), ::mathprim::slice<i>(stride_)};
   }
 
   /**

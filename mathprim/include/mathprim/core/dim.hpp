@@ -41,7 +41,7 @@ struct default_stride<T, index_seq<>> {
 template <typename T, index_t single>
 struct default_stride<T, index_seq<single>> {
   static_assert((sizeof(T) > static_cast<size_t>(0)), "The type must have a size.");
-  using type = index_seq<static_cast<index_t>(sizeof(T))>;  // Continuous.
+  using type = index_seq<1>;  // Continuous.
 };
 
 template <typename T, index_t front, index_t... args>
@@ -62,8 +62,8 @@ template <typename T, typename shape, typename stride>
 constexpr bool is_continuous_compile_time_v = internal::is_compile_time_equal_v<default_stride_t<T, shape>, stride>;
 
 template <index_t... svalues, index_t ndim, index_t... seq>
-MATHPRIM_PRIMFUNC index_t byte_offset(const index_pack<svalues...> &stride, const index_array<ndim> &subscript,
-                                      const index_seq<seq...> & /* seq */) noexcept {
+MATHPRIM_PRIMFUNC index_t sub2ind(const index_pack<svalues...> &stride, const index_array<ndim> &subscript,
+                                  const index_seq<seq...> & /* seq */) noexcept {
   return ((stride.template get<seq>() * subscript.template get<seq>()) + ...);
 }
 
@@ -200,20 +200,20 @@ auto make_shape(Args... args) {
 
 /**
  * @brief Default stride for a given shape, in bytes.
- * 
- * @tparam T 
- * @tparam pack 
+ *
+ * @tparam T
+ * @tparam pack
  */
 template <typename T, typename pack>
 using default_stride_t = internal::default_stride_t<T, pack>;
 
 /**
  * @brief Calculate the byte offset from the subscript.
- * 
+ *
  * @tparam T Scalar type.
- * @tparam svalues 
- * @param shape 
- * @return default_stride_t<T, index_pack<svalues...>>  
+ * @tparam svalues
+ * @param shape
+ * @return default_stride_t<T, index_pack<svalues...>>
  */
 template <typename T, index_t... svalues>
 MATHPRIM_PRIMFUNC default_stride_t<T, index_pack<svalues...>> make_default_stride(index_pack<svalues...> shape) {
@@ -222,7 +222,7 @@ MATHPRIM_PRIMFUNC default_stride_t<T, index_pack<svalues...>> make_default_strid
   if constexpr (Ret::fully_static) {
     return stride;
   } else {
-    stride[ndim(shape) - 1] = sizeof(T);
+    stride[ndim(shape) - 1] = 1;
     for (index_t i = ndim(shape) - 2; i >= 0; --i) {
       stride[i] = stride[i + 1] * shape[i + 1];
     }
@@ -231,9 +231,9 @@ MATHPRIM_PRIMFUNC default_stride_t<T, index_pack<svalues...>> make_default_strid
 }
 
 template <index_t... svalues, index_t ndim>
-MATHPRIM_PRIMFUNC index_t byte_offset(const stride_t<svalues...> &stride, const index_array<ndim> &subscript) noexcept {
+MATHPRIM_PRIMFUNC index_t sub2ind(const stride_t<svalues...> &stride, const index_array<ndim> &subscript) noexcept {
   static_assert(ndim == sizeof...(svalues), "The subscript and stride must have the same dimension.");
-  return internal::byte_offset(stride, subscript, make_index_seq<ndim>{});
+  return internal::sub2ind(stride, subscript, make_index_seq<ndim>{});
 }
 
 template <index_t... svalues>
@@ -250,11 +250,11 @@ MATHPRIM_PRIMFUNC index_array<index_pack<svalues...>::ndim> ind2sub(const shape_
 
 /**
  * @brief Check if the index is in bound.
- * 
- * @tparam svalues 
- * @param shape 
- * @param index 
- * @return MATHPRIM_PRIMFUNC 
+ *
+ * @tparam svalues
+ * @param shape
+ * @param index
+ * @return MATHPRIM_PRIMFUNC
  */
 template <index_t... svalues>
 MATHPRIM_PRIMFUNC bool is_in_bound(const shape_t<svalues...> &shape,

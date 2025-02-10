@@ -38,9 +38,8 @@ template <typename Scalar, index_t... sshape_values, index_t... sstride_values>
 constexpr bool is_capable_vector(const shape_t<sshape_values...> &shape,
                                  const stride_t<sstride_values...> &stride) noexcept {
   // Only the last stride can vary.
-  constexpr index_t scalar_size = static_cast<index_t>(sizeof(Scalar));
   const index_t last_stride = stride.template get<-1>();
-  const index_t last_stride_elem = last_stride / scalar_size;
+  const index_t last_stride_elem = last_stride;
   const auto default_stride = make_default_stride<Scalar>(shape).to_array();
 
   return last_stride_elem * default_stride == stride.to_array();
@@ -48,10 +47,9 @@ constexpr bool is_capable_vector(const shape_t<sshape_values...> &shape,
 
 template <typename Scalar, index_t srows, index_t scols, index_t lda, index_t elem>
 constexpr bool is_capable_matrix(const shape_t<srows, scols> &shape, const stride_t<lda, elem> &stride) noexcept {
-  constexpr index_t scalar_size = static_cast<index_t>(sizeof(Scalar));
   auto [rows, cols] = shape;
   auto [lda_val, elem_val] = stride;
-  return elem_val == scalar_size && lda_val >= cols * scalar_size;
+  return elem_val == 1 && lda_val >= cols;
 }
 
 template <typename Scalar, typename sshape, typename sstride, typename device>

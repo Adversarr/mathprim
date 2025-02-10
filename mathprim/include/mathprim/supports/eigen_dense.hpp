@@ -226,10 +226,7 @@ MATHPRIM_PRIMFUNC matrix_map_t<Scalar, to_eigen_v<s_rows>, to_eigen_v<s_cols>, d
     basic_view<Scalar, shape_t<s_rows, s_cols>, stride_t<outer_stride, inner_stride>, dev> view) noexcept {
   auto [cols, rows] = view.shape();
   auto [outer, inner] = view.stride();
-  MATHPRIM_ASSERT(outer % sizeof(Scalar) == 0);
-  MATHPRIM_ASSERT(inner % sizeof(Scalar) == 0);
-  return {view.data(), rows, cols,
-          Eigen::Stride<Eigen::Dynamic, Eigen::Dynamic>(outer / sizeof(Scalar), inner / sizeof(Scalar))};
+  return {view.data(), rows, cols, Eigen::Stride<Eigen::Dynamic, Eigen::Dynamic>(outer, inner)};
 }
 
 template <typename Scalar, index_t s_rows, index_t s_cols, index_t outer_stride, index_t inner_stride, typename dev>
@@ -266,8 +263,7 @@ MATHPRIM_PRIMFUNC vector_map_t<Scalar, to_eigen_v<s_rows>, dev> map(
     basic_view<Scalar, shape_t<s_rows>, stride_t<inner_stride>, dev> view) noexcept {
   auto [rows] = view.shape();
   auto [inner] = view.stride();
-  MATHPRIM_ASSERT(inner % sizeof(Scalar) == 0);
-  return {view.data(), rows, Eigen::InnerStride<Eigen::Dynamic>(inner / sizeof(Scalar))};
+  return {view.data(), rows, Eigen::InnerStride<Eigen::Dynamic>(inner)};
 }
 
 /**
@@ -301,10 +297,7 @@ MATHPRIM_PRIMFUNC Eigen::Ref<matrix_t<Scalar, to_eigen_v<s_rows>, to_eigen_v<s_c
 ref(basic_view<Scalar, shape_t<s_rows, s_cols>, stride_t<outer_stride, inner_stride>, dev> view) noexcept {
   auto [rows, cols] = view.shape();
   auto [outer, inner] = view.stride();
-  MATHPRIM_ASSERT(outer % sizeof(Scalar) == 0);
-  MATHPRIM_ASSERT(inner % sizeof(Scalar) == 0);
-  return {view.data(), rows, cols,
-          Eigen::Stride<Eigen::Dynamic, Eigen::Dynamic>(outer / sizeof(Scalar), inner / sizeof(Scalar))};
+  return {view.data(), rows, cols, Eigen::Stride<Eigen::Dynamic, Eigen::Dynamic>(outer, inner)};
 }
 
 /**
@@ -315,8 +308,7 @@ MATHPRIM_PRIMFUNC Eigen::Ref<vector_t<Scalar, to_eigen_v<s_rows>>, alignment_v<S
     basic_view<Scalar, shape_t<s_rows>, stride_t<inner_stride>, dev> view) noexcept {
   auto [rows] = view.shape();
   auto [inner] = view.stride();
-  MATHPRIM_ASSERT(inner % sizeof(Scalar) == 0);
-  return {view.data(), rows, Eigen::InnerStride<Eigen::Dynamic>(inner / sizeof(Scalar))};
+  return {view.data(), rows, Eigen::InnerStride<Eigen::Dynamic>(inner)};
 }
 
 }  // namespace mathprim::eigen_support

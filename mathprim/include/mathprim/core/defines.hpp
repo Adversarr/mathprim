@@ -383,9 +383,9 @@ struct parfor;
 /// Aliases.
 ///////////////////////////////////////////////////////////////////////////////
 
-#define MATHPRIM_INTERNAL_DECLARE_VEC_VIEW(n, t, d)                                                   \
-  using d##_##vec##n##t##_view_t = basic_view<t##_t, shape_t<n>, stride_t<sizeof(t##_t)>, device::d>; \
-  using d##_##vec##n##t##_const_view_t = basic_view<const t##_t, shape_t<n>, stride_t<sizeof(t##_t)>, device::d>
+#define MATHPRIM_INTERNAL_DECLARE_VEC_VIEW(n, t, d)                                       \
+  using d##_##vec##n##t##_view_t = basic_view<t##_t, shape_t<n>, stride_t<1>, device::d>; \
+  using d##_##vec##n##t##_const_view_t = basic_view<const t##_t, shape_t<n>, stride_t<1>, device::d>
 
 MATHPRIM_INTERNAL_DECLARE_VEC_VIEW(2, f32, cpu);
 MATHPRIM_INTERNAL_DECLARE_VEC_VIEW(3, f32, cpu);
@@ -407,24 +407,22 @@ MATHPRIM_INTERNAL_DECLARE_VEC_VIEW(3, index, cuda);
 MATHPRIM_INTERNAL_DECLARE_VEC_VIEW(4, index, cuda);
 #undef MATHPRIM_INTERNAL_DECLARE_VEC_VIEW
 
-using cpu_vecxf32_view_t = basic_view<f32_t, shape_t<-1>, stride_t<sizeof(f32_t)>, device::cpu>;
-using cuda_vecxf32_view_t = basic_view<f32_t, shape_t<-1>, stride_t<sizeof(f32_t)>, device::cuda>;
-using cpu_vecxf64_view_t = basic_view<f64_t, shape_t<-1>, stride_t<sizeof(f64_t)>, device::cpu>;
-using cuda_vecxf64_view_t = basic_view<f64_t, shape_t<-1>, stride_t<sizeof(f64_t)>, device::cuda>;
-using cpu_vecxindex_view_t = basic_view<index_t, shape_t<-1>, stride_t<sizeof(index_t)>, device::cpu>;
-using cuda_vecxindex_view_t = basic_view<index_t, shape_t<-1>, stride_t<sizeof(index_t)>, device::cuda>;
-using cpu_vecxf32_const_view_t = basic_view<const f32_t, shape_t<-1>, stride_t<sizeof(f32_t)>, device::cpu>;
-using cuda_vecxf32_const_view_t = basic_view<const f32_t, shape_t<-1>, stride_t<sizeof(f32_t)>, device::cuda>;
-using cpu_vecxf64_const_view_t = basic_view<const f64_t, shape_t<-1>, stride_t<sizeof(f64_t)>, device::cpu>;
-using cuda_vecxf64_const_view_t = basic_view<const f64_t, shape_t<-1>, stride_t<sizeof(f64_t)>, device::cuda>;
-using cpu_vecxindex_const_view_t = basic_view<const index_t, shape_t<-1>, stride_t<sizeof(index_t)>, device::cpu>;
-using cuda_vecxindex_const_view_t = basic_view<const index_t, shape_t<-1>, stride_t<sizeof(index_t)>, device::cuda>;
+using cpu_vecxf32_view_t = basic_view<f32_t, shape_t<-1>, stride_t<1>, device::cpu>;
+using cuda_vecxf32_view_t = basic_view<f32_t, shape_t<-1>, stride_t<1>, device::cuda>;
+using cpu_vecxf64_view_t = basic_view<f64_t, shape_t<-1>, stride_t<1>, device::cpu>;
+using cuda_vecxf64_view_t = basic_view<f64_t, shape_t<-1>, stride_t<1>, device::cuda>;
+using cpu_vecxindex_view_t = basic_view<index_t, shape_t<-1>, stride_t<1>, device::cpu>;
+using cuda_vecxindex_view_t = basic_view<index_t, shape_t<-1>, stride_t<1>, device::cuda>;
+using cpu_vecxf32_const_view_t = basic_view<const f32_t, shape_t<-1>, stride_t<1>, device::cpu>;
+using cuda_vecxf32_const_view_t = basic_view<const f32_t, shape_t<-1>, stride_t<1>, device::cuda>;
+using cpu_vecxf64_const_view_t = basic_view<const f64_t, shape_t<-1>, stride_t<1>, device::cpu>;
+using cuda_vecxf64_const_view_t = basic_view<const f64_t, shape_t<-1>, stride_t<1>, device::cuda>;
+using cpu_vecxindex_const_view_t = basic_view<const index_t, shape_t<-1>, stride_t<1>, device::cpu>;
+using cuda_vecxindex_const_view_t = basic_view<const index_t, shape_t<-1>, stride_t<1>, device::cuda>;
 
-#define MATHPRIM_INTERNAL_DECLARE_MAT_VIEW(r, c, t, d)                                             \
-  using d##_##mat##r##x##c##t##_view_t                                                             \
-      = basic_view<t##_t, shape_t<r, c>, stride_t<(c) * sizeof(t##_t), sizeof(t##_t)>, device::d>; \
-  using d##_##mat##r##x##c##t##_const_view_t                                                       \
-      = basic_view<const t##_t, shape_t<r, c>, stride_t<(c) * sizeof(t##_t), sizeof(t##_t)>, device::d>
+#define MATHPRIM_INTERNAL_DECLARE_MAT_VIEW(r, c, t, d)                                                \
+  using d##_##mat##r##x##c##t##_view_t = basic_view<t##_t, shape_t<r, c>, stride_t<c, 1>, device::d>; \
+  using d##_##mat##r##x##c##t##_const_view_t = basic_view<const t##_t, shape_t<r, c>, stride_t<c, 1>, device::d>
 MATHPRIM_INTERNAL_DECLARE_MAT_VIEW(2, 2, f32, cpu);
 MATHPRIM_INTERNAL_DECLARE_MAT_VIEW(2, 3, f32, cpu);
 MATHPRIM_INTERNAL_DECLARE_MAT_VIEW(2, 4, f32, cpu);
@@ -482,22 +480,18 @@ MATHPRIM_INTERNAL_DECLARE_MAT_VIEW(4, 3, index, cuda);
 MATHPRIM_INTERNAL_DECLARE_MAT_VIEW(4, 4, index, cuda);
 #undef MATHPRIM_INTERNAL_DECLARE_MAT_VIEW
 
-using cpu_matxxf32_view_t
-    = basic_view<f32_t, shape_t<keep_dim, keep_dim>, stride_t<keep_dim, sizeof(f32_t)>, device::cpu>;
-using cpu_matxxf64_view_t
-    = basic_view<f64_t, shape_t<keep_dim, keep_dim>, stride_t<keep_dim, sizeof(f64_t)>, device::cpu>;
-using cuda_matxxf32_view_t
-    = basic_view<f32_t, shape_t<keep_dim, keep_dim>, stride_t<keep_dim, sizeof(f32_t)>, device::cuda>;
-using cuda_matxxf64_view_t
-    = basic_view<f64_t, shape_t<keep_dim, keep_dim>, stride_t<keep_dim, sizeof(f64_t)>, device::cuda>;
+using cpu_matxxf32_view_t = basic_view<f32_t, shape_t<keep_dim, keep_dim>, stride_t<keep_dim, 1>, device::cpu>;
+using cpu_matxxf64_view_t = basic_view<f64_t, shape_t<keep_dim, keep_dim>, stride_t<keep_dim, 1>, device::cpu>;
+using cuda_matxxf32_view_t = basic_view<f32_t, shape_t<keep_dim, keep_dim>, stride_t<keep_dim, 1>, device::cuda>;
+using cuda_matxxf64_view_t = basic_view<f64_t, shape_t<keep_dim, keep_dim>, stride_t<keep_dim, 1>, device::cuda>;
 using cpu_matxxf32_const_view_t
-    = basic_view<const f32_t, shape_t<keep_dim, keep_dim>, stride_t<keep_dim, sizeof(f32_t)>, device::cpu>;
+    = basic_view<const f32_t, shape_t<keep_dim, keep_dim>, stride_t<keep_dim, 1>, device::cpu>;
 using cpu_matxxf64_const_view_t
-    = basic_view<const f64_t, shape_t<keep_dim, keep_dim>, stride_t<keep_dim, sizeof(f64_t)>, device::cpu>;
+    = basic_view<const f64_t, shape_t<keep_dim, keep_dim>, stride_t<keep_dim, 1>, device::cpu>;
 using cuda_matxxf32_const_view_t
-    = basic_view<const f32_t, shape_t<keep_dim, keep_dim>, stride_t<keep_dim, sizeof(f32_t)>, device::cuda>;
+    = basic_view<const f32_t, shape_t<keep_dim, keep_dim>, stride_t<keep_dim, 1>, device::cuda>;
 using cuda_matxxf64_const_view_t
-    = basic_view<const f64_t, shape_t<keep_dim, keep_dim>, stride_t<keep_dim, sizeof(f64_t)>, device::cuda>;
+    = basic_view<const f64_t, shape_t<keep_dim, keep_dim>, stride_t<keep_dim, 1>, device::cuda>;
 
 ///////////////////////////////////////////////////////////////////////////////
 
