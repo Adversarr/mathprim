@@ -8,7 +8,7 @@
 #include <mathprim/core/buffer.hpp>
 #include <mathprim/core/devices/cuda.cuh>
 #include <mathprim/parallel/cuda.cuh>
-// #include <mathprim/supports/stringify.hpp>
+#include <mathprim/supports/stringify.hpp>
 
 using namespace mathprim;
 using namespace mathprim::literal;
@@ -55,6 +55,37 @@ int main() {
     auto [i, j, k, l] = idx;
     printf("Lambda view[%d, %d, %d, %d] = %f\n", i, j, k, l, view(i, j));
   });
+
+  // Allocate a pitch memory
+  float *ptr = nullptr;
+  size_t pitch = 0;
+  // cudaMallocPitch use [weight, height] as parameter
+  size_t width = 4 * sizeof(float), height = 10 * sizeof(float);
+  cudaMallocPitch(&ptr, &pitch, width, height);
+  auto pitched_ptr_cuda = make_cudaPitchedPtr(ptr, pitch, width, height);
+  std::cout << "pitched_ptr_cuda.ptr = " << pitched_ptr_cuda.ptr
+            << ", pitched_ptr_cuda.pitch = " << pitched_ptr_cuda.pitch
+            << ", pitched_ptr_cuda.xsize = " << pitched_ptr_cuda.xsize
+            << ", pitched_ptr_cuda.ysize = " << pitched_ptr_cuda.ysize
+            << std::endl;
+  // create view.
+  auto view_pitched = from_cuda_pitched_ptr<float>(pitched_ptr_cuda);
+  std::cout << "view_pitched=" << view_pitched << std::endl;
+
+  // view back.
+  auto pitched_ptr_cuda_back = to_cuda_pitched_ptr(view_pitched);
+  std::cout << "pitched_ptr_cuda_back.ptr = " << pitched_ptr_cuda_back.ptr
+            << ", pitched_ptr_cuda_back.pitch = " << pitched_ptr_cuda_back.pitch
+            << ", pitched_ptr_cuda_back.xsize = " << pitched_ptr_cuda_back.xsize
+            << ", pitched_ptr_cuda_back.ysize = " << pitched_ptr_cuda_back.ysize
+            << std::endl;
+
+  // Free the memory
+  cudaFree(ptr);
+
+  // Make a pitched buffer
+  auto pitched_buf = make_cuda_pitched_buffer<float>(make_shape(10, 4));
+  std::cout << "pitched_buf=" << pitched_buf.view() << std::endl;
 
   cudaDeviceSynchronize();
   return EXIT_SUCCESS;

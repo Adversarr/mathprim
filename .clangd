@@ -1,7 +1,20 @@
+# Modified from: https://gist.github.com/trxcllnt/dad9565a1cfd54aedbe8fcf052a7cd45
+
 CompileFlags:
   Remove: 
+    # strip CUDA fatbin args
+    - "-Xfatbin*"
+    # strip CUDA arch flags
+    - "-gencode*"
+    - "--generate-code*"
+    # strip CUDA flags unknown to clang
     - "--extended-lambda"
+    - "-ccbin*"
+    - "--compiler-options*"
+    - "--expt-extended-lambda"
     - "--expt-relaxed-constexpr"
+    - "-forward-unknown-to-host-compiler"
+    - "-Werror=cross-execution-space-call"
 
 Index:
   Background: Build

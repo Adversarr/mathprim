@@ -173,10 +173,6 @@ continuous_buffer<T, sshape, dev> make_buffer(const sshape &shape) {
 /**
  * @brief Create a continuous buffer, but no static information.
  *
- * @tparam T [TODO:tparam]
- * @tparam Integers [TODO:tparam]
- * @param shape [TODO:parameter]
- * @return [TODO:return]
  */
 template <typename T, typename dev = device::cpu, typename... Args,
           typename = std::enable_if_t<(internal::can_hold_v<Args> && ...)>>
