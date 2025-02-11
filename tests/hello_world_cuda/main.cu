@@ -88,5 +88,43 @@ int main() {
   std::cout << "pitched_buf=" << pitched_buf.view() << std::endl;
 
   cudaDeviceSynchronize();
+
+  // cuda streams.
+  cudaStream_t stream; cudaStreamCreate(&stream);
+
+  par::cuda parfor_stream(stream);
+  par::cuda parfor_default;
+  parfor_stream.run(view.shape(), [view] __device__(index_array<2> idx) {
+    auto [i, j] = idx;
+    printf("Lambda streamd view[%d, %d] = %f\n", i, j, view(i, j));
+  });
+  parfor_default.run(view.shape(), [view] __device__(index_array<2> idx) {
+    auto [i, j] = idx;
+    printf("Lambda default view[%d, %d] = %f\n", i, j, view(i, j));
+  });
+
+  parfor_stream.sync();
+  parfor_default.sync();
+  cudaStreamDestroy(stream);
+
+  // vmap:
+  auto buf2 = make_buffer<float, device::cuda>(10);
+
+  parfor_default.vmap(
+      [] __device__(auto vec4, auto &out) {
+        out = vec4[0] + vec4[1] + vec4[2] + vec4[3];
+      },
+      buf.view(), buf2.view());
+
+  parfor_default.run(buf2.shape(), [view = buf2.view()] __device__(index_t i) {
+    // Should be 6, 22, 38, 54, 70, 86, 102, 118, 134, 150 = 16 i + 6
+    if (view[i] != 16 * i + 6) {
+      printf("Error: buf2[%d] = %f\n", i, view(i));
+    } else {
+      printf("Ok: buf2[%d] = %f\n", i, view(i));
+    }
+  });
+  parfor_default.sync();
+
   return EXIT_SUCCESS;
 }

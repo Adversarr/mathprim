@@ -202,10 +202,12 @@ struct index_array {
   index_array &operator=(index_array &&) noexcept = default;
 
   MATHPRIM_PRIMFUNC index_t &operator[](index_t i) noexcept {
+    MATHPRIM_ASSERT(0 <= i && i < ndim);
     return data_[i];
   }
 
   MATHPRIM_PRIMFUNC const index_t &operator[](index_t i) const noexcept {
+    MATHPRIM_ASSERT(0 <= i && i < ndim);
     return data_[i];
   }
 
@@ -215,6 +217,7 @@ struct index_array {
     return data_[i];
   }
 };
+
 template <>
 struct index_array<0> {
   index_array() noexcept = default;
@@ -226,6 +229,40 @@ struct index_array<0> {
   MATHPRIM_PRIMFUNC const index_t &operator[](index_t i) const noexcept;
   template <index_t i>
   MATHPRIM_PRIMFUNC index_t get() const noexcept;
+};
+
+template <>
+struct index_array<1> {
+  index_t data_[1] = {0};
+
+  MATHPRIM_PRIMFUNC index_array() noexcept = default;
+
+  MATHPRIM_PRIMFUNC explicit index_array(index_t value) noexcept : data_{value} {}
+
+  MATHPRIM_PRIMFUNC index_array(const index_array &) noexcept = default;
+  MATHPRIM_PRIMFUNC index_array(index_array &&) noexcept = default;
+  MATHPRIM_PRIMFUNC index_array &operator=(const index_array &) noexcept = default;
+  MATHPRIM_PRIMFUNC index_array &operator=(index_array &&) noexcept = default;
+
+  MATHPRIM_PRIMFUNC operator index_t() const noexcept {  // NOLINT: google-explicit-constructor
+    return data_[0];
+  }
+
+  MATHPRIM_PRIMFUNC index_t &operator[](index_t i) noexcept {
+    MATHPRIM_ASSERT(i == 0);
+    return data_[i];
+  }
+
+  MATHPRIM_PRIMFUNC const index_t &operator[](index_t i) const noexcept {
+    MATHPRIM_ASSERT(i == 0);
+    return data_[i];
+  }
+
+  template <index_t i>
+  MATHPRIM_PRIMFUNC index_t get() const noexcept {
+    static_assert(i == 0, "Index out of range.");
+    return data_[0];
+  }
 };
 
 template <index_t ndim>
@@ -250,6 +287,7 @@ template <index_t ndim>
 MATHPRIM_PRIMFUNC index_array<ndim> up_div(const index_array<ndim> &array, const index_array<ndim> &divisor) noexcept {
   index_array<ndim> result;
   for (index_t i = 0; i < ndim; ++i) {
+    MATHPRIM_ASSERT(divisor[i] > 0 && "Divisor must be greater than 0.");
     result[i] = (array[i] + divisor[i] - 1) / divisor[i];
   }
   return result;

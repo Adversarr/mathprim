@@ -1,12 +1,8 @@
 
 #include <benchmark/benchmark.h>
 
-#include "mathprim/core/backends/cuda.cuh"
-#include "mathprim/core/parallel/cuda.cuh"
-
-#include "mathprim/core/buffer.hpp"
-#include "mathprim/core/view.hpp"
-#include "mathprim/core/parallel.hpp"
+#include "mathprim/parallel/cuda.cuh"
+#include "mathprim/core/devices/cuda.cuh"
 
 using namespace mathprim;
 
@@ -38,16 +34,16 @@ static void par_for_norm_mathprim(benchmark::State &state) {
   int blocksize = 256;
   int gridsize = (n + blocksize - 1) / blocksize;
 
-  auto buf_x = make_buffer<Flt, device_t::cuda>(n);
-  auto buf_y = make_buffer<Flt, device_t::cuda>(n);
+  auto buf_x = make_cuda_buffer<Flt>(n);
+  auto buf_y = make_cuda_buffer<Flt>(n);
 
   for (auto _ : state) {
-    parfor<par::cuda>::run(
-        dim<1>(gridsize), dim<1>(blocksize),
+    par::cuda().run(
+        make_shape(gridsize), make_shape(blocksize),
         [x = buf_x.view(), y = buf_y.view(),
-         blocksize] __device__(dim<1> block_idx, dim<1> thread_idx) {
-          auto this_idx = merge<1>(block_idx, thread_idx, make_dim(blocksize));
-          if (is_in_bound(x.shape(), this_idx))
+         blocksize] __device__(auto block_idx, auto thread_idx) {
+          auto this_idx = block_idx[0] * blocksize + thread_idx[0];
+          if (is_in_bound(x.shape(), index_array<1>{this_idx}))
             y(this_idx) = x(this_idx) * x(this_idx);
         });
     cudaDeviceSynchronize();

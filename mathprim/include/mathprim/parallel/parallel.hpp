@@ -3,41 +3,45 @@
 
 namespace mathprim::par {
 
-// template <typename T, index_t N, device_t dev, index_t batch_dim> struct vmap_arg {
-//   const basic_view<T, N, dev> view_;
-//   MATHPRIM_PRIMFUNC explicit vmap_arg(const basic_view<T, N, dev> &view) : view_(view) {}
-//
-//   MATHPRIM_PRIMFUNC auto operator[](index_t i) const noexcept {
-//     return (view_.template slice<batch_dim>(i));
-//   }
-//
-//   MATHPRIM_PRIMFUNC index_t size() const noexcept {
-//     return view_.shape(batch_dim);
-//   }
-// };
-//
-// template <typename T, device_t dev, index_t batch_dim> struct vmap_arg<T, 1, dev, batch_dim> {
-//   const basic_view<T, 1, dev> view_;
-//   MATHPRIM_PRIMFUNC explicit vmap_arg(const basic_view<T, 1, dev> &view) : view_(view) {}
-//
-//   MATHPRIM_PRIMFUNC T &operator[](index_t i) const noexcept {
-//     return (view_.template slice<batch_dim>(i));
-//   }
-//
-//   MATHPRIM_PRIMFUNC index_t size() const noexcept {
-//     return view_.shape(batch_dim);
-//   }
-// };
-//
-// template <index_t batch_dim = 0, typename T, index_t N, device_t dev>
-// MATHPRIM_PRIMFUNC vmap_arg<T, N, dev, batch_dim> make_vmap_arg(basic_view<T, N, dev> view) {
-//   return vmap_arg<T, N, dev, batch_dim>(view);
-// }
-//
-// template <index_t batch_dim, typename T, index_t N, device_t dev>
-// MATHPRIM_PRIMFUNC vmap_arg<T, N, dev, batch_dim> make_vmap_arg(vmap_arg<T, N, dev, batch_dim> arg) {
-//   return vmap_arg<T, N, dev, batch_dim>(arg);
-// }
+template <typename IterT>
+struct vmap_arg {
+  using reference = typename IterT::reference;
+  IterT beg_;
+  IterT end_;
+
+  MATHPRIM_PRIMFUNC explicit vmap_arg(IterT beg, IterT end) : beg_(beg), end_(end) {}
+  vmap_arg(const vmap_arg&) = default;
+  vmap_arg(vmap_arg&&) = default;
+  vmap_arg& operator=(const vmap_arg&) = default;
+  vmap_arg& operator=(vmap_arg&&) = default;
+
+  MATHPRIM_PRIMFUNC IterT begin() const noexcept {
+    return beg_;
+  }
+
+  MATHPRIM_PRIMFUNC IterT end() const noexcept {
+    return end_;
+  }
+
+  MATHPRIM_PRIMFUNC reference operator[](index_t i) const noexcept {
+    return beg_[i];
+  }
+
+  MATHPRIM_PRIMFUNC index_t size() const noexcept {
+    return end_ - beg_;
+  }
+};
+
+template <typename IterT>
+vmap_arg<IterT> make_vmap_arg(IterT beg, IterT end) {
+  return vmap_arg<IterT>(beg, end);
+}
+
+template <index_t batch_dim = 0, typename T, typename sshape, typename sstride, typename dev>
+vmap_arg<basic_view_iterator<T, sshape, sstride, dev, batch_dim>> make_vmap_arg(
+    const basic_view<T, sshape, sstride, dev>& view) {
+  return make_vmap_arg(view.begin(), view.end());
+}
 
 template <class par_impl>
 struct parfor {
@@ -51,28 +55,29 @@ struct parfor {
     static_cast<const par_impl*>(this)->run_impl(grid_dim, std::forward<Fn>(fn));
   }
 
-  //   template <typename Fn, typename T, index_t N, device_t dev>
-  //   static void for_each_indexed(basic_view<T, N, dev> buffer, Fn &&fn) {
-  //     parfor::run(buffer.shape(), [f = std::forward<Fn>(fn), buffer](const dim<N> &idx) {
-  //       f(idx, buffer(idx));
-  //     });
-  //   }
+  template <typename Fn, typename... vmap_args>
+  void vmap(Fn&& fn, vmap_args&&... args) {
+    static_assert(sizeof...(vmap_args) > 0, "must provide at least one argument");
+    // ensure is a vmap_arg
+    vmap_impl<Fn>(std::forward<Fn>(fn), make_vmap_arg(std::forward<vmap_args>(args))...);
+  }
 
-  //   template <typename Fn, typename... vmap_args>
-  //   static void vmap(Fn &&fn, vmap_args &&...args) {
-  //     static_assert(sizeof...(vmap_args) > 0, "must provide at least one argument");
-  //     // ensure is a vmap_arg
-  //     parfor::vmap_impl<Fn>(std::forward<Fn>(fn), make_vmap_arg(std::forward<vmap_args>(args))...);
-  //   }
+protected:
+  template <typename Fn, typename... vmap_args>
+  void vmap_impl(Fn&& fn, vmap_args&&... args) {
+    // now args is vmap_arg.
+    auto size = (args.size(), ...); // Extract the size of each vmap_arg
+    // Expects all vmap_args have the same size
+    if (!((size == args.size()) && ...)) {
+      throw std::runtime_error("vmap arguments must have the same size");
+    }
 
-  // private:
-  //   template <typename Fn, typename... vmap_args>
-  //   static void vmap_impl(Fn &&fn, vmap_args &&...args) {
-  //     // now args is vmap_arg.
-  //     parfor::run(dim<1>((args.size(), ...)), [fn, args...](const dim<1> &idx) {
-  //       fn((args[idx.x_])...);
-  //     });
-  //   }
+    // Loop over the size of the vmap_arg
+    auto vmap_shape = make_shape(size);
+    run(vmap_shape, [fn, args...](index_t i) {
+      fn(args[i]...);
+    });
+  }
 };
 
 class seq : public parfor<seq> {

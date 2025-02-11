@@ -117,8 +117,8 @@ public:
 
   using view_type = basic_view<T, sshape, sstride, dev>;
   using const_view_type = basic_view<const T, sshape, sstride, dev>;
-  using iterator = dimension_iterator<T, sshape, sstride, dev>;
-  using const_iterator = dimension_iterator<const T, sshape, sstride, dev>;
+  using iterator = basic_view_iterator<T, sshape, sstride, dev, 0>;
+  using const_iterator = basic_view_iterator<const T, sshape, sstride, dev, 0>;
 
   // default view, implemented in view.hpp
   view_type view() noexcept {

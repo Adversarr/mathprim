@@ -74,9 +74,10 @@ int main() {
   cts_begin(mathprim, 10);
   auto grid_size = mathprim::make_shape(N / BLOCK_SIZE);
   auto block_size = mathprim::make_shape(BLOCK_SIZE);
-  par_cuda.run(grid_size, block_size, [dIn, dOut]__device__(const auto & block_idx, const auto& thread_idx) {
-    auto [block_id] = block_idx;
-    auto [thread_id] = thread_idx;
+  using index_t = mp::index_t;
+  par_cuda.run(grid_size, block_size, [dIn, dOut]__device__(const index_t & block_id, const index_t& thread_id) {
+    // auto [block_id] = block_idx;
+    // auto [thread_id] = thread_idx;
     mp::index_t i = thread_id + block_id * BLOCK_SIZE;
     __shared__ int shm[BLOCK_SIZE + 2 * RADIUS];
     int lindex = thread_id + RADIUS;

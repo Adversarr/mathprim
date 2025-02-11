@@ -199,11 +199,11 @@ public:
   }
 
   auto begin() const noexcept {
-    return dimension_iterator<T, sshape, sstride, dev>(*this, 0);
+    return basic_view_iterator<T, sshape, sstride, dev, 0>(*this, 0);
   }
 
   auto end() const noexcept {
-    return dimension_iterator<T, sshape, sstride, dev>(*this, shape(0));
+    return basic_view_iterator<T, sshape, sstride, dev, 0>(*this, shape(0));
   }
 
   ///////////////////////////////////////////////////////////////////////////////
@@ -317,10 +317,12 @@ private:
   T *data_;
 };
 
-template <typename T, typename sshape, typename sstride, typename dev>
-struct dimension_iterator {
+template <typename T, typename sshape, typename sstride, typename dev, index_t batch_dim>
+struct basic_view_iterator {
   using view_type = basic_view<T, sshape, sstride, dev>;
-  using indexing_type = typename view_type::indexing_type;
+  using indexing_type = std::conditional_t<
+      view_type::ndim == 1, typename view_type::reference,
+      basic_view<T, internal::slice_t<batch_dim, sshape>, internal::slice_t<batch_dim, sstride>, dev>>;
   using value_type = std::remove_reference_t<indexing_type>;
   using reference = indexing_type;
   using difference_type = index_t;
@@ -328,98 +330,106 @@ struct dimension_iterator {
   view_type view;
   index_t current;
 
-  MATHPRIM_PRIMFUNC dimension_iterator(const view_type &view, index_t current) : view(view), current(current) {}
-  MATHPRIM_PRIMFUNC dimension_iterator() noexcept : view{}, current{0} {}
-  dimension_iterator(const dimension_iterator &) noexcept = default;
-  dimension_iterator(dimension_iterator &&) noexcept = default;
-  dimension_iterator &operator=(const dimension_iterator &) noexcept = default;
-  dimension_iterator &operator=(dimension_iterator &&) noexcept = default;
+  MATHPRIM_PRIMFUNC basic_view_iterator(const view_type &view, index_t current) : view(view), current(current) {}
+  MATHPRIM_PRIMFUNC basic_view_iterator() noexcept : view{}, current{0} {}
+  basic_view_iterator(const basic_view_iterator &) noexcept = default;
+  basic_view_iterator(basic_view_iterator &&) noexcept = default;
+  basic_view_iterator &operator=(const basic_view_iterator &) noexcept = default;
+  basic_view_iterator &operator=(basic_view_iterator &&) noexcept = default;
 
   MATHPRIM_PRIMFUNC reference operator*() const noexcept {
-    return view[current];
+    if constexpr (view_type::ndim == 1) {
+      return view[current];
+    } else {
+      return view.template slice<batch_dim>(current);
+    }
   }
 
   MATHPRIM_PRIMFUNC reference operator[](difference_type n) const noexcept {
-    return view[current + n];
+    if constexpr (view_type::ndim == 1) {
+      return view[current + n];
+    } else {
+      return view.template slice<batch_dim>(current + n);
+    }
   }
 
-  MATHPRIM_PRIMFUNC dimension_iterator &operator++() noexcept {
+  MATHPRIM_PRIMFUNC basic_view_iterator &operator++() noexcept {
     ++current;
     return *this;
   }
 
-  MATHPRIM_PRIMFUNC dimension_iterator operator++(int) noexcept {
-    dimension_iterator tmp = *this;
+  MATHPRIM_PRIMFUNC basic_view_iterator operator++(int) noexcept {
+    basic_view_iterator tmp = *this;
     ++(*this);
     return tmp;
   }
 
-  MATHPRIM_PRIMFUNC dimension_iterator &operator--() noexcept {
+  MATHPRIM_PRIMFUNC basic_view_iterator &operator--() noexcept {
     --current;
     return *this;
   }
 
-  MATHPRIM_PRIMFUNC dimension_iterator operator--(int) noexcept {
-    dimension_iterator tmp = *this;
+  MATHPRIM_PRIMFUNC basic_view_iterator operator--(int) noexcept {
+    basic_view_iterator tmp = *this;
     --(*this);
     return tmp;
   }
 
-  MATHPRIM_PRIMFUNC dimension_iterator &operator+=(difference_type n) noexcept {
+  MATHPRIM_PRIMFUNC basic_view_iterator &operator+=(difference_type n) noexcept {
     current += n;
     return *this;
   }
 
-  MATHPRIM_PRIMFUNC dimension_iterator operator+(difference_type n) const noexcept {
-    dimension_iterator tmp = *this;
+  MATHPRIM_PRIMFUNC basic_view_iterator operator+(difference_type n) const noexcept {
+    basic_view_iterator tmp = *this;
     tmp += n;
     return tmp;
   }
 
-  MATHPRIM_PRIMFUNC dimension_iterator &operator-=(difference_type n) noexcept {
+  MATHPRIM_PRIMFUNC basic_view_iterator &operator-=(difference_type n) noexcept {
     current -= n;
     return *this;
   }
 
-  MATHPRIM_PRIMFUNC dimension_iterator operator-(difference_type n) const noexcept {
-    dimension_iterator tmp = *this;
+  MATHPRIM_PRIMFUNC basic_view_iterator operator-(difference_type n) const noexcept {
+    basic_view_iterator tmp = *this;
     tmp -= n;
     return tmp;
   }
 
-  MATHPRIM_PRIMFUNC bool operator==(const dimension_iterator &other) const noexcept {
+  MATHPRIM_PRIMFUNC bool operator==(const basic_view_iterator &other) const noexcept {
     return current == other.current && view.data() == other.view.data();
   }
 
-  MATHPRIM_PRIMFUNC bool operator!=(const dimension_iterator &other) const noexcept {
+  MATHPRIM_PRIMFUNC bool operator!=(const basic_view_iterator &other) const noexcept {
     return !(*this == other);
   }
 
-  MATHPRIM_PRIMFUNC bool operator<(const dimension_iterator &other) const noexcept {
+  MATHPRIM_PRIMFUNC bool operator<(const basic_view_iterator &other) const noexcept {
     return current < other.current;
   }
 
-  MATHPRIM_PRIMFUNC bool operator<=(const dimension_iterator &other) const noexcept {
+  MATHPRIM_PRIMFUNC bool operator<=(const basic_view_iterator &other) const noexcept {
     return current <= other.current;
   }
 
-  MATHPRIM_PRIMFUNC bool operator>(const dimension_iterator &other) const noexcept {
+  MATHPRIM_PRIMFUNC bool operator>(const basic_view_iterator &other) const noexcept {
     return current > other.current;
   }
 
-  MATHPRIM_PRIMFUNC bool operator>=(const dimension_iterator &other) const noexcept {
+  MATHPRIM_PRIMFUNC bool operator>=(const basic_view_iterator &other) const noexcept {
     return current >= other.current;
   }
 
-  MATHPRIM_PRIMFUNC difference_type operator-(const dimension_iterator &other) const noexcept {
+  MATHPRIM_PRIMFUNC difference_type operator-(const basic_view_iterator &other) const noexcept {
     return current - other.current;
   }
 };
 
 // n + I
-template <typename T, typename sshape, typename sstride, typename dev>
-MATHPRIM_PRIMFUNC dimension_iterator<T, sshape, sstride, dev> operator+(
-    index_t n, const dimension_iterator<T, sshape, sstride, dev> &it) {
+template <typename T, typename sshape, typename sstride, typename dev, index_t batch_dim>
+MATHPRIM_PRIMFUNC basic_view_iterator<T, sshape, sstride, dev, batch_dim> operator+(
+    index_t n, const basic_view_iterator<T, sshape, sstride, dev, batch_dim> &it) {
   return it + n;
 }
 

@@ -364,9 +364,10 @@ class basic_view;
  * @tparam sshape the shape of the buffer.
  * @tparam sstride the stride of the buffer.
  * @tparam dev the device type.
+ * @tparam batch_dim the batch dimension.
  */
-template <typename T, typename sshape, typename sstride, typename dev>
-struct dimension_iterator;
+template <typename T, typename sshape, typename sstride, typename dev, index_t batch_dim>
+struct basic_view_iterator;
 
 ///////////////////////////////////////////////////////////////////////////////
 /// Parallelism
