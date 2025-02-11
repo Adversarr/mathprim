@@ -235,14 +235,13 @@ template <>
 struct index_array<1> {
   index_t data_[1] = {0};
 
-  MATHPRIM_PRIMFUNC index_array() noexcept = default;
-
   MATHPRIM_PRIMFUNC explicit index_array(index_t value) noexcept : data_{value} {}
 
-  MATHPRIM_PRIMFUNC index_array(const index_array &) noexcept = default;
-  MATHPRIM_PRIMFUNC index_array(index_array &&) noexcept = default;
-  MATHPRIM_PRIMFUNC index_array &operator=(const index_array &) noexcept = default;
-  MATHPRIM_PRIMFUNC index_array &operator=(index_array &&) noexcept = default;
+  index_array() noexcept = default;
+  index_array(const index_array &) noexcept = default;
+  index_array(index_array &&) noexcept = default;
+  index_array &operator=(const index_array &) noexcept = default;
+  index_array &operator=(index_array &&) noexcept = default;
 
   MATHPRIM_PRIMFUNC operator index_t() const noexcept {  // NOLINT: google-explicit-constructor
     return data_[0];

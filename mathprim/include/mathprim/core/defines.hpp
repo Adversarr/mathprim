@@ -199,8 +199,8 @@ public:
 
 #ifndef NDEBUG
     // Check alignment.
-    const auto align = device_traits<Derived>::alloc_alignment;
-    if (align > 0) {
+    constexpr index_t align = device_traits<Derived>::alloc_alignment;
+    if constexpr (align > 0) {
       MATHPRIM_ASSERT(reinterpret_cast<uintptr_t>(ptr) % align == 0 && "Alignment error.");
     }
 #endif

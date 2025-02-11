@@ -68,7 +68,6 @@ __global__ void do_work_naive(Fn fn) {
 
 template <index_t... sgrids, index_t... sblocks>
 struct launcher<index_pack<sgrids...>, index_pack<sblocks...>, true> {
-  using stream_ref = ::cuda::stream_ref;
   template <typename Fn>
   void run(const index_pack<sgrids...> &grids,
            const index_pack<sblocks...> &blocks, Fn &&fn) const noexcept {
@@ -77,34 +76,33 @@ struct launcher<index_pack<sgrids...>, index_pack<sblocks...>, true> {
     dim3 block_dim;
     to_cuda(blocks.to_array(), block_dim);
     do_work_naive<sizeof...(sgrids), sizeof...(sblocks)>
-        <<<grid_dim, block_dim, 0, stream_.get()>>>(fn);
+        <<<grid_dim, block_dim, 0, stream_>>>(fn);
   }
 
   template <typename Fn>
   void run(const index_pack<sgrids...> &grids, Fn &&fn) const noexcept {
     auto begin = thrust::make_counting_iterator(0);
     auto end = thrust::make_counting_iterator(grids.numel());
-    auto streamed_policy = thrust::cuda::par_nosync.on(stream_.get());
+    auto streamed_policy = thrust::cuda::par_nosync.on(stream_);
     thrust::for_each(
         streamed_policy, begin, end,
         [fn, grids] __device__(index_t idx) { fn(ind2sub(grids, idx)); });
   }
 
   launcher() = default;
-  explicit launcher(stream_ref stream) : stream_{stream} {}
-  stream_ref stream_;
+  explicit launcher(cudaStream_t stream) : stream_{stream} {}
+  cudaStream_t stream_;
 };
 
 template <index_t... sgrids, index_t... sblocks>
 struct launcher<index_pack<sgrids...>, index_pack<sblocks...>, false> {
-  using stream_ref = ::cuda::stream_ref;
   template <typename Fn>
   void run(const index_pack<sgrids...> &grids,
            const index_pack<sblocks...> &blocks, Fn &&fn) const noexcept {
     auto total_grids = grids.numel(), total_blocks = blocks.numel();
     auto beg = thrust::make_counting_iterator(0);
     auto end = thrust::make_counting_iterator(total_grids * total_blocks);
-    auto streamed_policy = thrust::cuda::par_nosync.on(stream_.get());
+    auto streamed_policy = thrust::cuda::par_nosync.on(stream_);
     thrust::for_each(
         streamed_policy, beg, end, [fn, grids, blocks] __device__(index_t idx) {
           auto block_idx = idx / total_blocks;
@@ -118,25 +116,23 @@ struct launcher<index_pack<sgrids...>, index_pack<sblocks...>, false> {
     auto total_grids = grids.numel();
     auto beg = thrust::make_counting_iterator(0);
     auto end = thrust::make_counting_iterator(total_grids);
-    auto streamed_policy = thrust::cuda::par_nosync.on(stream_.get());
+    auto streamed_policy = thrust::cuda::par_nosync.on(stream_);
     thrust::for_each(
         streamed_policy, beg, end,
         [fn, grids] __device__(index_t idx) { fn(ind2sub(grids, idx)); });
   }
 
   launcher() = default;
-  explicit launcher(stream_ref stream) : stream_{stream} {}
-  stream_ref stream_;
+  explicit launcher(cudaStream_t stream) : stream_{stream} {}
+  cudaStream_t stream_;
 };
 
 } // namespace internal
 
 class cuda {
 public:
-  using stream_ref = ::cuda::stream_ref;
-
-  cuda() = default;
-  explicit cuda(stream_ref stream) : stream_{stream} {}
+  cuda() : stream_{0} {}
+  explicit cuda(cudaStream_t stream) : stream_{stream} {}
 
   /**
    * @brief Launch a kernel with the given grid and block dimensions.
@@ -181,14 +177,28 @@ public:
 
   /// @brief Wait for all operations in the stream to complete, throws exception
   /// if any error occurs.
-  void sync() const { stream_.wait(); }
+  void sync() const { 
+    auto err = cudaStreamSynchronize(stream_);
+    if (err != cudaSuccess) {
+      throw cuda_error(err);
+    }
+  }
 
   /// @brief Check if the stream is ready, returns true if all operations in the
   /// stream have completed. Throws exception if any error occurs.
-  bool ready() const { return stream_.ready(); }
+  bool ready() const {
+    auto err = cudaStreamQuery(stream_);
+    if (err == cudaSuccess) {
+      return true;
+    } else if (err == cudaErrorNotReady) {
+      return false;
+    } else {
+      throw cuda_error(err);
+    }
+  }
 
   /// @brief Get the underlying CUDA stream in use.
-  stream_ref stream() const { return stream_; }
+  cudaStream_t stream() const { return stream_; }
 
   /**
    * @brief Copy data from one view to another with cuda stream.
@@ -236,7 +246,7 @@ public:
     if (avail < total) {
       throw std::runtime_error("The destination buffer is too small.");
     }
-    cudaStream_t s = stream_.get();
+    cudaStream_t s = stream_;
     MATHPRIM_CUDA_CHECK_SUCCESS(
         cudaMemcpyAsync(dst.data(), src.data(), total, kind, s));
   }
@@ -263,7 +273,7 @@ public:
   }
 
 private:
-  stream_ref stream_; ///< CUDA stream: default stream
+  cudaStream_t stream_; ///< CUDA stream: default stream
 };
 
 } // namespace par

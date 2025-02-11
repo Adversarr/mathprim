@@ -28,7 +28,7 @@ template <typename Flt> static void par_for_norm(benchmark::State &state) {
 }
 
 template <typename Flt>
-static void par_for_norm_mathprim(benchmark::State &state) {
+void par_for_norm_mathprim(benchmark::State &state) {
   int n = state.range();
 
   int blocksize = 256;

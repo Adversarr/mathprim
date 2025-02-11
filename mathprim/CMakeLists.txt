@@ -45,10 +45,12 @@ if(MATHPRIM_ENABLE_CUDA)
 
   # Warnings:
   if(MATHPRIM_ENABLE_WARNINGS)
-    target_compile_options(mathprim INTERFACE $<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=-Wall,-Wextra>)
 
     # cross execution space call:
-    if(NOT MSVC)
+    if(MSVC)
+      target_compile_options(mathprim INTERFACE $<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=/W4>)
+    else()
+      target_compile_options(mathprim INTERFACE $<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=-Wall,-Wextra>)
       target_compile_options(mathprim INTERFACE $<$<COMPILE_LANGUAGE:CUDA>:-Werror=cross-execution-space-call>)
     endif()
   endif()

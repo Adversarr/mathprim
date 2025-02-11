@@ -60,7 +60,7 @@ void naive<Scalar, device::cpu, sparse_format::csr, backend>::gemv_no_trans(Scal
   backend parfor;
   parfor.run(make_shape(m), [row_ptr, col_ind, values, x, y, alpha, beta](index_t i) {
     Scalar result = 0;
-    for (size_t j = row_ptr[i]; j < row_ptr[i + 1]; ++j) {
+    for (index_t j = row_ptr[i]; j < row_ptr[i + 1]; ++j) {
       result += values[j] * x[col_ind[j]];
     }
     y[i] = alpha * result + beta * y[i];
@@ -79,13 +79,13 @@ void naive<Scalar, device::cpu, sparse_format::csr, backend>::gemv_trans(Scalar 
   const auto nnz = mat.nnz();
 
   // Initialize y with beta * y
-  for (size_t i = 0; i < n; ++i) {
+  for (index_t i = 0; i < n; ++i) {
     y[i] *= beta;
   }
 
   // Perform the matrix-vector multiplication for the transposed matrix
-  for (size_t i = 0; i < m; ++i) {
-    for (size_t j = row_ptr[i]; j < row_ptr[i + 1]; ++j) {
+  for (index_t i = 0; i < m; ++i) {
+    for (index_t j = row_ptr[i]; j < row_ptr[i + 1]; ++j) {
       y[col_ind[j]] += alpha * values[j] * x[i];
     }
   }
