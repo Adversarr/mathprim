@@ -1,0 +1,24 @@
+CompileFlags:
+  Remove: 
+    - "--extended-lambda"
+    - "--expt-relaxed-constexpr"
+
+Index:
+  Background: Build
+
+Completion:
+  AllScopes: No
+
+Diagnostics:
+  UnusedIncludes: Strict
+
+InlayHints:
+  BlockEnd: No
+  Designators: Yes
+  Enabled: Yes
+  ParameterNames: Yes
+  DeducedTypes: Yes
+  TypeNameLimit: 24
+
+Hover:
+  ShowAKA: No
