@@ -8,6 +8,9 @@ add_executable(BM_blas blas.cpp)
 target_link_libraries(BM_blas PRIVATE benchmark::benchmark mathprim Eigen3::Eigen BLAS::BLAS)
 target_compile_options(BM_blas PRIVATE -march=native)
 
+add_executable(BM_csr sparse_csr.cpp)
+target_link_libraries(BM_csr PRIVATE benchmark::benchmark mathprim)
+target_compile_options(BM_csr PRIVATE -march=native)
 # add_executable(BM_par par.cpp)
 # target_link_libraries(BM_par PRIVATE benchmark::benchmark mathprim)
 
