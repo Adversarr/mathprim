@@ -24,6 +24,10 @@
 #endif
 
 #ifndef MATHPRIM_BACKEND_CPU_ALIGNMENT
+// For mac, disable alignment.
+#  if defined(__APPLE__)
+#    define MATHPRIM_BACKEND_CPU_NO_ALIGNMENT
+#  endif
 #  ifdef MATHPRIM_BACKEND_CPU_NO_ALIGNMENT
 #    define MATHPRIM_BACKEND_CPU_ALIGNMENT 0
 #  else
@@ -250,7 +254,9 @@ class cpu;
 class cpu : public basic_device<cpu> {
 public:
   void *malloc_impl(size_t size) const {
-#if defined(_MSC_VER)
+#ifdef MATHPRIM_BACKEND_CPU_NO_ALIGNMENT
+    void *ptr = std::malloc(size);
+#elif defined(_MSC_VER)
     void *ptr = _aligned_malloc(size, MATHPRIM_BACKEND_CPU_ALIGNMENT);
 #else
     void *ptr = std::aligned_alloc(MATHPRIM_BACKEND_CPU_ALIGNMENT, size);
