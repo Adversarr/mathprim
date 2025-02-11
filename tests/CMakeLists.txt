@@ -6,6 +6,7 @@ add_subdirectory(cpu_blas)
 add_subdirectory(hello_world)
 add_subdirectory(omp)
 add_subdirectory(benchmark)
+add_subdirectory(sparse_csr)
 
 if(MATHPRIM_BUILD_TESTS_CUDA)
   add_subdirectory(hello_world_cuda)
