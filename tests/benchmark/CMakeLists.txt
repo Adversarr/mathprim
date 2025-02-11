@@ -12,7 +12,7 @@ target_compile_options(BM_blas PRIVATE -march=native)
 # target_link_libraries(BM_par PRIVATE benchmark::benchmark mathprim)
 
 
-# if(MATHPRIM_BUILD_TESTS_CUDA)
-#   add_executable(BM_cupar par.cu)
-#   target_link_libraries(BM_cupar PRIVATE benchmark::benchmark mathprim)
-# endif()
+if(MATHPRIM_BUILD_TESTS_CUDA)
+  add_executable(BM_cublas blas.cu)
+  target_link_libraries(BM_cublas PRIVATE benchmark::benchmark mathprim)
+endif()
