@@ -1,9 +1,14 @@
+#include <gtest/gtest.h>
+
 #include <iostream>
 #include <mathprim/core/buffer.hpp>
 #include <mathprim/core/view.hpp>
+#include <mathprim/sparse/blas/naive.hpp>
+#include <mathprim/sparse/blas/eigen.hpp>
 #include <mathprim/supports/eigen_dense.hpp>
+#include <mathprim/supports/eigen_sparse.hpp>
+
 #include "mathprim/blas/cpu_eigen.hpp"
-#include <gtest/gtest.h>
 
 using namespace mathprim;
 
@@ -104,5 +109,86 @@ GTEST_TEST(vector, view) {
   auto view = eigen_support::view(m);
   for (auto [c]: view.shape()) {
     EXPECT_EQ(view(c), m(c));
+  }
+}
+
+GTEST_TEST(sparse, csr_rm) {
+  Eigen::SparseMatrix<float, Eigen::RowMajor> m(4, 3);
+  for (int r = 0; r < 4; ++r) {
+    for (int c = 0; c < 3; ++c) {
+      m.insert(r, c) = static_cast<float>(r * 4 + c);
+    }
+  }
+  m.makeCompressed();
+
+  auto view = eigen_support::view(m);
+  EXPECT_EQ(view.rows(), 4);
+  EXPECT_EQ(view.cols(), 3);
+  EXPECT_EQ(view.nnz(), 12);
+
+  sparse::blas::naive<float, device::cpu, sparse::sparse_format::csr> blas(view.as_const());
+  auto x = make_buffer<float>(3);
+  auto y = make_buffer<float>(4);
+  auto xv = x.view();
+  auto yv = y.view();
+
+  auto eigen_x = eigen_support::cmap(xv);
+  for (int c = 0; c < 3; ++c) {
+    eigen_x(c) = static_cast<float>(c);
+  }
+  auto eigen_y = eigen_support::cmap(yv);
+
+  blas.gemv(1.0f, xv, 0.0f, yv);
+  auto correct = (m * eigen_x).eval();
+
+  for (int c = 0; c < 4; ++c) {
+    EXPECT_EQ(eigen_y(c), correct(c));
+  }
+
+  sparse::blas::eigen<float, sparse::sparse_format::csr> blas2(view.as_const());
+  blas2.gemv(1.0f, xv, 0.0f, yv);
+  for (int c = 0; c < 4; ++c) {
+    EXPECT_EQ(eigen_y(c), correct(c));
+  }
+}
+
+
+GTEST_TEST(sparse, csc_cm) {
+  Eigen::SparseMatrix<float, Eigen::ColMajor> m(4, 3);
+  for (int r = 0; r < 4; ++r) {
+    for (int c = 0; c < 3; ++c) {
+      m.insert(r, c) = static_cast<float>(r * 4 + c);
+    }
+  }
+  m.makeCompressed();
+
+  auto view = eigen_support::view(m);
+  EXPECT_EQ(view.rows(), 4);
+  EXPECT_EQ(view.cols(), 3);
+  EXPECT_EQ(view.nnz(), 12);
+
+  sparse::blas::naive<float, device::cpu, sparse::sparse_format::csc> blas(view.as_const());
+  auto x = make_buffer<float>(3);
+  auto y = make_buffer<float>(4);
+  auto xv = x.view();
+  auto yv = y.view();
+
+  auto eigen_x = eigen_support::cmap(xv);
+  for (int c = 0; c < 3; ++c) {
+    eigen_x(c) = static_cast<float>(c);
+  }
+  auto eigen_y = eigen_support::cmap(yv);
+
+  blas.gemv(1.0f, xv, 0.0f, yv);
+  auto correct = (m * eigen_x).eval();
+
+  for (int c = 0; c < 4; ++c) {
+    EXPECT_EQ(eigen_y(c), correct(c));
+  }
+
+  sparse::blas::eigen<float, sparse::sparse_format::csc> blas2(view.as_const());
+  blas2.gemv(1.0f, xv, 0.0f, yv);
+  for (int c = 0; c < 4; ++c) {
+    EXPECT_EQ(eigen_y(c), correct(c));
   }
 }
