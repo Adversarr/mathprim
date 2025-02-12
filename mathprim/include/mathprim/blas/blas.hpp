@@ -143,8 +143,7 @@ struct basic_blas {
     static_cast<Derived *>(this)->axpy_impl(alpha, x, y);
   }
 
-  template <typename sshape_A, typename sstride_A, typename sshape_x, typename sstride_x, typename sshape_y,
-            typename sstride_y>
+  template <typename sshape_x, typename sstride_x, typename sshape_y, typename sstride_y>
   Scalar dot(const_type<sshape_x, sstride_x> x, const_type<sshape_y, sstride_y> y) {
     if (!internal::is_capable_vector(x)) {
       throw std::runtime_error("Incompatible views for BLAS dot. (x)");
@@ -161,7 +160,7 @@ struct basic_blas {
 
   template <typename sshape, typename sstride>
   Scalar norm(const_type<sshape, sstride> x) {
-    if (!internal::is_capable_vector<Scalar>(x)) {
+    if (!internal::is_capable_vector(x)) {
       throw std::runtime_error("Incompatible views for BLAS norm.");
     }
 

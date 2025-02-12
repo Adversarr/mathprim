@@ -7,6 +7,7 @@ add_subdirectory(hello_world)
 add_subdirectory(omp)
 add_subdirectory(benchmark)
 add_subdirectory(sparse_csr)
+add_subdirectory(cg_solver)
 
 if(MATHPRIM_BUILD_TESTS_CUDA)
   add_subdirectory(hello_world_cuda)

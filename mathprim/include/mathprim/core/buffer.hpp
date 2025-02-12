@@ -23,11 +23,11 @@ static constexpr bool is_buffer_castable_v
     = is_castable_v<sshape_from, sshape_to> && is_castable_v<sstride_from, sstride_to>;
 }  // namespace internal
 
-template <typename T, index_t... sshape_values, index_t... sstride_values, typename dev>
-class basic_buffer<T, index_pack<sshape_values...>, index_pack<sstride_values...>, dev> {
+template <typename T, typename sshape, typename sstride, typename dev>
+class basic_buffer {
 public:
-  using sshape = index_pack<sshape_values...>;
-  using sstride = index_pack<sstride_values...>;
+  using shape_at_compile_time = sshape;
+  using stride_at_compile_time = sstride;
   static_assert(internal::is_buffer_supported_v<T>, "Unsupported buffer type.");
 
   template <typename, typename, typename, typename>
@@ -146,6 +146,10 @@ public:
 
   const_iterator end() const noexcept {
     return view().end();
+  }
+
+  void fill_bytes(int value) {
+    dev{}.memset(data_, value, sizeof(T) * numel());
   }
 
 private:

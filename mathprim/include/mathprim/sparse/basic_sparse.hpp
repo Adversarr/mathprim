@@ -105,12 +105,19 @@ private:
 template <typename Scalar, typename device, sparse_format sparse_compression>
 class sparse_blas_base {
 public:
+  using scalar_type = Scalar;
+  using device_type = device;
+  static constexpr sparse_format compression = sparse_compression;
   using vector_view = continuous_view<Scalar, shape_t<keep_dim>, device>;
   using const_vector_view = continuous_view<const Scalar, shape_t<keep_dim>, device>;
   using sparse_view = basic_sparse_view<Scalar, device, sparse_compression>;
   using const_sparse_view = basic_sparse_view<const Scalar, device, sparse_compression>;
   explicit sparse_blas_base(const_sparse_view matrix_view) : mat_(matrix_view) {}
   virtual ~sparse_blas_base() = default;
+
+  const_sparse_view matrix() const noexcept {
+    return mat_;
+  }
 
   // y = alpha * A * x + beta * y.
   virtual void gemv(Scalar alpha, const_vector_view x, Scalar beta, vector_view y) = 0;

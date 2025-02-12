@@ -87,8 +87,6 @@ void naive<Scalar, device::cpu, sparse_format::csr, backend>::gemv_no_trans(Scal
   const auto col_ind = mat.inner_indices();
   const auto values = mat.values();
   const auto m = mat.rows();
-  const auto n = mat.cols();
-  const auto nnz = mat.nnz();
 
   backend parfor;
   parfor.run(make_shape(m), [row_ptr, col_ind, values, x, y, alpha, beta](index_t i) {
@@ -109,7 +107,6 @@ void naive<Scalar, device::cpu, sparse_format::csr, backend>::gemv_trans(Scalar 
   const auto& values = mat.values();
   const auto m = mat.rows();
   const auto n = mat.cols();
-  const auto nnz = mat.nnz();
   // Initialize y with beta * y
   for (index_t i = 0; i < n; ++i) {
     y[i] *= beta;
@@ -134,7 +131,6 @@ void naive<Scalar, device::cpu, sparse_format::csc, backend>::gemv_no_trans(Scal
   const auto& values = mat.values();
   const auto m = mat.rows();
   const auto n = mat.cols();
-  const auto nnz = mat.nnz();
 
   // Initialize y with beta * y
   for (index_t i = 0; i < m; ++i) {
@@ -155,9 +151,7 @@ void naive<Scalar, device::cpu, sparse_format::csc, backend>::gemv_trans(Scalar 
   const auto& col_ptr = mat.outer_ptrs();
   const auto& row_ind = mat.inner_indices();
   const auto& values = mat.values();
-  const auto m = mat.rows();
   const auto n = mat.cols();
-  const auto nnz = mat.nnz();
 
   backend parfor;
   parfor.run(make_shape(n), [col_ptr, row_ind, values, x, y, alpha, beta](index_t j) {
