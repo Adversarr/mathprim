@@ -14,7 +14,7 @@ namespace mp = ::mathprim;
 
 namespace internal {
 
-using nb_index_t = nb::ssize_t;
+using nb_index_t = ssize_t;
 using index_t = mp::index_t;
 
 // convert shape/stride values.
@@ -84,7 +84,7 @@ struct to_nb_array_standard;
 template <typename T, index_t... sshape_values, index_t... sstride_values, typename dev>
 struct to_nb_array_standard<mp::basic_view<T, mp::shape_t<sshape_values...>, mp::stride_t<sstride_values...>, dev>> {
   using view_t = mp::basic_view<T, mp::shape_t<sshape_values...>, mp::stride_t<sstride_values...>, dev>;
-  using sshape = typename view_t::sshape;
+  using sshape = typename view_t::shape_at_compile_time;
   using nb_dev = to_nb_device_t<dev>;
   using nb_shape = to_nb_shape_t<sshape>;
   using nb_api = to_nb_api_t<dev>;
@@ -120,7 +120,7 @@ using to_mp_view_standard_t = typename to_mp_view_standard<nb_view>::type;
 template <typename... Args>
 to_mp_view_standard_t<nb::ndarray<Args...>> make_mp_view_standard(nb::ndarray<Args...> view) {
   using ret_t = to_mp_view_standard_t<nb::ndarray<Args...>>;
-  using sshape = typename ret_t::sshape;
+  using sshape = typename ret_t::shape_at_compile_time;
   sshape shape;
 
   for (index_t i = 0; i < sshape::ndim; ++i) {

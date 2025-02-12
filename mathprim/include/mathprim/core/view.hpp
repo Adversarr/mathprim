@@ -97,13 +97,14 @@ constexpr MATHPRIM_PRIMFUNC internal::slice_t<i, index_pack<svalues...>> slice(c
 ///////////////////////////////////////////////////////////////////////////////
 /// General template for buffer view.
 ///////////////////////////////////////////////////////////////////////////////
-template <typename T, index_t... sshape_values, index_t... sstride_values, typename dev>
-class basic_view<T, shape_t<sshape_values...>, stride_t<sstride_values...>, dev> {
+template <typename T, typename sshape, typename sstride, typename dev>
+class basic_view {
 public:
-  using sshape = shape_t<sshape_values...>;
-  using sstride = stride_t<sstride_values...>;
   static constexpr index_t ndim = sshape::ndim;
   static constexpr bool is_const = std::is_const_v<T>;
+  using shape_at_compile_time = sshape;
+  using stride_at_compile_time = sstride;
+
   using value_type = T;
   using const_type = std::add_const_t<T>;
   using byte_type = std::conditional_t<std::is_const_v<T>, const char, char>;

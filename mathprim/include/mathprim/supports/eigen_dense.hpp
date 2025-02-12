@@ -212,9 +212,9 @@ MATHPRIM_PRIMFUNC matrix_view_t<Eigen::Matrix<Scalar, Rows, Cols, Options, MaxRo
     const Eigen::Matrix<Scalar, Rows, Cols, Options, MaxRows, MaxCols> &mat) noexcept {
   using ret = matrix_view_t<Eigen::Matrix<Scalar, Rows, Cols, Options, MaxRows, MaxCols>, true, dev>;
   if constexpr (Cols == 1) {
-    return ret{mat.data(), typename ret::sshape{mat.size()}};
+    return ret{mat.data(), typename ret::shape_at_compile_time{mat.size()}};
   } else {
-    return ret{mat.data(), typename ret::sshape{mat.cols(), mat.rows()}};
+    return ret{mat.data(), typename ret::shape_at_compile_time{mat.cols(), mat.rows()}};
   }
 }
 
