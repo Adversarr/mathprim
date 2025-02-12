@@ -5,12 +5,11 @@
 
 namespace mathprim::sparse {
 namespace blas {
-template <typename Scalar, typename device, sparse_format sparse_compression, typename backend = par::seq>
+template <typename Scalar, sparse_format sparse_compression, typename backend = par::seq>
 class naive;
 
 template <typename Scalar, typename backend>
-class naive<Scalar, device::cpu, sparse_format::csr, backend>
-    : public sparse_blas_base<Scalar, device::cpu, sparse_format::csr> {
+class naive<Scalar, sparse_format::csr, backend> : public sparse_blas_base<Scalar, device::cpu, sparse_format::csr> {
 public:
   using base = sparse_blas_base<Scalar, device::cpu, sparse_format::csr>;
   using vector_view = typename base::vector_view;
@@ -43,8 +42,7 @@ private:
 };
 
 template <typename Scalar, typename backend>
-class naive<Scalar, device::cpu, sparse_format::csc, backend>
-    : public sparse_blas_base<Scalar, device::cpu, sparse_format::csc> {
+class naive<Scalar, sparse_format::csc, backend> : public sparse_blas_base<Scalar, device::cpu, sparse_format::csc> {
 public:
   using base = sparse_blas_base<Scalar, device::cpu, sparse_format::csc>;
   using vector_view = typename base::vector_view;
@@ -80,8 +78,8 @@ private:
 ///////////////////////////////////////////////////////////////////////////////
 
 template <typename Scalar, typename backend>
-void naive<Scalar, device::cpu, sparse_format::csr, backend>::gemv_no_trans(Scalar alpha, const_vector_view x,
-                                                                            Scalar beta, vector_view y) {
+void naive<Scalar, sparse_format::csr, backend>::gemv_no_trans(Scalar alpha, const_vector_view x, Scalar beta,
+                                                               vector_view y) {
   const auto& mat = this->mat_;
   const auto row_ptr = mat.outer_ptrs();
   const auto col_ind = mat.inner_indices();
@@ -99,8 +97,8 @@ void naive<Scalar, device::cpu, sparse_format::csr, backend>::gemv_no_trans(Scal
 }
 
 template <typename Scalar, typename backend>
-void naive<Scalar, device::cpu, sparse_format::csr, backend>::gemv_trans(Scalar alpha, const_vector_view x, Scalar beta,
-                                                                         vector_view y) {
+void naive<Scalar, sparse_format::csr, backend>::gemv_trans(Scalar alpha, const_vector_view x, Scalar beta,
+                                                            vector_view y) {
   const auto& mat = this->mat_;
   const auto& row_ptr = mat.outer_ptrs();
   const auto& col_ind = mat.inner_indices();
@@ -123,8 +121,8 @@ void naive<Scalar, device::cpu, sparse_format::csr, backend>::gemv_trans(Scalar 
 /// Implementation for CSC format.
 ///////////////////////////////////////////////////////////////////////////////
 template <typename Scalar, typename backend>
-void naive<Scalar, device::cpu, sparse_format::csc, backend>::gemv_no_trans(Scalar alpha, const_vector_view x,
-                                                                            Scalar beta, vector_view y) {
+void naive<Scalar, sparse_format::csc, backend>::gemv_no_trans(Scalar alpha, const_vector_view x, Scalar beta,
+                                                               vector_view y) {
   const auto& mat = this->mat_;
   const auto& col_ptr = mat.outer_ptrs();
   const auto& row_ind = mat.inner_indices();
@@ -145,8 +143,8 @@ void naive<Scalar, device::cpu, sparse_format::csc, backend>::gemv_no_trans(Scal
 }
 
 template <typename Scalar, typename backend>
-void naive<Scalar, device::cpu, sparse_format::csc, backend>::gemv_trans(Scalar alpha, const_vector_view x, Scalar beta,
-                                                                         vector_view y) {
+void naive<Scalar, sparse_format::csc, backend>::gemv_trans(Scalar alpha, const_vector_view x, Scalar beta,
+                                                            vector_view y) {
   const auto& mat = this->mat_;
   const auto& col_ptr = mat.outer_ptrs();
   const auto& row_ind = mat.inner_indices();

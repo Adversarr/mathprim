@@ -11,6 +11,10 @@ target_compile_options(BM_blas PRIVATE -march=native)
 add_executable(BM_csr sparse_csr.cpp)
 target_link_libraries(BM_csr PRIVATE benchmark::benchmark mathprim)
 target_compile_options(BM_csr PRIVATE -march=native)
+
+add_executable(BM_csrcg csr_cg.cpp)
+target_link_libraries(BM_csrcg PRIVATE benchmark::benchmark mathprim)
+target_compile_options(BM_csrcg PRIVATE -march=native)
 # add_executable(BM_par par.cpp)
 # target_link_libraries(BM_par PRIVATE benchmark::benchmark mathprim)
 

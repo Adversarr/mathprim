@@ -83,7 +83,8 @@ public:
       // update the search direction: d = q + beta * d
       blas.axpy(beta, cd, q);  // q = q + beta * d
       blas.swap(d, q);         // swap d and q
-      std::cout << "Iteration: " << iterations << ", norm: " << norm << /* ", max_norm: " << max_norm << */ std::endl;
+      // std::cout << "Iteration: " << iterations << ", norm: " << norm << /* ", max_norm: " << max_norm << */
+      // std::endl;
     }
 
     return results;
