@@ -11,6 +11,7 @@ add_subdirectory(sparse_csr)
 if(MATHPRIM_BUILD_TESTS_CUDA)
   add_subdirectory(hello_world_cuda)
   add_subdirectory(cublas)
+  add_subdirectory(sparse)
   add_subdirectory(cuda_training_series)
 
   if(MATHPRIM_ENABLE_EIGEN)

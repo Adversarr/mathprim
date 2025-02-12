@@ -134,7 +134,7 @@ template <typename... Args>
 using holders_to_shape_t = god::to_pack<typename holders_to_shape_impl<Args...>::type>;
 
 template <typename... Holders>
-holders_to_shape_t<Holders...> make_shape_from_holders(Holders... holders) {
+MATHPRIM_PRIMFUNC holders_to_shape_t<Holders...> make_shape_from_holders(Holders... holders) {
   return holders_to_shape_t<Holders...>{(*holders)...};
 }
 
@@ -194,7 +194,7 @@ MATHPRIM_PRIMFUNC constexpr auto operator""_s() {
  * @return shape_t<...> as static as possible, depending on the input.
  */
 template <typename... Args>
-auto make_shape(Args... args) {
+MATHPRIM_PRIMFUNC auto make_shape(Args... args) {
   return internal::make_shape_from_holders(internal::to_holder<Args>(std::forward<Args>(args))...);
 }
 

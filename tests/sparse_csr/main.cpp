@@ -1,5 +1,5 @@
 #include "mathprim/parallel/openmp.hpp"
-#include <mathprim/sparse/blas/csr.hpp>
+#include <mathprim/sparse/blas/naive.hpp>
 #include <gtest/gtest.h>
 
 using namespace mathprim;
@@ -9,7 +9,7 @@ GTEST_TEST(csr, gemv) {
   int h_csr_col_idx[] = {0, 1, 1, 2, 0};
   int h_csr_row_ptr[] = {0, 2, 4, 5};
 
-  sparse::basic_sparse_view<float, device::cpu, sparse::sparse_format::csr, true> mat(
+  sparse::basic_sparse_view<const float, device::cpu, sparse::sparse_format::csr> mat(
     view(h_csr_values, make_shape(nnz)).as_const(),
     view(h_csr_row_ptr, make_shape(rows + 1)).as_const(),
     view(h_csr_col_idx, make_shape(nnz)).as_const(),
@@ -59,7 +59,7 @@ GTEST_TEST(csr, gemv_trans) {
   //  [0, 3, 4],
   //  [0, 0, 5]]
 
-  sparse::basic_sparse_view<float, device::cpu, sparse::sparse_format::csr, true> mat(
+  sparse::basic_sparse_view<const float, device::cpu, sparse::sparse_format::csr> mat(
     view(h_csr_values, make_shape(nnz)).as_const(),
     view(h_csr_row_ptr, make_shape(rows + 1)).as_const(),
     view(h_csr_col_idx, make_shape(nnz)).as_const(),

@@ -444,12 +444,12 @@ using field_t = internal::field_t<base_view>;
 ///////////////////////////////////////////////////////////////////////////////
 
 template <typename device = device::cpu, typename T, typename sshape, typename sstride = default_stride_t<sshape>>
-basic_view<T, sshape, sstride, device> view(T *data, const sshape &shape) {
+MATHPRIM_PRIMFUNC basic_view<T, sshape, sstride, device> view(T *data, const sshape &shape) {
   return basic_view<T, sshape, sstride, device>(data, shape);
 }
 
 template <typename device = device::cpu, typename T, typename sshape, typename sstride = default_stride_t<sshape>>
-basic_view<T, sshape, sstride, device> view(T *data, const sshape &shape, const sstride &stride) {
+MATHPRIM_PRIMFUNC basic_view<T, sshape, sstride, device> view(T *data, const sshape &shape, const sstride &stride) {
   return basic_view<T, sshape, sstride, device>(data, shape, stride);
 }
 

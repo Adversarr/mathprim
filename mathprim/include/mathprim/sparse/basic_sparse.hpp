@@ -1,5 +1,5 @@
 #pragma once
-#include "mathprim/core/buffer.hpp"
+#include "mathprim/core/view.hpp"
 
 namespace mathprim::sparse {
 
@@ -18,11 +18,18 @@ enum class sparse_property {
   // hermitian
 };
 
-template <typename Scalar, typename device, sparse_format sparse_compression, bool is_const>
+template <typename Scalar, typename device, sparse_format sparse_compression>
 class basic_sparse_view {
 public:
-  using values_view = continuous_view<std::conditional_t<is_const, const Scalar, Scalar>, shape_t<keep_dim>, device>;
+  using values_view = continuous_view<Scalar, shape_t<keep_dim>, device>;
+  static constexpr bool is_const = std::is_const_v<Scalar>;
+  using index_type = std::conditional_t<is_const, const index_t, index_t>;
   using ptrs_view = continuous_view<std::conditional_t<is_const, const index_t, index_t>, shape_t<keep_dim>, device>;
+
+  MATHPRIM_PRIMFUNC basic_sparse_view(Scalar* values, index_type* outer_ptrs, index_type* inner_indices, index_t rows,
+                                      index_t cols, index_t nnz, sparse_property property, bool transpose) :
+      basic_sparse_view(view<device>(values, make_shape(nnz)), view<device>(outer_ptrs, make_shape(rows + 1)),
+                        view<device>(inner_indices, make_shape(nnz)), rows, cols, nnz, property, transpose) {}
 
   MATHPRIM_PRIMFUNC
   basic_sparse_view(values_view values, ptrs_view outer_ptrs, ptrs_view inner_indices, index_t rows, index_t cols,
@@ -76,8 +83,8 @@ public:
     return is_transpose_;
   }
 
-  basic_sparse_view<Scalar, device, sparse_compression, true> as_const() const noexcept {
-    return basic_sparse_view<Scalar, device, sparse_compression, true>(
+  basic_sparse_view<std::add_const_t<Scalar>, device, sparse_compression> as_const() const noexcept {
+    return basic_sparse_view<std::add_const_t<Scalar>, device, sparse_compression>(
         values_.as_const(), outer_ptrs_.as_const(), inner_indices_.as_const(), rows_, cols_, nnz_, property_,
         is_transpose_);
   }
@@ -100,9 +107,10 @@ class sparse_blas_base {
 public:
   using vector_view = continuous_view<Scalar, shape_t<keep_dim>, device>;
   using const_vector_view = continuous_view<const Scalar, shape_t<keep_dim>, device>;
-  using sparse_view = basic_sparse_view<Scalar, device, sparse_compression, false>;
-  using const_sparse_view = basic_sparse_view<Scalar, device, sparse_compression, true>;
+  using sparse_view = basic_sparse_view<Scalar, device, sparse_compression>;
+  using const_sparse_view = basic_sparse_view<const Scalar, device, sparse_compression>;
   explicit sparse_blas_base(const_sparse_view matrix_view) : mat_(matrix_view) {}
+  virtual ~sparse_blas_base() = default;
 
   // y = alpha * A * x + beta * y.
   virtual void gemv(Scalar alpha, const_vector_view x, Scalar beta, vector_view y) = 0;

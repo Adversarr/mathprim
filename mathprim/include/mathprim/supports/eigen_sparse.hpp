@@ -49,7 +49,7 @@ constexpr sparse::sparse_format mp_sparse_format_v = mp_sparse_format<SparseMatr
 
 template <typename Scalar, sparse::sparse_format sparse_compression>
 Eigen::Map<internal::eigen_sparse_format_t<Scalar, sparse_compression>> map(
-    sparse::basic_sparse_view<Scalar, device::cpu, sparse_compression, false> mat) {
+    sparse::basic_sparse_view<Scalar, device::cpu, sparse_compression> mat) {
   using EigenSparseMatrix = internal::eigen_sparse_format_t<Scalar, sparse_compression>;
   auto rows = mat.rows();
   auto cols = mat.cols();
@@ -62,7 +62,7 @@ Eigen::Map<internal::eigen_sparse_format_t<Scalar, sparse_compression>> map(
 
 template <typename Scalar, sparse::sparse_format sparse_compression>
 Eigen::Map<const internal::eigen_sparse_format_t<Scalar, sparse_compression>> map(
-    sparse::basic_sparse_view<Scalar, device::cpu, sparse_compression, true> mat) {
+    sparse::basic_sparse_view<const Scalar, device::cpu, sparse_compression> mat) {
   using EigenSparseMatrix = internal::eigen_sparse_format_t<Scalar, sparse_compression>;
   auto rows = mat.rows();
   auto cols = mat.cols();
@@ -77,7 +77,7 @@ template <typename dev = device::cpu, typename Scalar, int Options>
 auto view(EigenSparseMatrix<Scalar, Options>& mat, sparse::sparse_property property = sparse::sparse_property::general) {
   using SparseMatrixT = EigenSparseMatrix<Scalar, Options>;
   constexpr auto sparse_format = internal::mp_sparse_format_v<SparseMatrixT>;
-  using RetT = sparse::basic_sparse_view<Scalar, dev, sparse_format, false>;
+  using RetT = sparse::basic_sparse_view<Scalar, dev, sparse_format>;
   if (!mat.isCompressed()) {
     throw std::runtime_error("Eigen sparse matrix must be compressed.");
   }
@@ -97,7 +97,7 @@ template <typename dev = device::cpu, typename Scalar, int Options>
 auto view(const EigenSparseMatrix<Scalar, Options>& mat, sparse::sparse_property property = sparse::sparse_property::general) {
   using SparseMatrixT = EigenSparseMatrix<Scalar, Options>;
   constexpr auto sparse_format = internal::mp_sparse_format_v<SparseMatrixT>;
-  using RetT = sparse::basic_sparse_view<Scalar, dev, sparse_format, true>;
+  using RetT = sparse::basic_sparse_view<const Scalar, dev, sparse_format>;
   if (!mat.isCompressed()) {
     throw std::runtime_error("Eigen sparse matrix must be compressed.");
   }

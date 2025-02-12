@@ -29,17 +29,19 @@ public:
         // A = -A.T => A.T @ x = -A @ x
         transpose = false;
         alpha = -alpha;
+      } else {
+        transpose = true;
       }
-      transpose = true;
     }
 
     auto mat = eigen_support::map(this->mat_);
     auto x_map = eigen_support::cmap(x);
     auto y_map = eigen_support::cmap(y);
+    y_map *= beta;
     if (transpose) {
-      y_map = alpha * mat.transpose() * x_map + beta * y_map;
+      y_map += alpha * mat.transpose() * x_map;
     } else {
-      y_map = alpha * mat * x_map + beta * y_map;
+      y_map += alpha * mat * x_map;
     }
   }
 };

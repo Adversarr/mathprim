@@ -45,7 +45,7 @@ void csr(benchmark::State& state) {
   }
   row_ptr[rows] = nnz;
 
-  sparse::basic_sparse_view<float, device::cpu, sparse::sparse_format::csr, true> mat(
+  sparse::basic_sparse_view<const float, device::cpu, sparse::sparse_format::csr> mat(
       values.as_const(), row_ptr.as_const(), col_idx.as_const(), rows, cols, nnz, sparse::sparse_property::general,
       trans);
 
@@ -97,7 +97,7 @@ void eigen_sparse_map(benchmark::State& state) {
   }
   row_ptr[rows] = nnz;
 
-  sparse::basic_sparse_view<float, device::cpu, sparse::sparse_format::csr, true> mat(
+  sparse::basic_sparse_view<const float, device::cpu, sparse::sparse_format::csr> mat(
       values.as_const(), row_ptr.as_const(), col_idx.as_const(), rows, cols, nnz, sparse::sparse_property::general,
       trans);
 
