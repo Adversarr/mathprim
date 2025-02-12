@@ -1,7 +1,9 @@
 #pragma once
 
 #include <ostream>
-#include "mathprim/core/view.hpp"
+
+#include "mathprim/core/buffer.hpp"  // IWYU pragma: export
+#include "mathprim/core/view.hpp"    // IWYU pragma: export
 
 namespace mathprim {
 
@@ -33,6 +35,18 @@ std::ostream& operator<<(std::ostream& os, const basic_view<T, sshape, sstride, 
   } else {
     os << "view<data=" << view.data() << ", shape=" << view.shape() << ", sshape=" << sshape()
        << ", stride=" << view.stride() << ", dev=" << dev{}.name() << ">";
+  }
+  return os;
+}
+
+template <typename T, typename sshape, typename sstride, typename dev>
+std::ostream& operator<<(std::ostream& os, const basic_buffer<T, sshape, sstride, dev>& buffer) {
+  if (buffer.view().is_contiguous()) {
+    os << "buffer<data=" << buffer.data() << ", shape=" << buffer.shape() << ", sshape=" << sshape()
+       << ", dev=" << dev{}.name() << ">";
+  } else {
+    os << "buffer<data=" << buffer.data() << ", shape=" << buffer.shape() << ", sshape=" << sshape()
+       << ", stride=" << buffer.stride() << ", dev=" << dev{}.name() << ">";
   }
   return os;
 }
