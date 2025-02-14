@@ -21,7 +21,7 @@ struct cpu_eigen : public basic_blas<cpu_eigen<T>, T, device::cpu> {
   void copy_impl(view_type<sshape_dst, sstride_dst> dst, const_type<sshape_src, sstride_src> src) {
     auto map_dst = eigen_support::amap(dst.safe_flatten());
     auto map_src = eigen_support::amap(src.safe_flatten());
-    map_dst = map_src;
+    map_dst.noalias() = map_src;
   }
 
   template <typename sshape, typename sstride>
@@ -51,7 +51,7 @@ struct cpu_eigen : public basic_blas<cpu_eigen<T>, T, device::cpu> {
   void axpy_impl(T alpha, const_type<sshape_x, sstride_x> x, view_type<sshape_y, sstride_y> y) {
     auto map_x = eigen_support::amap(x.safe_flatten());
     auto map_y = eigen_support::amap(y.safe_flatten());
-    map_y += alpha * map_x;
+    map_y.noalias() += alpha * map_x;
   }
 
   template <typename sshape_x, typename sstride_x, typename sshape_y, typename sstride_y>
@@ -86,11 +86,12 @@ struct cpu_eigen : public basic_blas<cpu_eigen<T>, T, device::cpu> {
   template <typename sshape_a, typename sstride_a, typename sshape_x, typename sstride_x, typename sshape_y,
             typename sstride_y>
   void emul_impl(T alpha, const_type<sshape_a, sstride_a> a, const_type<sshape_x, sstride_x> x, T beta,
-            view_type<sshape_y, sstride_y> y) {
+                 view_type<sshape_y, sstride_y> y) {
     auto map_x = eigen_support::amap(x.safe_flatten());
     auto map_y = eigen_support::amap(y.safe_flatten());
     auto map_a = eigen_support::amap(a.safe_flatten());
-    map_y = (alpha * map_x.array() * map_a.array() + beta * map_y.array()).matrix();
+    map_y *= beta;
+    map_y.noalias() += alpha * map_a.array() * map_x.array();
   }
 
   // // Level 2
@@ -104,7 +105,7 @@ struct cpu_eigen : public basic_blas<cpu_eigen<T>, T, device::cpu> {
       auto map_x = eigen_support::cmap(x);
       auto map_y = eigen_support::cmap(y);
       map_y *= beta;
-      map_y += alpha * map_a.transpose() * map_x;
+      map_y.noalias() += alpha * map_a.transpose() * map_x;
     } else {
       auto a_transpose = A.transpose();
       if (a_transpose.is_contiguous() && x.is_contiguous() && y.is_contiguous()) {
@@ -112,13 +113,13 @@ struct cpu_eigen : public basic_blas<cpu_eigen<T>, T, device::cpu> {
         auto map_x = eigen_support::cmap(x);
         auto map_y = eigen_support::cmap(y);
         map_y *= beta;
-        map_y += alpha * map_a * map_x;
+        map_y.noalias() += alpha * map_a * map_x;
       } else {
         auto map_a = eigen_support::amap(A);
         auto map_x = eigen_support::amap(x);
         auto map_y = eigen_support::amap(y);
         map_y *= beta;
-        map_y += alpha * map_a.transpose() * map_x;
+        map_y.noalias() += alpha * map_a.transpose() * map_x;
       }
     }
   }
@@ -134,7 +135,7 @@ struct cpu_eigen : public basic_blas<cpu_eigen<T>, T, device::cpu> {
       auto map_B = eigen_support::cmap(B);
       auto map_C = eigen_support::cmap(C);
       map_C *= beta;
-      map_C += alpha * map_B * map_A;
+      map_C.noalias() += alpha * map_B * map_A;
     } else {
       auto a_transpose = A.transpose();
       auto b_transpose = B.transpose();
@@ -144,13 +145,13 @@ struct cpu_eigen : public basic_blas<cpu_eigen<T>, T, device::cpu> {
         auto map_B = eigen_support::cmap(b_transpose);
         auto map_C = eigen_support::cmap(c_transpose);
         map_C *= beta;
-        map_C += alpha * map_A * map_B;  // C.T += alpha * A.T * B.T <=> C += alpha * B * A
+        map_C.noalias() += alpha * map_A * map_B;  // C.T += alpha * A.T * B.T <=> C += alpha * B * A
       } else {
         auto map_A = eigen_support::amap(A);
         auto map_B = eigen_support::amap(B);
         auto map_C = eigen_support::amap(C);
         map_C *= beta;
-        map_C += alpha * map_B * map_A;
+        map_C.noalias() += alpha * map_B * map_A;
       }
     }
   }
