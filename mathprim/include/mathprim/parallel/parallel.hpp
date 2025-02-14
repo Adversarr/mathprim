@@ -86,6 +86,7 @@ public:
   void run_impl(const index_pack<sgrids...>& grid_dim, const index_pack<sblocks...>& block_dim,
                 Fn&& fn) const noexcept {
     for (auto grid_id : grid_dim) {
+      MATHPRIM_PRAGMA_UNROLL
       for (auto block_id : block_dim) {
         fn(grid_id, block_id);
       }
@@ -94,6 +95,7 @@ public:
 
   template <typename Fn, index_t... sgrids>
   void run_impl(const index_pack<sgrids...>& grid_dim, Fn&& fn) const noexcept {
+    MATHPRIM_PRAGMA_UNROLL
     for (auto grid_id : grid_dim) {
       fn(grid_id);
     }

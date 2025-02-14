@@ -84,6 +84,9 @@ public:
   using vector_type = typename base::vector_type;
   using const_vector = typename base::const_vector;
 
+  none_preconditioner() = default;
+  none_preconditioner(none_preconditioner&&) = default;
+
   void apply_impl(vector_type y, const_vector x) {
     ::mathprim::copy(y, x);  // Y <- X
   }
@@ -121,10 +124,10 @@ public:
 
   explicit basic_iterative_solver(linear_operator_type matrix, blas_type blas = {},
                                   preconditioner_type preconditioner = {}) :
-      matrix_(matrix),
-      blas_(blas),
-      preconditioner_(preconditioner),
-      residual_(make_buffer<Scalar, device>(make_shape(matrix.rows()))) {}
+      matrix_(std::move(matrix)),
+      blas_(std::move(blas)),
+      preconditioner_(std::move(preconditioner)),
+      residual_(make_buffer<Scalar, device>(make_shape(matrix_.rows()))) {}
 
   // must be virtual
   virtual ~basic_iterative_solver() = default;
@@ -170,10 +173,10 @@ public:
   }
 
 protected:
-  continuous_buffer<Scalar, shape_t<keep_dim>, device> residual_;
   linear_operator_type matrix_;
   blas_type blas_;
   preconditioner_type preconditioner_;
+  continuous_buffer<Scalar, shape_t<keep_dim>, device> residual_;
 };
 
 }  // namespace mathprim::iterative_solver

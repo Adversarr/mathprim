@@ -38,10 +38,19 @@ if(MATHPRIM_ENABLE_CUDA)
   find_package(CUDAToolkit REQUIRED)
   message(STATUS "Enabling CUDA")
 
-  target_link_libraries(mathprim INTERFACE CUDA::cudart CUDA::cublas)
+  target_link_libraries(mathprim INTERFACE CUDA::cudart CUDA::cublas CUDA::cusparse)
   target_compile_definitions(mathprim INTERFACE MATHPRIM_ENABLE_CUDA)
   target_compile_options(mathprim INTERFACE $<$<COMPILE_LANGUAGE:CUDA>:--extended-lambda>)
   target_compile_options(mathprim INTERFACE $<$<COMPILE_LANGUAGE:CUDA>:--expt-relaxed-constexpr>)
+  # OpenMP
+  if (MATHPRIM_ENABLE_OPENMP)
+    if (MSVC)
+      target_compile_options(mathprim INTERFACE $<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler:/openmp>)
+    else()
+      target_compile_options(mathprim INTERFACE $<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=-fopenmp>)
+    endif()
+  endif()
+
 
   # Warnings:
   if(MATHPRIM_ENABLE_WARNINGS)
@@ -66,4 +75,12 @@ endif()
 
 if(MATHPRIM_ENABLE_NANOBIND)
   add_subdirectory(nb)
+endif()
+
+if(MATHPRIM_ENABLE_CHOLMOD)
+  find_package(CHOLMOD REQUIRED)
+  message(STATUS "Enabling CHOLMOD")
+
+  target_link_libraries(mathprim INTERFACE SuiteSparse::CHOLMOD)
+  target_compile_definitions(mathprim INTERFACE MATHPRIM_ENABLE_CHOLMOD)
 endif()

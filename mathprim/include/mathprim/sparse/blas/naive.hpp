@@ -28,10 +28,10 @@ public:
       } else if (this->mat_.property() == sparse_property::skew_symmetric) {
         // A = -A.T => A.T @ x = -A @ x
         gemv_no_trans(-alpha, x, beta, y);
+      } else {
+        gemv_trans(alpha, x, beta, y);  // always slower sequential
       }
-
-      gemv_trans(alpha, x, beta, y);  // always slower sequential
-    } else {                          // Computes A @ x
+    } else {  // Computes A @ x
       gemv_no_trans(alpha, x, beta, y);
     }
   }
@@ -63,8 +63,9 @@ public:
       } else if (this->mat_.property() == sparse_property::skew_symmetric) {
         // A = -A.T => A.T @ x = -A @ x
         gemv_trans(-alpha, x, beta, y);
+      } else {
+        gemv_no_trans(alpha, x, beta, y);
       }
-      gemv_no_trans(alpha, x, beta, y);
     }
   }
 
@@ -89,7 +90,9 @@ void naive<Scalar, sparse_format::csr, backend>::gemv_no_trans(Scalar alpha, con
   backend parfor;
   parfor.run(make_shape(m), [row_ptr, col_ind, values, x, y, alpha, beta](index_t i) {
     Scalar result = 0;
-    for (index_t j = row_ptr[i]; j < row_ptr[i + 1]; ++j) {
+    const index_t beg = row_ptr[i], end = row_ptr[i + 1];
+
+    for (index_t j = beg; j < end; ++j) {
       result += values[j] * x[col_ind[j]];
     }
     y[i] = alpha * result + beta * y[i];
@@ -106,12 +109,15 @@ void naive<Scalar, sparse_format::csr, backend>::gemv_trans(Scalar alpha, const_
   const auto m = mat.rows();
   const auto n = mat.cols();
   // Initialize y with beta * y
+  MATHPRIM_PRAGMA_UNROLL
   for (index_t i = 0; i < n; ++i) {
     y[i] *= beta;
   }
 
   for (index_t i = 0; i < m; ++i) {
-    for (index_t j = row_ptr[i]; j < row_ptr[i + 1]; ++j) {
+    index_t beg = row_ptr[i], end = row_ptr[i + 1];
+    MATHPRIM_PRAGMA_UNROLL
+    for (index_t j = beg; j < end; ++j) {
       y[col_ind[j]] += alpha * values[j] * x[i];
     }
   }
@@ -131,12 +137,16 @@ void naive<Scalar, sparse_format::csc, backend>::gemv_no_trans(Scalar alpha, con
   const auto n = mat.cols();
 
   // Initialize y with beta * y
+  MATHPRIM_PRAGMA_UNROLL
   for (index_t i = 0; i < m; ++i) {
     y[i] *= beta;
   }
 
   for (index_t j = 0; j < n; ++j) {
-    for (index_t i = col_ptr[j]; i < col_ptr[j + 1]; ++i) {
+    const index_t beg = col_ptr[j], end = col_ptr[j + 1];
+
+    MATHPRIM_PRAGMA_UNROLL
+    for (index_t i = beg; i < end; ++i) {
       y[row_ind[i]] += alpha * values[i] * x[j];
     }
   }
@@ -153,9 +163,12 @@ void naive<Scalar, sparse_format::csc, backend>::gemv_trans(Scalar alpha, const_
 
   backend parfor;
   parfor.run(make_shape(n), [col_ptr, row_ind, values, x, y, alpha, beta](index_t j) {
-    for (index_t i = col_ptr[j]; i < col_ptr[j + 1]; ++i) {
-      y[j] += alpha * values[i] * x[row_ind[i]];
+    index_t beg = col_ptr[j], end = col_ptr[j + 1];
+    Scalar result = 0;
+    for (index_t i = beg; i < end; ++i) {
+      result += values[i] * x[row_ind[i]];
     }
+    y[j] = alpha * result + beta * y[j];
   });
 }
 

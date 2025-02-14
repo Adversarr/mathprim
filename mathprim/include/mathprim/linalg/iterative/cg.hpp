@@ -21,9 +21,9 @@ public:
   using const_vector = typename base::const_vector;
 
   explicit cg(linear_operator_type matrix, blas_type blas = {}, preconditioner_type preconditioner = {}) :
-      base(matrix, blas, preconditioner),
-      q_(make_buffer<scalar_type, device>(make_shape(matrix.rows()))),
-      d_(make_buffer<scalar_type, device>(make_shape(matrix.rows()))) {}
+      base(std::move(matrix), std::move(blas), std::move(preconditioner)),
+      q_(make_buffer<scalar_type, device>(make_shape(base::matrix_.rows()))),
+      d_(make_buffer<scalar_type, device>(make_shape(base::matrix_.rows()))) {}
 
   results_type apply_impl(const_vector b, vector_type x, const parameters_type& params) {
     auto& blas = base::blas_;
@@ -83,8 +83,6 @@ public:
       // update the search direction: d = q + beta * d
       blas.axpy(beta, cd, q);  // q = q + beta * d
       blas.swap(d, q);         // swap d and q
-      // std::cout << "Iteration: " << iterations << ", norm: " << norm << /* ", max_norm: " << max_norm << */
-      // std::endl;
     }
 
     return results;

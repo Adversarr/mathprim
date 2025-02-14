@@ -1,4 +1,11 @@
 #pragma once
+#ifdef _WIN32
+#  ifndef NOMINMAX
+#    define NOMINMAX
+#  endif
+#endif
+
+
 #include <assert.h>
 
 #include <cstddef>
@@ -124,14 +131,30 @@
 #ifndef MATHPRIM_PRAGMA_UNROLL
 #  ifdef __CUDA_ARCH__
 #    define MATHPRIM_PRAGMA_UNROLL _Pragma("unroll")
+#elif defined(__CUDACC__)
+#    define MATHPRIM_PRAGMA_UNROLL _Pragma("unroll")
 #  elif defined(__clang__)
-#    define MATHPRIM_PRAGMA_UNROLL _Pragma("clang loop unroll(full)")
+#    define MATHPRIM_PRAGMA_UNROLL _Pragma("clang loop unroll_count(4)")
 #  elif defined(__GNUC__)
 #    define MATHPRIM_PRAGMA_UNROLL _Pragma("GCC unroll 4")
 #  elif defined(_MSC_VER)
 #    define MATHPRIM_PRAGMA_UNROLL __pragma(loop(ivdep))
 #  else
 #    define MATHPRIM_PRAGMA_UNROLL
+#  endif
+#endif
+
+#ifndef MATHPRIM_PREFETCH
+#  ifdef __CUDA_ARCH__
+#    define MATHPRIM_PREFETCH(addr, rw, locality) __ldg(addr)
+#  elif defined(__clang__)
+#    define MATHPRIM_PREFETCH(addr, rw, locality) __builtin_prefetch(addr, rw, locality)
+#  elif defined(__GNUC__)
+#    define MATHPRIM_PREFETCH(addr, rw, locality) __builtin_prefetch(addr, rw, locality)
+#  elif defined(_MSC_VER)
+#    define MATHPRIM_PREFETCH(addr, rw, locality) __prefetch(addr)
+#  else
+#    define MATHPRIM_PREFETCH(addr, rw, locality) ((void)0)
 #  endif
 #endif
 

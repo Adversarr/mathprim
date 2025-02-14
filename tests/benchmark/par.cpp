@@ -1,11 +1,9 @@
 #include <benchmark/benchmark.h>
 
 #include <cmath>
-#include <mathprim/core/blas/cpu_blas.hpp>
-#include <mathprim/core/common.hpp>
-#include <mathprim/core/parallel.hpp>
-#include <mathprim/core/parallel/openmp.hpp>
-#include <mathprim/core/parallel/stl.hpp>
+#include <mathprim/blas/cpu_blas.hpp>
+#include <mathprim/core/core.hpp>
+#include <mathprim/parallel/openmp.hpp>
 
 using namespace mathprim;
 
@@ -14,10 +12,10 @@ static void BM_par_for_norm(benchmark::State &state) {
   index_t n = static_cast<index_t>(state.range(0));
   auto buffer = make_buffer<Flt>(n, 3);
 
+  p pf;
   for (auto _ : state) {
-    mathprim::parfor<p>::run(dim<1>{n}, [&](dim<1> ii) {
+    pf.run(make_shape(n), [&](index_t i) {
       float norm = 0;
-      index_t i = ii[0];
       auto buf_i = buffer.data() + i * 3;
       norm = buf_i[0] * buf_i[0] + buf_i[1] * buf_i[1] + buf_i[2] * buf_i[2];
       norm = std::sqrt(norm);
@@ -45,81 +43,47 @@ static void BM_par_for_norm_omp(benchmark::State &state) {
   }
 }
 
-constexpr index_t min_size = 1 << 5;
-constexpr index_t max_size = 1 << 20;
-
-BENCHMARK_TEMPLATE(BM_par_for_norm, float, par::seq)
-    ->RangeMultiplier(2)
-    ->Range(min_size, max_size);
-BENCHMARK(BM_par_for_norm_omp<float>)
-    ->RangeMultiplier(2)
-    ->Range(min_size, max_size);
-
-BENCHMARK_TEMPLATE(BM_par_for_norm, float, par::openmp)
-    ->RangeMultiplier(2)
-    ->Range(min_size, max_size);
-BENCHMARK_TEMPLATE(BM_par_for_norm, float, par::stl)
-    ->RangeMultiplier(2)
-    ->Range(min_size, max_size);
-BENCHMARK_TEMPLATE(BM_par_for_norm, double, par::seq)
-    ->RangeMultiplier(2)
-    ->Range(min_size, max_size);
-BENCHMARK_TEMPLATE(BM_par_for_norm, double, par::openmp)
-    ->RangeMultiplier(2)
-    ->Range(min_size, max_size);
-BENCHMARK_TEMPLATE(BM_par_for_norm, double, par::stl)
-    ->RangeMultiplier(2)
-    ->Range(min_size, max_size);
-
 template <typename Flt, class p>
 static void BM_par_axpy(benchmark::State &state) {
   index_t n = static_cast<index_t>(state.range(0));
   auto buffer_x = make_buffer<Flt>(n);
   auto buffer_y = make_buffer<Flt>(n);
   Flt a = 2.0;
+  p pf;
   for (auto _ : state) {
-    mathprim::parfor<p>::run(
-        dim_t{n}, [x = buffer_x.view(), y = buffer_y.view(), a](dim_t ii) {
-          index_t i = ii[0];
-          y[i] += a * x[i];
-        });
+    pf.run(make_shape(n), [x = buffer_x.view(), y = buffer_y.view(), a](index_t i) {
+      y[i] += a * x[i];
+    });
   }
 }
 
-template <typename Flt> static void BM_axpy_blas_blas(benchmark::State &state) {
+template <typename Flt>
+static void BM_axpy_blas_blas(benchmark::State &state) {
   index_t n = static_cast<index_t>(state.range(0));
   auto buffer_x = make_buffer<Flt>(n);
   auto buffer_y = make_buffer<Flt>(n);
-  float a = 2.0;
+  Flt a = 2.0;
+  blas::cpu_blas<Flt> b;
   for (auto _ : state) {
-    using blas_ = blas::blas_impl_cpu_blas<Flt>;
-    blas_::axpy(a, buffer_x.view(), buffer_y.view());
+    b.axpy(a, buffer_x.const_view(), buffer_y.view());
   }
 }
 
-BENCHMARK_TEMPLATE(BM_par_axpy, float, par::seq)
-    ->RangeMultiplier(2)
-    ->Range(min_size, max_size);
-BENCHMARK_TEMPLATE(BM_par_axpy, float, par::openmp)
-    ->RangeMultiplier(2)
-    ->Range(min_size, max_size);
-BENCHMARK_TEMPLATE(BM_par_axpy, float, par::stl)
-    ->RangeMultiplier(2)
-    ->Range(min_size, max_size);
-BENCHMARK_TEMPLATE(BM_par_axpy, double, par::seq)
-    ->RangeMultiplier(2)
-    ->Range(min_size, max_size);
-BENCHMARK_TEMPLATE(BM_par_axpy, double, par::openmp)
-    ->RangeMultiplier(2)
-    ->Range(min_size, max_size);
-BENCHMARK_TEMPLATE(BM_par_axpy, double, par::stl)
-    ->RangeMultiplier(2)
-    ->Range(min_size, max_size);
-BENCHMARK_TEMPLATE(BM_axpy_blas_blas, float)
-    ->RangeMultiplier(2)
-    ->Range(min_size, max_size);
-BENCHMARK_TEMPLATE(BM_axpy_blas_blas, double)
-    ->RangeMultiplier(2)
-    ->Range(min_size, max_size);
+
+constexpr index_t min_size = 1 << 5;
+constexpr index_t max_size = 1 << 20;
+
+BENCHMARK_TEMPLATE(BM_par_for_norm, float, par::seq)->RangeMultiplier(4)->Range(min_size, max_size);
+BENCHMARK(BM_par_for_norm_omp<float>)->RangeMultiplier(4)->Range(min_size, max_size);
+BENCHMARK(BM_par_for_norm_omp<double>)->RangeMultiplier(4)->Range(min_size, max_size);
+BENCHMARK_TEMPLATE(BM_par_for_norm, float, par::openmp)->RangeMultiplier(4)->Range(min_size, max_size);
+BENCHMARK_TEMPLATE(BM_par_for_norm, double, par::seq)->RangeMultiplier(4)->Range(min_size, max_size);
+BENCHMARK_TEMPLATE(BM_par_for_norm, double, par::openmp)->RangeMultiplier(4)->Range(min_size, max_size);
+BENCHMARK_TEMPLATE(BM_par_axpy, float, par::seq)->RangeMultiplier(4)->Range(min_size, max_size);
+BENCHMARK_TEMPLATE(BM_par_axpy, float, par::openmp)->RangeMultiplier(4)->Range(min_size, max_size);
+BENCHMARK_TEMPLATE(BM_par_axpy, double, par::seq)->RangeMultiplier(4)->Range(min_size, max_size);
+BENCHMARK_TEMPLATE(BM_par_axpy, double, par::openmp)->RangeMultiplier(4)->Range(min_size, max_size);
+BENCHMARK_TEMPLATE(BM_axpy_blas_blas, float)->RangeMultiplier(4)->Range(min_size, max_size);
+BENCHMARK_TEMPLATE(BM_axpy_blas_blas, double)->RangeMultiplier(4)->Range(min_size, max_size);
 
 BENCHMARK_MAIN();

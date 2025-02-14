@@ -56,7 +56,11 @@ public:
   using sparse_view = typename base::sparse_view;
   using const_sparse_view = typename base::const_sparse_view;
   explicit cusparse(const_sparse_view mat);
-  ~cusparse();
+  cusparse(const cusparse&) = delete;
+  cusparse(cusparse&& other);
+  cusparse& operator=(const cusparse&) = delete;
+  cusparse& operator=(cusparse&&) = delete;
+  ~cusparse() override;
 
   static constexpr cusparseIndexType_t index_type() {
 #if MATHPRIM_USE_LONG_INDEX
@@ -87,9 +91,9 @@ public:
         } else if (this->mat_.property() == sparse_property::skew_symmetric) {
           // A = -A.T => A.T @ x = -A @ x
           gemv_no_trans(-alpha, x, beta, y);
+        } else {
+          gemv_trans(alpha, x, beta, y);  // always slower sequential
         }
-
-        gemv_trans(alpha, x, beta, y);  // always slower sequential
       } else {                          // Computes A @ x
         gemv_no_trans(alpha, x, beta, y);
       }
@@ -103,8 +107,9 @@ public:
         } else if (this->mat_.property() == sparse_property::skew_symmetric) {
           // A = -A.T => A.T @ x = -A @ x
           gemv_trans(-alpha, x, beta, y);
+        } else {
+          gemv_no_trans(alpha, x, beta, y);
         }
-        gemv_no_trans(alpha, x, beta, y);
       }
     }
   }
@@ -113,9 +118,9 @@ private:
   void gemv_no_trans(Scalar alpha, const_vector_view x, Scalar beta, vector_view y);
   void gemv_trans(Scalar alpha, const_vector_view x, Scalar beta, vector_view y);
 
-  cusparseSpMatDescr_t mat_desc_;
-  cusparseDnVecDescr_t x_desc_;
-  cusparseDnVecDescr_t y_desc_;
+  cusparseSpMatDescr_t mat_desc_{nullptr};
+  cusparseDnVecDescr_t x_desc_{nullptr};
+  cusparseDnVecDescr_t y_desc_{nullptr};
 
   using temp_buffer = continuous_buffer<char, shape_t<keep_dim>, device::cuda>;
   std::unique_ptr<temp_buffer> no_transpose_buffer_;
@@ -148,9 +153,24 @@ cusparse<Scalar, compression>::cusparse(const_sparse_view mat) : base(mat) {
 
 template <typename Scalar, sparse_format compression>
 cusparse<Scalar, compression>::~cusparse() {
-  MATHPRIM_CHECK_CUSPARSE(cusparseDestroySpMat(mat_desc_));
-  MATHPRIM_CHECK_CUSPARSE(cusparseDestroyDnVec(x_desc_));
-  MATHPRIM_CHECK_CUSPARSE(cusparseDestroyDnVec(y_desc_));
+  if (mat_desc_)
+    MATHPRIM_CHECK_CUSPARSE(cusparseDestroySpMat(mat_desc_));
+  if (x_desc_)
+    MATHPRIM_CHECK_CUSPARSE(cusparseDestroyDnVec(x_desc_));
+  if (y_desc_)
+    MATHPRIM_CHECK_CUSPARSE(cusparseDestroyDnVec(y_desc_));
+}
+
+template <typename Scalar, sparse_format compression>
+cusparse<Scalar, compression>::cusparse(cusparse&& other): base(other.matrix()) {
+  mat_desc_ = other.mat_desc_;
+  x_desc_ = other.x_desc_;
+  y_desc_ = other.y_desc_;
+  no_transpose_buffer_ = std::move(other.no_transpose_buffer_);
+  transpose_buffer_ = std::move(other.transpose_buffer_);
+  other.mat_desc_ = nullptr;
+  other.x_desc_ = nullptr;
+  other.y_desc_ = nullptr;
 }
 
 template <typename Scalar, sparse_format compression>
