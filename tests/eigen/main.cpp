@@ -126,7 +126,7 @@ GTEST_TEST(sparse, csr_rm) {
   EXPECT_EQ(view.cols(), 3);
   EXPECT_EQ(view.nnz(), 12);
 
-  sparse::blas::naive<float, device::cpu, sparse::sparse_format::csr> blas(view.as_const());
+  sparse::blas::naive<float, sparse::sparse_format::csr> blas(view.as_const());
   auto x = make_buffer<float>(3);
   auto y = make_buffer<float>(4);
   auto xv = x.view();
@@ -167,7 +167,7 @@ GTEST_TEST(sparse, csc_cm) {
   EXPECT_EQ(view.cols(), 3);
   EXPECT_EQ(view.nnz(), 12);
 
-  sparse::blas::naive<float, device::cpu, sparse::sparse_format::csc> blas(view.as_const());
+  sparse::blas::naive<float, sparse::sparse_format::csc> blas(view.as_const());
   auto x = make_buffer<float>(3);
   auto y = make_buffer<float>(4);
   auto xv = x.view();

@@ -51,7 +51,7 @@ void csr(benchmark::State& state) {
 
   auto h_x = make_buffer<float>(cols);
   auto h_y = make_buffer<float>(rows);
-  sparse::blas::naive<float, device::cpu, sparse::sparse_format::csr, be> blas(mat);
+  sparse::blas::naive<float, sparse::sparse_format::csr, be> blas(mat);
   for (auto _ : state) {
     blas.gemv(1.0f, h_x.const_view(), 0.0f, h_y.view());
   }

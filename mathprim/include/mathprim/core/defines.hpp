@@ -128,19 +128,19 @@
 #  endif
 #endif
 
-#ifndef MATHPRIM_PRAGMA_UNROLL
+#ifndef MATHPRIM_PRAGMA_UNROLL_HOST
 #  ifdef __CUDA_ARCH__
-#    define MATHPRIM_PRAGMA_UNROLL _Pragma("unroll")
+#    define MATHPRIM_PRAGMA_UNROLL_HOST
 #elif defined(__CUDACC__)
-#    define MATHPRIM_PRAGMA_UNROLL _Pragma("unroll")
+#    define MATHPRIM_PRAGMA_UNROLL_HOST
 #  elif defined(__clang__)
-#    define MATHPRIM_PRAGMA_UNROLL _Pragma("clang loop unroll_count(4)")
+#    define MATHPRIM_PRAGMA_UNROLL_HOST _Pragma("clang loop unroll_count(4)")
 #  elif defined(__GNUC__)
-#    define MATHPRIM_PRAGMA_UNROLL _Pragma("GCC unroll 4")
+#    define MATHPRIM_PRAGMA_UNROLL_HOST _Pragma("GCC unroll 4")
 #  elif defined(_MSC_VER)
-#    define MATHPRIM_PRAGMA_UNROLL __pragma(loop(ivdep))
+#    define MATHPRIM_PRAGMA_UNROLL_HOST __pragma(loop(ivdep))
 #  else
-#    define MATHPRIM_PRAGMA_UNROLL
+#    define MATHPRIM_PRAGMA_UNROLL_HOST
 #  endif
 #endif
 

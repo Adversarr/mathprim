@@ -41,14 +41,16 @@ public:
   void run_impl(index_pack<sgrids...> grid_dim, index_pack<sblocks...> block_dim, Fn fn) const noexcept {
     const index_t total = grid_dim.numel();
     if (total < threshold_) {
-      seq{}.run_impl(grid_dim, fn);
+      seq{}.run_impl(grid_dim, block_dim, fn);
     } else {
-#pragma omp parallel for schedule(static) firstprivate(fn, total, grid_dim)
+      const index_t block_total = block_dim.numel();
+#pragma omp parallel for schedule(static) firstprivate(fn, total, grid_dim, block_total)
       for (index_t i = 0; i < total; ++i) {
         const auto grid_id = ind2sub(grid_dim, i);
 
 #pragma omp simd
-        for (auto block_id : block_dim) {
+        for (index_t j = 0; j < block_total; ++j) {
+          const auto block_id = ind2sub(block_dim, j);
           fn(grid_id, block_id);
         }
       }

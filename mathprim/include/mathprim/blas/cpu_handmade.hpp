@@ -21,7 +21,7 @@ struct cpu_handmade : public basic_blas<cpu_handmade<T>, T, device::cpu> {
   template <typename sshape_dst, typename sstride_dst, typename sshape_src, typename sstride_src>
   void copy_impl(view_type<sshape_dst, sstride_dst> dst, const_type<sshape_src, sstride_src> src) {
     auto shape = src.shape();
-    MATHPRIM_PRAGMA_UNROLL
+    MATHPRIM_PRAGMA_UNROLL_HOST
     for (auto sub : shape) {
       dst(sub) = src(sub);
     }
@@ -30,7 +30,7 @@ struct cpu_handmade : public basic_blas<cpu_handmade<T>, T, device::cpu> {
   template <typename sshape, typename sstride>
   void scal_impl(T alpha, view_type<sshape, sstride> src) {
     auto shape = src.shape();
-    MATHPRIM_PRAGMA_UNROLL
+    MATHPRIM_PRAGMA_UNROLL_HOST
     for (auto sub : shape) {
       src(sub) = alpha * src(sub);
     }
@@ -39,7 +39,7 @@ struct cpu_handmade : public basic_blas<cpu_handmade<T>, T, device::cpu> {
   template <typename sshape_src, typename sstride_src, typename sshape_dst, typename sstride_dst>
   void swap_impl(view_type<sshape_src, sstride_src> src, view_type<sshape_dst, sstride_dst> dst) {
     auto shape = src.shape();
-    MATHPRIM_PRAGMA_UNROLL
+    MATHPRIM_PRAGMA_UNROLL_HOST
     for (auto sub : shape) {
       ::std::swap(src(sub), dst(sub));
     }
@@ -48,7 +48,7 @@ struct cpu_handmade : public basic_blas<cpu_handmade<T>, T, device::cpu> {
   template <typename sshape_x, typename sstride_x, typename sshape_y, typename sstride_y>
   void axpy_impl(T alpha, const_type<sshape_x, sstride_x> x, view_type<sshape_y, sstride_y> y) {
     auto shape = x.shape();
-    MATHPRIM_PRAGMA_UNROLL
+    MATHPRIM_PRAGMA_UNROLL_HOST
     for (auto sub : shape) {
       y(sub) += alpha * x(sub);
     }
@@ -58,7 +58,7 @@ struct cpu_handmade : public basic_blas<cpu_handmade<T>, T, device::cpu> {
   T dot_impl(const_type<sshape_x, sstride_x> x, const_type<sshape_y, sstride_y> y) {
     auto shape = x.shape();
     T result = 0;
-    MATHPRIM_PRAGMA_UNROLL
+    MATHPRIM_PRAGMA_UNROLL_HOST
     for (auto sub : shape) {
       result += x(sub) * y(sub);
     }
@@ -69,7 +69,7 @@ struct cpu_handmade : public basic_blas<cpu_handmade<T>, T, device::cpu> {
   T norm_impl(const_type<sshape, sstride> x) {
     auto shape = x.shape();
     T result = 0;
-    MATHPRIM_PRAGMA_UNROLL
+    MATHPRIM_PRAGMA_UNROLL_HOST
     for (auto sub : shape) {
       result += x(sub) * x(sub);
     }
@@ -80,7 +80,7 @@ struct cpu_handmade : public basic_blas<cpu_handmade<T>, T, device::cpu> {
   T asum_impl(const_type<sshape, sstride> x) {
     auto shape = x.shape();
     T result = 0;
-    MATHPRIM_PRAGMA_UNROLL
+    MATHPRIM_PRAGMA_UNROLL_HOST
     for (auto sub : shape) {
       result += std::abs(x(sub));
     }
@@ -92,7 +92,7 @@ struct cpu_handmade : public basic_blas<cpu_handmade<T>, T, device::cpu> {
     auto shape = x.shape();
     float maximum = x(*shape.begin());
     index_t index = 0;
-    MATHPRIM_PRAGMA_UNROLL
+    MATHPRIM_PRAGMA_UNROLL_HOST
     for (auto sub : shape) {
       if (x(sub) > maximum) {
         maximum = x(sub);
@@ -108,7 +108,7 @@ struct cpu_handmade : public basic_blas<cpu_handmade<T>, T, device::cpu> {
   void emul(Scalar alpha, const_type<sshape_a, sstride_a> a, const_type<sshape_x, sstride_x> x, Scalar beta,
             view_type<sshape_y, sstride_y> y) {
     auto shape = x.shape();
-    MATHPRIM_PRAGMA_UNROLL
+    MATHPRIM_PRAGMA_UNROLL_HOST
     for (auto sub : shape) {
       y(sub) = y(sub) * beta + alpha * a(sub) * x(sub);
     }
@@ -123,7 +123,7 @@ struct cpu_handmade : public basic_blas<cpu_handmade<T>, T, device::cpu> {
     auto [n, m] = A.shape();
     for (index_t i = 0; i < n; ++i) {
       T sum = 0;
-      MATHPRIM_PRAGMA_UNROLL
+      MATHPRIM_PRAGMA_UNROLL_HOST
       for (index_t j = 0; j < m; ++j) {
         sum += A(i, j) * x(j);
       }
@@ -143,7 +143,7 @@ struct cpu_handmade : public basic_blas<cpu_handmade<T>, T, device::cpu> {
 
     // Initialize C = beta * C
     for (index_t i = 0; i < m; ++i) {
-      MATHPRIM_PRAGMA_UNROLL
+      MATHPRIM_PRAGMA_UNROLL_HOST
       for (index_t j = 0; j < n; ++j) {
         C(i, j) *= beta;
       }
@@ -162,7 +162,7 @@ struct cpu_handmade : public basic_blas<cpu_handmade<T>, T, device::cpu> {
 
         // Initialize temporary block
         for (index_t i = i_outer; i < i_bound; ++i) {
-          MATHPRIM_PRAGMA_UNROLL
+          MATHPRIM_PRAGMA_UNROLL_HOST
           for (index_t j = j_outer; j < j_bound; ++j) {
             block[i - i_outer][j - j_outer] = 0;
           }
@@ -176,7 +176,7 @@ struct cpu_handmade : public basic_blas<cpu_handmade<T>, T, device::cpu> {
           for (index_t i = i_outer; i < i_bound; ++i) {
             for (index_t l = l_outer; l < l_bound; ++l) {
               const T a_val = A(i, l);
-              MATHPRIM_PRAGMA_UNROLL
+              MATHPRIM_PRAGMA_UNROLL_HOST
               for (index_t j = j_outer; j < j_bound; ++j) {
                 block[i - i_outer][j - j_outer] += a_val * B(l, j);
               }
@@ -186,7 +186,7 @@ struct cpu_handmade : public basic_blas<cpu_handmade<T>, T, device::cpu> {
 
         // Write results back to matrix C
         for (index_t i = i_outer; i < i_bound; ++i) {
-          MATHPRIM_PRAGMA_UNROLL
+          MATHPRIM_PRAGMA_UNROLL_HOST
           for (index_t j = j_outer; j < j_bound; ++j) {
             C(i, j) += alpha * block[i - i_outer][j - j_outer];
           }

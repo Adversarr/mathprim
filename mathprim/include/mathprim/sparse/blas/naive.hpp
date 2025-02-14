@@ -109,14 +109,14 @@ void naive<Scalar, sparse_format::csr, backend>::gemv_trans(Scalar alpha, const_
   const auto m = mat.rows();
   const auto n = mat.cols();
   // Initialize y with beta * y
-  MATHPRIM_PRAGMA_UNROLL
+  MATHPRIM_PRAGMA_UNROLL_HOST
   for (index_t i = 0; i < n; ++i) {
     y[i] *= beta;
   }
 
   for (index_t i = 0; i < m; ++i) {
     index_t beg = row_ptr[i], end = row_ptr[i + 1];
-    MATHPRIM_PRAGMA_UNROLL
+    MATHPRIM_PRAGMA_UNROLL_HOST
     for (index_t j = beg; j < end; ++j) {
       y[col_ind[j]] += alpha * values[j] * x[i];
     }
@@ -137,7 +137,7 @@ void naive<Scalar, sparse_format::csc, backend>::gemv_no_trans(Scalar alpha, con
   const auto n = mat.cols();
 
   // Initialize y with beta * y
-  MATHPRIM_PRAGMA_UNROLL
+  MATHPRIM_PRAGMA_UNROLL_HOST
   for (index_t i = 0; i < m; ++i) {
     y[i] *= beta;
   }
@@ -145,7 +145,7 @@ void naive<Scalar, sparse_format::csc, backend>::gemv_no_trans(Scalar alpha, con
   for (index_t j = 0; j < n; ++j) {
     const index_t beg = col_ptr[j], end = col_ptr[j + 1];
 
-    MATHPRIM_PRAGMA_UNROLL
+    MATHPRIM_PRAGMA_UNROLL_HOST
     for (index_t i = beg; i < end; ++i) {
       y[row_ind[i]] += alpha * values[i] * x[j];
     }
