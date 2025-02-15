@@ -45,21 +45,48 @@ vmap_arg<basic_view_iterator<T, sshape, sstride, dev, batch_dim>> make_vmap_arg(
 
 template <class par_impl>
 struct parfor {
+  /**
+   * @brief Launch a kernel with grid and block dimensions
+   * 
+   * @tparam Fn 
+   * @tparam sgrids 
+   * @tparam sblocks 
+   * @param grid_dim 
+   * @param block_dim 
+   * @param fn 
+   */
   template <typename Fn, index_t... sgrids, index_t... sblocks>
   void run(const index_pack<sgrids...>& grid_dim, const index_pack<sblocks...>& block_dim, Fn fn) const noexcept {
     static_cast<const par_impl*>(this)->run_impl(grid_dim, block_dim, std::forward<Fn>(fn));
   }
 
+  /**
+   * @brief Launch a kernel with grid dimensions
+   * 
+   * @tparam Fn 
+   * @tparam sgrids 
+   * @param grid_dim 
+   * @param fn 
+   */
   template <typename Fn, index_t... sgrids>
   void run(const index_pack<sgrids...>& grid_dim, Fn&& fn) const noexcept {
     static_cast<const par_impl*>(this)->run_impl(grid_dim, std::forward<Fn>(fn));
   }
 
+  /**
+   * @brief Launch kernel on given batch dimension.
+   * 
+   * @tparam Fn 
+   * @tparam vmap_args
+   * @param fn 
+   * @param args batch data.
+   */
   template <typename Fn, typename... vmap_args>
   void vmap(Fn&& fn, vmap_args&&... args) {
     static_assert(sizeof...(vmap_args) > 0, "must provide at least one argument");
     // ensure is a vmap_arg
-    vmap_impl<Fn>(std::forward<Fn>(fn), make_vmap_arg(std::forward<vmap_args>(args))...);
+    static_cast<par_impl*>(this)->template vmap_impl<Fn>(std::forward<Fn>(fn),
+                                                         make_vmap_arg(std::forward<vmap_args>(args))...);
   }
 
 protected:

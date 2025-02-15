@@ -1,5 +1,8 @@
 add_library(mathprim INTERFACE)
-target_include_directories(mathprim INTERFACE ${CMAKE_CURRENT_LIST_DIR}/include)
+target_include_directories(mathprim INTERFACE 
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include>
+  $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+)
 
 if(MATHPRIM_ENABLE_WARNINGS)
   if(MSVC)
@@ -58,6 +61,7 @@ if(MATHPRIM_ENABLE_CUDA)
     # cross execution space call:
     if(MSVC)
       target_compile_options(mathprim INTERFACE $<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=/W4>)
+      target_compile_options(mathprim INTERFACE $<$<COMPILE_LANGUAGE:CUDA>:-Werror=cross-execution-space-call>)
     else()
       target_compile_options(mathprim INTERFACE $<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=-Wall,-Wextra>)
       target_compile_options(mathprim INTERFACE $<$<COMPILE_LANGUAGE:CUDA>:-Werror=cross-execution-space-call>)
@@ -84,3 +88,37 @@ if(MATHPRIM_ENABLE_CHOLMOD)
   target_link_libraries(mathprim INTERFACE SuiteSparse::CHOLMOD)
   target_compile_definitions(mathprim INTERFACE MATHPRIM_ENABLE_CHOLMOD)
 endif()
+
+
+include(GNUInstallDirs)
+install(DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/include/
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+  FILES_MATCHING PATTERN "*.hpp" PATTERN "*.cuh")
+
+install(TARGETS mathprim
+  EXPORT mathprimTargets
+  INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+
+install(EXPORT mathprimTargets
+  FILE mathprimTargets.cmake
+  NAMESPACE mathprim::
+  DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/mathprim)
+
+include(CMakePackageConfigHelpers)
+configure_package_config_file(
+  ${CMAKE_CURRENT_LIST_DIR}/../cmake/mathprimConfig.cmake.in
+  ${CMAKE_CURRENT_BINARY_DIR}/mathprimConfig.cmake
+  INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/mathprim
+)
+
+write_basic_package_version_file(
+  ${CMAKE_CURRENT_BINARY_DIR}/mathprimConfigVersion.cmake
+  VERSION 0.0.1
+  COMPATIBILITY AnyNewerVersion
+)
+
+install(FILES
+  ${CMAKE_CURRENT_BINARY_DIR}/mathprimConfig.cmake
+  ${CMAKE_CURRENT_BINARY_DIR}/mathprimConfigVersion.cmake
+  DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/mathprim
+)

@@ -1,11 +1,7 @@
 #pragma once
-#include "mathprim/core/defines.hpp"
-#ifndef MATHPRIM_ENABLE_OPENMP
-#  error "OpenMP is not enabled"
-#endif
-
 #include <omp.h>
 
+#include "mathprim/core/defines.hpp"
 #include "mathprim/parallel/parallel.hpp"  // IWYU pragma: export
 
 namespace mathprim {
@@ -19,21 +15,45 @@ class openmp : public parfor<openmp> {
 public:
   openmp() noexcept = default;
 
+  /**
+   * @brief Set the grain size (min number of elements per thread).
+   * 
+   * @param grain_size 
+   * @return openmp& 
+   */
   openmp& set_grain_size(index_t grain_size) noexcept {
     grain_size_ = grain_size;
     return *this;
   }
 
+  /**
+   * @brief Set the threshold (min number of elements to parallelize).
+   * 
+   * @param threshold 
+   * @return openmp& 
+   */
   openmp& set_threshold(index_t threshold) noexcept {
     threshold_ = threshold;
     return *this;
   }
 
-  static void set_num_threads(index_t num_threads) noexcept {
+  /**
+   * @brief Set the number of threads to use.
+   * 
+   * @param num_threads 
+   * @return openmp& 
+   */
+  openmp& set_num_threads(index_t num_threads) noexcept {
     omp_set_num_threads(num_threads);
+    return *this;
   }
 
-  static int get_num_threads() noexcept {
+  /**
+   * @brief Get the number of threads.
+   * 
+   * @return int 
+   */
+  int get_num_threads() noexcept {
     return omp_get_max_threads();
   }
 

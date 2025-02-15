@@ -1,7 +1,4 @@
 #pragma once
-#ifndef MATHPRIM_ENABLE_BLAS
-#  error "BLAS is not enabled."
-#endif
 
 #include "mathprim/blas/blas.hpp"
 #include "mathprim/core/defines.hpp"

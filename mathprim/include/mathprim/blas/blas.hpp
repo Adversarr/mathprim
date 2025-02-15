@@ -87,6 +87,12 @@ struct basic_blas {
   template <typename sshape, typename sstride>
   using const_type = basic_view<const Scalar, sshape, sstride, dev>;
 
+  /**
+   * @brief Copy the elements of src to dst.
+   * 
+   * @param dst 
+   * @param src 
+   */
   template <typename sshape_dst, typename sstride_dst, typename sshape_src, typename sstride_src>
   void copy(view_type<sshape_dst, sstride_dst> dst, const_type<sshape_src, sstride_src> src) {
     if (!internal::is_capable_vector(dst)) {
@@ -103,6 +109,12 @@ struct basic_blas {
     static_cast<Derived *>(this)->copy_impl(dst, src);
   }
 
+  /**
+   * @brief Scale the elements of x by alpha.
+   * 
+   * @param alpha 
+   * @param x 
+   */
   template <typename sshape, typename sstride>
   void scal(Scalar alpha, view_type<sshape, sstride> x) {
     if (!internal::is_capable_vector(x)) {
@@ -112,6 +124,12 @@ struct basic_blas {
     static_cast<Derived *>(this)->scal_impl(alpha, x);
   }
 
+  /**
+   * @brief Swap the elements of x and y.
+   * 
+   * @param x 
+   * @param y 
+   */
   template <typename sshape, typename sstride>
   void swap(view_type<sshape, sstride> x, view_type<sshape, sstride> y) {
     if (!internal::is_capable_vector(x)) {
@@ -128,6 +146,13 @@ struct basic_blas {
     static_cast<Derived *>(this)->swap_impl(x, y);
   }
 
+  /**
+   * @brief Compute y <- alpha * x + y.
+   * 
+   * @param alpha 
+   * @param x 
+   * @param y 
+   */
   template <typename sshape_x, typename sstride_x, typename sshape_y, typename sstride_y>
   void axpy(Scalar alpha, const_type<sshape_x, sstride_x> x, view_type<sshape_y, sstride_y> y) {
     if (!internal::is_capable_vector(x)) {
@@ -143,6 +168,13 @@ struct basic_blas {
     static_cast<Derived *>(this)->axpy_impl(alpha, x, y);
   }
 
+  /**
+   * @brief Compute the dot product of x and y.
+   * 
+   * @param x 
+   * @param y 
+   * @return Scalar 
+   */
   template <typename sshape_x, typename sstride_x, typename sshape_y, typename sstride_y>
   Scalar dot(const_type<sshape_x, sstride_x> x, const_type<sshape_y, sstride_y> y) {
     if (!internal::is_capable_vector(x)) {
@@ -158,6 +190,12 @@ struct basic_blas {
     return static_cast<Derived *>(this)->dot_impl(x, y);
   }
 
+  /**
+   * @brief Compute the norm of x.
+   * 
+   * @param x 
+   * @return Scalar 
+   */
   template <typename sshape, typename sstride>
   Scalar norm(const_type<sshape, sstride> x) {
     if (!internal::is_capable_vector(x)) {
@@ -176,6 +214,12 @@ struct basic_blas {
     return static_cast<Derived *>(this)->asum_impl(x);
   }
 
+  /**
+   * @brief Compute the index of the maximum element of x.
+   * 
+   * @param x 
+   * @return index_t 
+   */
   template <typename sshape, typename sstride>
   index_t amax(const_type<sshape, sstride> x) {
     if (!internal::is_capable_vector(x)) {
@@ -185,7 +229,11 @@ struct basic_blas {
     return static_cast<Derived *>(this)->amax_impl(x);
   }
 
-  // Y <- alpha * A * X + beta * Y
+  /**
+    * @brief Computes Y <- alpha * A * X + beta * Y
+    * @param x 
+    * @return index_t 
+    */
   template <typename sshape_a, typename sstride_a, typename sshape_x, typename sstride_x, typename sshape_y,
             typename sstride_y>
   void emul(Scalar alpha, const_type<sshape_a, sstride_a> a, const_type<sshape_x, sstride_x> x, Scalar beta,
@@ -201,6 +249,15 @@ struct basic_blas {
     static_cast<Derived *>(this)->emul_impl(alpha, a, x, beta, y);
   }
 
+  /**
+   * @brief Computes Y <- alpha * A @ X + beta * Y
+   *
+   * @param alpha 
+   * @param mat_a if transpose, then A^T is used.
+   * @param x 
+   * @param beta 
+   * @param y 
+   */
   template <typename sshape_A, typename sstride_A, typename sshape_x, typename sstride_x, typename sshape_y,
             typename sstride_y>
   void gemv(Scalar alpha, const_type<sshape_A, sstride_A> mat_a, const_type<sshape_x, sstride_x> x, Scalar beta,
@@ -221,6 +278,15 @@ struct basic_blas {
     static_cast<Derived *>(this)->gemv_impl(alpha, mat_a, x, beta, y);
   }
 
+  /**
+   * @brief Computes C <- alpha * A @ B + beta * C
+   *
+   * @param alpha 
+   * @param A if transpose, then A^T is used.
+   * @param B if transpose, then B^T is used.
+   * @param beta 
+   * @param C if transpose, then C^T is used.
+   */
   template <typename sshape_A, typename sstride_A, typename sshape_B, typename sstride_B, typename sshape_C,
             typename sstride_C>
   void gemm(Scalar alpha, const_type<sshape_A, sstride_A> A, const_type<sshape_B, sstride_B> B, Scalar beta,

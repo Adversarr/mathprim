@@ -34,6 +34,7 @@ endif()
 
 # Test if blas is available
 find_package(BLAS QUIET)
+
 if(BLAS_FOUND)
   set(MATHPRIM_INTERNAL_ENABLE_BLAS ${MATHPRIM_MASTER_PROJECT})
 else()
@@ -41,6 +42,7 @@ else()
 endif()
 
 find_package(Eigen3 QUIET)
+
 if(Eigen3_FOUND)
   set(MATHPRIM_INTERNAL_ENABLE_EIGEN ${MATHPRIM_MASTER_PROJECT})
 else()
@@ -48,6 +50,7 @@ else()
 endif()
 
 find_package(CHOLMOD QUIET)
+
 if(CHOLMOD_FOUND)
   set(MATHPRIM_INTERNAL_ENABLE_CHOLMOD ${MATHPRIM_MASTER_PROJECT})
 else()
@@ -66,9 +69,10 @@ option(MATHPRIM_BUILD_TESTS_CUDA "Build cuda tests" ${MATHPRIM_ENABLE_CUDA_TEST}
 set(MATHPRIM_REPO_ROOT ${CMAKE_CURRENT_LIST_DIR})
 
 if(MATHPRIM_BUILD_TESTS_CUDA)
-  if (NOT MATHPRIM_ENABLE_CUDA)
+  if(NOT MATHPRIM_ENABLE_CUDA)
     message(FATAL_ERROR "CUDA tests require CUDA to be enabled")
   endif()
+
   set(CMAKE_CUDA_STANDARD 17)
   set(CMAKE_CUDA_STANDARD_REQUIRED ON)
   set(CMAKE_CUDA_EXTENSIONS OFF)

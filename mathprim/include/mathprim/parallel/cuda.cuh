@@ -129,7 +129,7 @@ struct launcher<index_pack<sgrids...>, index_pack<sblocks...>, false> {
 
 } // namespace internal
 
-class cuda {
+class cuda : public parfor<cuda> {
 public:
   cuda() : stream_{0} {}
   explicit cuda(cudaStream_t stream) : stream_{stream} {}
@@ -145,8 +145,9 @@ public:
    * @param fn
    */
   template <typename Fn, index_t... sgrids, index_t... sblocks>
-  void run(const index_pack<sgrids...> &grid_dim,
-           const index_pack<sblocks...> &block_dim, Fn &&fn) const noexcept {
+  void run_impl(const index_pack<sgrids...> &grid_dim,
+                const index_pack<sblocks...> &block_dim,
+                Fn &&fn) const noexcept {
     internal::launcher<index_pack<sgrids...>, index_pack<sblocks...>>{}.run(
         grid_dim, block_dim, fn);
   }
@@ -160,32 +161,26 @@ public:
    * @param fn
    */
   template <typename Fn, index_t... sgrids>
-  void run(const index_pack<sgrids...> &grid_dim, Fn &&fn) const noexcept {
+  void run_impl(const index_pack<sgrids...> &grid_dim, Fn &&fn) const noexcept {
     internal::launcher<index_pack<sgrids...>, index_pack<>>{}.run(grid_dim, fn);
   }
 
-  template <typename Fn, typename... vmap_args>
-  void vmap(Fn &&fn, vmap_args &&...args) {
-    static_assert(sizeof...(vmap_args) > 0,
-                  "must provide at least one argument");
-    // ensure is a vmap_arg
-    vmap_impl<Fn>(std::forward<Fn>(fn),
-                  make_vmap_arg(std::forward<vmap_args>(args))...);
-  }
-
-  // Extensions to default parallel for.
-
   /// @brief Wait for all operations in the stream to complete, throws exception
   /// if any error occurs.
-  void sync() const { 
+  void sync() const {
     auto err = cudaStreamSynchronize(stream_);
     if (err != cudaSuccess) {
       throw cuda_error(err);
     }
   }
 
-  /// @brief Check if the stream is ready, returns true if all operations in the
-  /// stream have completed. Throws exception if any error occurs.
+  /**
+   * @brief Check if the stream is ready, returns true if all operations in the
+   * stream have completed. Throws exception if any error occurs.
+   *
+   * @return true
+   * @return false
+   */
   bool ready() const {
     auto err = cudaStreamQuery(stream_);
     if (err == cudaSuccess) {
@@ -197,7 +192,11 @@ public:
     }
   }
 
-  /// @brief Get the underlying CUDA stream in use.
+  /**
+   * @brief Get the underlying CUDA stream in use.
+   * 
+   * @return cudaStream_t 
+   */
   cudaStream_t stream() const { return stream_; }
 
   /**
@@ -252,7 +251,7 @@ public:
   }
 
   template <typename Fn, typename... vmap_args>
-  void vmap_impl(Fn &&fn, vmap_args ... args) {
+  void vmap_impl(Fn &&fn, vmap_args... args) {
     // now args is vmap_arg.
     auto size = (args.size(), ...); // Extract the size of each vmap_arg
     // Expects all vmap_args have the same size
@@ -263,7 +262,8 @@ public:
     // Loop over the size of the vmap_arg
     auto vmap_shape = make_shape(size);
     // CUDA cannot capture the parameter pack, we use a tuple to store the args.
-    // X: run(vmap_shape, [fn, args...] __device__(index_t i) { fn(args[i]...); });
+    // X: run(vmap_shape, [fn, args...] __device__(index_t i) { fn(args[i]...);
+    // });
 
     auto atup = ::cuda::std::make_tuple(args...);
     run(vmap_shape, [fn, atup] __device__(index_t i) {
