@@ -91,7 +91,7 @@ struct cpu_eigen : public basic_blas<cpu_eigen<T>, T, device::cpu> {
     auto map_y = eigen_support::amap(y.safe_flatten());
     auto map_a = eigen_support::amap(a.safe_flatten());
     map_y *= beta;
-    map_y.noalias() += alpha * map_a.array() * map_x.array();
+    map_y.array() += alpha * map_a.array() * map_x.array();
   }
 
   // // Level 2

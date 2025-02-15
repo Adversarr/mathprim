@@ -1,4 +1,3 @@
-#include "mathprim/parallel/parallel.hpp"
 #include <gtest/gtest.h>
 
 #include <mathprim/core/buffer.hpp>
@@ -6,6 +5,7 @@
 #include "mathprim/blas/cpu_blas.hpp"
 #include "mathprim/blas/cpu_eigen.hpp"
 #include "mathprim/blas/cpu_handmade.hpp"
+#include "mathprim/parallel/parallel.hpp"
 using namespace mathprim;
 
 GTEST_TEST(blas, gemv) {
