@@ -312,6 +312,12 @@ public:
     return {data_, shape_, stride_};
   }
 
+  void swap(basic_view &other) noexcept {
+    std::swap(shape_, other.shape_);
+    std::swap(stride_, other.stride_);
+    std::swap(data_, other.data_);
+  }
+
 private:
   sshape shape_;
   sstride stride_;

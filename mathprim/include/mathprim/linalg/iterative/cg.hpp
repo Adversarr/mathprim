@@ -56,7 +56,7 @@ public:
       // q = A * d
       matrix.apply(1, cd, 0, q);  // q = A * d
 
-      // alpha = (r, r) / (d, q)
+      // alpha = (r, d) / (d, q)
       Scalar d_q = blas.dot(cd, cq);
       Scalar alpha = delta_new / d_q;
 
@@ -82,7 +82,8 @@ public:
       Scalar beta = delta_new / delta_old;  // beta = delta_new / delta_old
       // update the search direction: d = q + beta * d
       blas.axpy(beta, cd, q);  // q = q + beta * d
-      blas.swap(d, q);         // swap d and q
+      d.swap(q);
+      cd.swap(cq);
     }
 
     return results;

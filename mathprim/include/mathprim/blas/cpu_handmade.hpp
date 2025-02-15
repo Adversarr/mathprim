@@ -105,12 +105,19 @@ struct cpu_handmade : public basic_blas<cpu_handmade<T>, T, device::cpu> {
   // Y <- alpha * A * X + beta * Y
   template <typename sshape_a, typename sstride_a, typename sshape_x, typename sstride_x, typename sshape_y,
             typename sstride_y>
-  void emul(Scalar alpha, const_type<sshape_a, sstride_a> a, const_type<sshape_x, sstride_x> x, Scalar beta,
+  void emul_impl(Scalar alpha, const_type<sshape_a, sstride_a> a, const_type<sshape_x, sstride_x> x, Scalar beta,
             view_type<sshape_y, sstride_y> y) {
     auto shape = x.shape();
-    MATHPRIM_PRAGMA_UNROLL_HOST
-    for (auto sub : shape) {
-      y(sub) = y(sub) * beta + alpha * a(sub) * x(sub);
+    if (beta == static_cast<Scalar>(0)) {
+      MATHPRIM_PRAGMA_UNROLL_HOST
+      for (auto sub : shape) {
+        y(sub) = alpha * a(sub) * x(sub);
+      }
+    } else {
+      MATHPRIM_PRAGMA_UNROLL_HOST
+      for (auto sub : shape) {
+        y(sub) = y(sub) * beta + alpha * a(sub) * x(sub);
+      }
     }
   }
 

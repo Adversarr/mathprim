@@ -180,22 +180,7 @@ struct cpu_blas : public basic_blas<cpu_blas<T>, T, device::cpu> {
             typename sstride_y>
   void emul_impl(Scalar alpha, const_type<sshape_a, sstride_a> a, const_type<sshape_x, sstride_x> x, Scalar beta,
                  view_type<sshape_y, sstride_y> y) {
-    auto m = x.numel();
-    CBLAS_INT stride_a = internal::vec_stride(a);
-    CBLAS_INT stride_x = internal::vec_stride(x);
-    CBLAS_INT stride_y = internal::vec_stride(y);
-
-    const Scalar *ptr_a = a.data(), *ptr_x = x.data();
-    Scalar *ptr_y = y.data();
-    if constexpr (std::is_same_v<Scalar, float>) {
-      cblas_sgbmv(CblasRowMajor, CblasNoTrans, m, m, 0, 0, alpha, ptr_a, stride_a, ptr_x, stride_x, beta, ptr_y,
-                  stride_y);
-    } else if constexpr (std::is_same_v<Scalar, double>) {
-      cblas_dgbmv(CblasRowMajor, CblasNoTrans, m, m, 0, 0, alpha, ptr_a, stride_a, ptr_x, stride_x, beta, ptr_y,
-                  stride_y);
-    } else {
-      static_assert(::mathprim::internal::always_false_v<Scalar>, "Unsupported type for BLAS emul.");
-    }
+    cpu_handmade<T>{}.emul_impl(alpha, a, x, beta, y);
   }
 
   // // Level 2
