@@ -56,7 +56,7 @@ struct parfor {
    * @param fn 
    */
   template <typename Fn, index_t... sgrids, index_t... sblocks>
-  void run(const index_pack<sgrids...>& grid_dim, const index_pack<sblocks...>& block_dim, Fn fn) const noexcept {
+  void run(const index_pack<sgrids...>& grid_dim, const index_pack<sblocks...>& block_dim, Fn&& fn) const noexcept {
     static_cast<const par_impl*>(this)->run_impl(grid_dim, block_dim, std::forward<Fn>(fn));
   }
 

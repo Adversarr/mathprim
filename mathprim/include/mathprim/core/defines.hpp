@@ -138,7 +138,7 @@
 #  elif defined(__GNUC__)
 #    define MATHPRIM_PRAGMA_UNROLL_HOST _Pragma("GCC unroll 4")
 #  elif defined(_MSC_VER)
-#    define MATHPRIM_PRAGMA_UNROLL_HOST __pragma(loop(ivdep))
+#    define MATHPRIM_PRAGMA_UNROLL_HOST
 #  else
 #    define MATHPRIM_PRAGMA_UNROLL_HOST
 #  endif

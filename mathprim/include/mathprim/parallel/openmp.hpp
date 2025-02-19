@@ -58,19 +58,19 @@ public:
   }
 
   template <typename Fn, index_t... sgrids, index_t... sblocks>
-  void run_impl(index_pack<sgrids...> grid_dim, index_pack<sblocks...> block_dim, Fn fn) const noexcept {
+  void run_impl(index_pack<sgrids...> grid_dim, index_pack<sblocks...> block_dim, Fn&& fn) const noexcept {
     const index_t total = grid_dim.numel();
     if (total < threshold_) {
-      seq{}.run_impl(grid_dim, block_dim, fn);
+      seq{}.run_impl(grid_dim, block_dim, std::forward<Fn>(fn));
     } else {
       const index_t block_total = block_dim.numel();
-#pragma omp parallel for schedule(static) shared(fn, total, grid_dim, block_total)
+#pragma omp parallel for schedule(static)
       for (index_t i = 0; i < total; ++i) {
         const auto grid_id = ind2sub(grid_dim, i);
+        const auto block_dim_local = block_dim;
 
-#pragma omp simd
         for (index_t j = 0; j < block_total; ++j) {
-          const auto block_id = ind2sub(block_dim, j);
+          const auto block_id = ind2sub(block_dim_local, j);
           fn(grid_id, block_id);
         }
       }
@@ -78,23 +78,23 @@ public:
   }
 
   template <typename Fn, index_t... sgrids>
-  void run_impl(index_pack<sgrids...> grid_dim, Fn fn) const noexcept {
+  void run_impl(index_pack<sgrids...> grid_dim, Fn&& fn) const noexcept {
     const index_t total = grid_dim.numel();
     if (total < threshold_) {
-      seq{}.run_impl(grid_dim, fn);
+      seq{}.run_impl(grid_dim, std::forward<Fn>(fn));
     } else {
       const index_t n = total / grain_size_;
       const int threads = get_num_threads();
       const index_t chunk_size = (n + threads - 1) / (threads);
-#pragma omp parallel for schedule(static, chunk_size) shared(fn, total, grid_dim, grain_size_)
+#pragma omp parallel for schedule(static, chunk_size) 
       for (index_t block_id = 0; block_id < n; ++block_id) {
         // Individual task load = grain_size.
         const index_t beg = block_id * grain_size_;
         const index_t end = std::min(beg + grain_size_, total);
+        const auto gd_local = grid_dim;
 
-#pragma omp simd
         for (index_t i = beg; i < end; ++i) {
-          const auto grid_id = ind2sub(grid_dim, i);
+          const auto grid_id = ind2sub(gd_local, i);
           fn(grid_id);
         }
       }
