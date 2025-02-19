@@ -211,14 +211,14 @@ public:
   /// Data accessing.
   ///////////////////////////////////////////////////////////////////////////////
   // direct indexing.
-  MATHPRIM_PRIMFUNC indexing_type operator[](index_t i) const noexcept {
+  MATHPRIM_PRIMFUNC indexing_type operator[](const index_t& i) const noexcept {
     MATHPRIM_ASSERT(data_ != nullptr);
     MATHPRIM_ASSERT(i >= 0 && i < shape(0));
     if constexpr (ndim == 1) {
       if constexpr (is_contiguous_at_compile_time) {
         return data_[i];
       } else {
-        index_t offset = i * stride_.template get<0>();
+        const index_t offset = i * stride_.template get<0>();
         return data_[offset];
       }
     } else {

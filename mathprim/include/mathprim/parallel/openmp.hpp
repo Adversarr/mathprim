@@ -53,7 +53,7 @@ public:
    * 
    * @return int 
    */
-  int get_num_threads() noexcept {
+  int get_num_threads() const noexcept {
     return omp_get_max_threads();
   }
 
@@ -64,7 +64,7 @@ public:
       seq{}.run_impl(grid_dim, block_dim, fn);
     } else {
       const index_t block_total = block_dim.numel();
-#pragma omp parallel for schedule(static) firstprivate(fn, total, grid_dim, block_total)
+#pragma omp parallel for schedule(static) shared(fn, total, grid_dim, block_total)
       for (index_t i = 0; i < total; ++i) {
         const auto grid_id = ind2sub(grid_dim, i);
 
@@ -84,8 +84,11 @@ public:
       seq{}.run_impl(grid_dim, fn);
     } else {
       const index_t n = total / grain_size_;
-#pragma omp parallel for schedule(static) firstprivate(fn, total, grid_dim, grain_size_)
+      const int threads = get_num_threads();
+      const index_t chunk_size = (n + threads - 1) / (threads);
+#pragma omp parallel for schedule(static, chunk_size) shared(fn, total, grid_dim, grain_size_)
       for (index_t block_id = 0; block_id < n; ++block_id) {
+        // Individual task load = grain_size.
         const index_t beg = block_id * grain_size_;
         const index_t end = std::min(beg + grain_size_, total);
 
