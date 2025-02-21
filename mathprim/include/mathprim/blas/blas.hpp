@@ -89,12 +89,12 @@ struct basic_blas {
 
   /**
    * @brief Copy the elements of src to dst.
-   * 
-   * @param dst 
-   * @param src 
+   *
+   * @param dst
+   * @param src
    */
   template <typename sshape_dst, typename sstride_dst, typename sshape_src, typename sstride_src>
-  void copy(view_type<sshape_dst, sstride_dst> dst, const_type<sshape_src, sstride_src> src) {
+  MATHPRIM_NOINLINE void copy(view_type<sshape_dst, sstride_dst> dst, const_type<sshape_src, sstride_src> src) {
     if (!internal::is_capable_vector(dst)) {
       throw std::runtime_error("Incompatible views for BLAS copy. (dst)");
     } else if (!internal::is_capable_vector(src)) {
@@ -106,32 +106,32 @@ struct basic_blas {
       throw shape_error("blas::copy: dst.shape() != src.shape()");
     }
 
-    static_cast<Derived *>(this)->copy_impl(dst, src);
+    static_cast<Derived *>(this)->copy_impl(dst.flatten(), src.flatten());
   }
 
   /**
    * @brief Scale the elements of x by alpha.
-   * 
-   * @param alpha 
-   * @param x 
+   *
+   * @param alpha
+   * @param x
    */
   template <typename sshape, typename sstride>
-  void scal(Scalar alpha, view_type<sshape, sstride> x) {
+  MATHPRIM_NOINLINE void scal(Scalar alpha, view_type<sshape, sstride> x) {
     if (!internal::is_capable_vector(x)) {
       throw std::runtime_error("Incompatible views for BLAS scal.");
     }
 
-    static_cast<Derived *>(this)->scal_impl(alpha, x);
+    static_cast<Derived *>(this)->scal_impl(alpha, x.flatten());
   }
 
   /**
    * @brief Swap the elements of x and y.
-   * 
-   * @param x 
-   * @param y 
+   *
+   * @param x
+   * @param y
    */
   template <typename sshape, typename sstride>
-  void swap(view_type<sshape, sstride> x, view_type<sshape, sstride> y) {
+  MATHPRIM_NOINLINE void swap(view_type<sshape, sstride> x, view_type<sshape, sstride> y) {
     if (!internal::is_capable_vector(x)) {
       throw std::runtime_error("Incompatible views for BLAS swap. (x)");
     } else if (!internal::is_capable_vector(y)) {
@@ -143,18 +143,18 @@ struct basic_blas {
       throw shape_error("blas::swap: x.shape() != y.shape()");
     }
 
-    static_cast<Derived *>(this)->swap_impl(x, y);
+    static_cast<Derived *>(this)->swap_impl(x.flatten(), y.flatten());
   }
 
   /**
    * @brief Compute y <- alpha * x + y.
-   * 
-   * @param alpha 
-   * @param x 
-   * @param y 
+   *
+   * @param alpha
+   * @param x
+   * @param y
    */
   template <typename sshape_x, typename sstride_x, typename sshape_y, typename sstride_y>
-  void axpy(Scalar alpha, const_type<sshape_x, sstride_x> x, view_type<sshape_y, sstride_y> y) {
+  MATHPRIM_NOINLINE void axpy(Scalar alpha, const_type<sshape_x, sstride_x> x, view_type<sshape_y, sstride_y> y) {
     if (!internal::is_capable_vector(x)) {
       throw std::runtime_error("Incompatible views for BLAS axpy. (x)");
     } else if (!internal::is_capable_vector(y)) {
@@ -165,18 +165,18 @@ struct basic_blas {
       throw shape_error("blas::axpy: x.shape() != y.shape()");
     }
 
-    static_cast<Derived *>(this)->axpy_impl(alpha, x, y);
+    static_cast<Derived *>(this)->axpy_impl(alpha, x.flatten(), y.flatten());
   }
 
   /**
    * @brief Compute the dot product of x and y.
-   * 
-   * @param x 
-   * @param y 
-   * @return Scalar 
+   *
+   * @param x
+   * @param y
+   * @return Scalar
    */
   template <typename sshape_x, typename sstride_x, typename sshape_y, typename sstride_y>
-  Scalar dot(const_type<sshape_x, sstride_x> x, const_type<sshape_y, sstride_y> y) {
+  MATHPRIM_NOINLINE Scalar dot(const_type<sshape_x, sstride_x> x, const_type<sshape_y, sstride_y> y) {
     if (!internal::is_capable_vector(x)) {
       throw std::runtime_error("Incompatible views for BLAS dot. (x)");
     } else if (!internal::is_capable_vector(y)) {
@@ -187,57 +187,57 @@ struct basic_blas {
       throw shape_error("blas::dot: x.shape() != y.shape()");
     }
 
-    return static_cast<Derived *>(this)->dot_impl(x, y);
+    return static_cast<Derived *>(this)->dot_impl(x.flatten(), y.flatten());
   }
 
   /**
    * @brief Compute the norm of x.
-   * 
-   * @param x 
-   * @return Scalar 
+   *
+   * @param x
+   * @return Scalar
    */
   template <typename sshape, typename sstride>
-  Scalar norm(const_type<sshape, sstride> x) {
+  MATHPRIM_NOINLINE Scalar norm(const_type<sshape, sstride> x) {
     if (!internal::is_capable_vector(x)) {
       throw std::runtime_error("Incompatible views for BLAS norm.");
     }
 
-    return static_cast<Derived *>(this)->norm_impl(x);
+    return static_cast<Derived *>(this)->norm_impl(x.flatten());
   }
 
   template <typename sshape, typename sstride>
-  Scalar asum(const_type<sshape, sstride> x) {
+  MATHPRIM_NOINLINE Scalar asum(const_type<sshape, sstride> x) {
     if (!internal::is_capable_vector(x)) {
       throw std::runtime_error("Incompatible views for BLAS asum.");
     }
 
-    return static_cast<Derived *>(this)->asum_impl(x);
+    return static_cast<Derived *>(this)->asum_impl(x.flatten());
   }
 
   /**
    * @brief Compute the index of the maximum element of x.
-   * 
-   * @param x 
-   * @return index_t 
+   *
+   * @param x
+   * @return index_t
    */
   template <typename sshape, typename sstride>
-  index_t amax(const_type<sshape, sstride> x) {
+  MATHPRIM_NOINLINE index_t amax(const_type<sshape, sstride> x) {
     if (!internal::is_capable_vector(x)) {
       throw std::runtime_error("Incompatible views for BLAS amax.");
     }
 
-    return static_cast<Derived *>(this)->amax_impl(x);
+    return static_cast<Derived *>(this)->amax_impl(x.flatten());
   }
 
   /**
-    * @brief Computes Y <- alpha * A * X + beta * Y
-    * @param x 
-    * @return index_t 
-    */
+   * @brief Computes Y <- alpha * A * X + beta * Y
+   * @param x
+   * @return index_t
+   */
   template <typename sshape_a, typename sstride_a, typename sshape_x, typename sstride_x, typename sshape_y,
             typename sstride_y>
-  void emul(Scalar alpha, const_type<sshape_a, sstride_a> a, const_type<sshape_x, sstride_x> x, Scalar beta,
-            view_type<sshape_y, sstride_y> y) {
+  MATHPRIM_NOINLINE void emul(Scalar alpha, const_type<sshape_a, sstride_a> a, const_type<sshape_x, sstride_x> x,
+                              Scalar beta, view_type<sshape_y, sstride_y> y) {
     if (!internal::is_capable_vector(a)) {
       throw std::runtime_error("Incompatible views for BLAS emul. (a)");
     } else if (!internal::is_capable_vector(x)) {
@@ -246,22 +246,22 @@ struct basic_blas {
       throw std::runtime_error("Incompatible views for BLAS emul. (y)");
     }
 
-    static_cast<Derived *>(this)->emul_impl(alpha, a, x, beta, y);
+    static_cast<Derived *>(this)->emul_impl(alpha, a, x.flatten(), beta, y.flatten());
   }
 
   /**
    * @brief Computes Y <- alpha * A @ X + beta * Y
    *
-   * @param alpha 
+   * @param alpha
    * @param mat_a if transpose, then A^T is used.
-   * @param x 
-   * @param beta 
-   * @param y 
+   * @param x
+   * @param beta
+   * @param y
    */
   template <typename sshape_A, typename sstride_A, typename sshape_x, typename sstride_x, typename sshape_y,
             typename sstride_y>
-  void gemv(Scalar alpha, const_type<sshape_A, sstride_A> mat_a, const_type<sshape_x, sstride_x> x, Scalar beta,
-            view_type<sshape_y, sstride_y> y) {
+  MATHPRIM_NOINLINE void gemv(Scalar alpha, const_type<sshape_A, sstride_A> mat_a, const_type<sshape_x, sstride_x> x,
+                              Scalar beta, view_type<sshape_y, sstride_y> y) {
     // check for shapes
     internal::check_mv_shapes(mat_a.shape(), x.shape(), y.shape());
     // check for capabilities
@@ -275,22 +275,22 @@ struct basic_blas {
     };
 
     // Run the actual implementation
-    static_cast<Derived *>(this)->gemv_impl(alpha, mat_a, x, beta, y);
+    static_cast<Derived *>(this)->gemv_impl(alpha, mat_a, x.flatten(), beta, y.flatten());
   }
 
   /**
    * @brief Computes C <- alpha * A @ B + beta * C
    *
-   * @param alpha 
+   * @param alpha
    * @param A if transpose, then A^T is used.
    * @param B if transpose, then B^T is used.
-   * @param beta 
+   * @param beta
    * @param C if transpose, then C^T is used.
    */
   template <typename sshape_A, typename sstride_A, typename sshape_B, typename sstride_B, typename sshape_C,
             typename sstride_C>
-  void gemm(Scalar alpha, const_type<sshape_A, sstride_A> A, const_type<sshape_B, sstride_B> B, Scalar beta,
-            view_type<sshape_C, sstride_C> C) {
+  MATHPRIM_NOINLINE void gemm(Scalar alpha, const_type<sshape_A, sstride_A> A, const_type<sshape_B, sstride_B> B,
+                              Scalar beta, view_type<sshape_C, sstride_C> C) {
     // check for shapes
     internal::check_mm_shapes(A.shape(), B.shape(), C.shape());
     // check for capabilities

@@ -113,6 +113,11 @@ public:
   using indexing_type
       = std::conditional_t<ndim == 1, reference,
                            basic_view<T, internal::slice_t<0, sshape>, internal::slice_t<0, sstride>, dev>>;
+
+  using flatten_type = std::conditional_t<ndim == 1, basic_view<T, sshape, sstride, dev> /*self*/,
+                                          basic_view<T, shape_t<internal::flatten_v<typename sshape::seq>>,
+                                                     stride_t<god::last_v<typename sstride::seq>>, dev>>;
+
   static constexpr bool is_contiguous_at_compile_time = internal::is_continuous_compile_time_v<sshape, sstride>;
 
   ///////////////////////////////////////////////////////////////////////////////
@@ -211,7 +216,7 @@ public:
   /// Data accessing.
   ///////////////////////////////////////////////////////////////////////////////
   // direct indexing.
-  MATHPRIM_PRIMFUNC indexing_type operator[](const index_t& i) const noexcept {
+  MATHPRIM_PRIMFUNC indexing_type operator[](const index_t &i) const noexcept {
     MATHPRIM_ASSERT(data_ != nullptr);
     MATHPRIM_ASSERT(i >= 0 && i < shape(0));
     if constexpr (ndim == 1) {
@@ -280,9 +285,11 @@ public:
    *
    * @return The flattened view.
    */
-  MATHPRIM_PRIMFUNC basic_view<T, shape_t<internal::flatten_v<typename sshape::seq>>,
-                               stride_t<god::last_v<typename sstride::seq>>, dev>
+  MATHPRIM_PRIMFUNC flatten_type
   flatten() const noexcept {
+    if constexpr (ndim == 1) {
+      return *this;
+    } else {
 #ifndef NDEBUG
     const auto drop_last_shape = internal::slice_impl<ndim - 1>(shape_, make_index_seq<ndim - 1>{});
     const auto drop_last_stride = internal::slice_impl<ndim - 1>(stride_, make_index_seq<ndim - 1>{});
@@ -290,6 +297,7 @@ public:
 #endif
     return {data_, shape_t<internal::flatten_v<typename sshape::seq>>{shape_.numel()},
             stride_t<god::last_v<typename sstride::seq>>{stride_.template get<ndim - 1>()}};
+    }
   }
 
   basic_view<T, shape_t<internal::flatten_v<typename sshape::seq>>, stride_t<god::last_v<typename sstride::seq>>, dev>

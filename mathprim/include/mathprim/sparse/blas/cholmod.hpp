@@ -1,7 +1,6 @@
 #pragma once
 #include <suitesparse/cholmod.h>
 
-#include "mathprim/parallel/parallel.hpp"
 #include "mathprim/sparse/basic_sparse.hpp"
 #include "mathprim/core/utils/common.hpp"
 
@@ -23,15 +22,36 @@ class cholmod_handle {
   
   cholmod_common cholmod_common_;
 public:
-  static cholmod_common instance() {
+  static cholmod_common& instance() {
     static cholmod_handle handle;
     return handle.cholmod_common_;
   }
 };
 
 
-cholmod_common get_cholmod_handle() {
+cholmod_common& get_cholmod_handle() {
   return cholmod_handle::instance();
+}
+
+const char* to_string(int status) {
+  // cholmod_status -> string
+  if (status == CHOLMOD_OK) {
+    return "CHOLMOD_OK";
+  } else if (status == CHOLMOD_NOT_INSTALLED) {
+    return "CHOLMOD_NOT_INSTALLED";
+  } else if (status == CHOLMOD_NOT_POSDEF) {
+    return "CHOLMOD_NOT_POSDEF";
+  } else if (status == CHOLMOD_OUT_OF_MEMORY) {
+    return "CHOLMOD_OUT_OF_MEMORY";
+  } else if (status == CHOLMOD_TOO_LARGE) {
+    return "CHOLMOD_TOO_LARGE";
+  } else if (status == CHOLMOD_INVALID) {
+    return "CHOLMOD_INVALID";
+  } else if (status == CHOLMOD_OK) {
+    return "CHOLMOD_OK";
+  } else {
+    return "CHOLMOD_UNKNOWN";
+  }
 }
 
 }
@@ -53,11 +73,6 @@ private:
   cholmod_sparse chol_mat_;
   cholmod_dense chol_x_;
   cholmod_dense chol_y_;
-
-  // Y <- alpha * A' * X + beta * Y.
-  void gemv_transpose(Scalar alpha, const_vector_view x, Scalar beta, vector_view y);
-  // Y <- alpha * A * X + beta * Y.
-  void gemv_no_transpose(Scalar alpha, const_vector_view x, Scalar beta, vector_view y);
 };
 }  // namespace blas
 
@@ -158,7 +173,7 @@ void blas::cholmod<Scalar, sparse_compression>::gemv(Scalar alpha, const_vector_
   }
 
   if (result == 0) {
-    throw std::runtime_error("Cholmod gemv failed.");
+    throw std::runtime_error(std::string("Cholmod gemv failed.") + internal::to_string(cholmod_common.status));
   }
 }
 

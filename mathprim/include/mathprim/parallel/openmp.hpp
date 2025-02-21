@@ -86,6 +86,7 @@ public:
       const index_t n = total / grain_size_;
       const int threads = get_num_threads();
       const index_t chunk_size = (n + threads - 1) / (threads);
+      MATHPRIM_UNUSED(chunk_size);
 #pragma omp parallel for schedule(static, chunk_size) 
       for (index_t block_id = 0; block_id < n; ++block_id) {
         // Individual task load = grain_size.

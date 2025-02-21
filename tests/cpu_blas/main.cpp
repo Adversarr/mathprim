@@ -114,8 +114,6 @@ GTEST_TEST(blas, gemm) {
 
 GTEST_TEST(blas, emul) {
   blas::cpu_blas<float> b;
-  blas::cpu_eigen<float> be;
-
   auto a = make_buffer<float>(12);
   auto x = make_buffer<float>(12);
   auto y = make_buffer<float>(12);

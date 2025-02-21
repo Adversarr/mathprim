@@ -51,10 +51,16 @@
 
 #ifdef _MSC_VER  // for MSVC
 #  define MATHPRIM_FORCE_INLINE inline __forceinline
+#  define MATHPRIM_NOINLINE __declspec(noinline)
 #elif defined __GNUC__  // for gcc on Linux/Apple OS X
 #  define MATHPRIM_FORCE_INLINE __attribute__((always_inline)) inline
+#  define MATHPRIM_NOINLINE __attribute__((noinline))
 #elif defined __CUDACC__
 #  define MATHPRIM_FORCE_INLINE __forceinline
+#  define MATHPRIM_NOINLINE __noinline
+#elif defined __clang__  // for clang
+#  define MATHPRIM_FORCE_INLINE __attribute__((always_inline)) inline
+#  define MATHPRIM_NOINLINE __attribute__((noinline))
 #else
 #  define MATHPRIM_FORCE_INLINE inline
 #endif
