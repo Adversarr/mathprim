@@ -56,10 +56,11 @@ const char* to_string(int status) {
 
 }
 
-template <typename Scalar, sparse_format sparse_compression>
-class cholmod : public sparse_blas_base<Scalar, device::cpu, sparse_compression> {
+template <typename Scalar, sparse_format SparseCompression>
+class cholmod : public sparse_blas_base<cholmod<Scalar, SparseCompression>, Scalar, device::cpu, SparseCompression> {
 public:
-  using base = sparse_blas_base<Scalar, device::cpu, sparse_format::csr>;
+  using base = sparse_blas_base<cholmod<Scalar, SparseCompression>, Scalar, device::cpu, SparseCompression>;
+  friend base;
   using vector_view = typename base::vector_view;
   using const_vector_view = typename base::const_vector_view;
   using sparse_view = typename base::sparse_view;
@@ -68,24 +69,24 @@ public:
 
   explicit cholmod(const_sparse_view mat);
 
-  void gemv(Scalar alpha, const_vector_view x, Scalar beta, vector_view y) override;
 private:
+  void gemv_impl(Scalar alpha, const_vector_view x, Scalar beta, vector_view y, bool transpose);
   cholmod_sparse chol_mat_;
   cholmod_dense chol_x_;
   cholmod_dense chol_y_;
 };
 }  // namespace blas
 
-template <typename Scalar, sparse_format sparse_compression>
-blas::cholmod<Scalar, sparse_compression>::cholmod(const_sparse_view mat) : base(mat) {
+template <typename Scalar, sparse_format SparseCompression>
+blas::cholmod<Scalar, SparseCompression>::cholmod(const_sparse_view mat) : base(mat) {
   const cholmod_common cholmod_common = internal::get_cholmod_handle();
   MATHPRIM_UNUSED(cholmod_common); // We keep it here to init the handle.
   
   ::std::memset(&chol_mat_, 0, sizeof(chol_mat_));
-  if constexpr (sparse_compression == sparse_format::csc) {
+  if constexpr (SparseCompression == sparse_format::csc) {
     chol_mat_.nrow = mat.cols();
     chol_mat_.ncol = mat.rows();
-  } else if constexpr (sparse_compression == sparse_format::csr) {
+  } else if constexpr (SparseCompression == sparse_format::csr) {
     chol_mat_.nrow = mat.rows();
     chol_mat_.ncol = mat.cols();
   } else {
@@ -129,15 +130,16 @@ blas::cholmod<Scalar, sparse_compression>::cholmod(const_sparse_view mat) : base
   chol_y_.dtype = chol_mat_.dtype;
 }
 
-template <typename Scalar, sparse_format sparse_compression>
-void blas::cholmod<Scalar, sparse_compression>::gemv(Scalar alpha, const_vector_view x, Scalar beta, vector_view y) {
+template <typename Scalar, sparse_format SparseCompression>
+void blas::cholmod<Scalar, SparseCompression>::gemv_impl(Scalar alpha, const_vector_view x, Scalar beta, vector_view y,
+                                                         bool transpose) {
   cholmod_common cholmod_common = internal::get_cholmod_handle();
   int result = 0;
   double alpha_arg = alpha;
   double beta_arg = beta;
-  if constexpr (sparse_compression == sparse_format::csc) {
+  if constexpr (SparseCompression == sparse_format::csc) {
     // ok, suitesparse native format.
-    if (! this->mat_.is_transpose()) {
+    if (!transpose) {
       // normal path, set chol_x=x, chol_y=y, and call cholmod_sdmult.
       chol_x_.x = const_cast<Scalar*>(x.data());
       chol_y_.x = y.data();
@@ -151,9 +153,9 @@ void blas::cholmod<Scalar, sparse_compression>::gemv(Scalar alpha, const_vector_
 
       result = cholmod_sdmult(&chol_mat_, 1, &alpha_arg, &beta_arg, &chol_y_, &chol_x_, &cholmod_common);
     }
-  } else if constexpr (sparse_compression == sparse_format::csr) {
+  } else if constexpr (SparseCompression == sparse_format::csr) {
     // view it as csc and do correspondingly.
-    if (this->mat_.is_transpose()){
+    if (transpose){
       // a transpose of csr is csc, set chol_x=y, chol_y=x, and call cholmod_sdmult.
       // y: (col, 1), x: (row, 1)
       chol_x_.x = y.data();

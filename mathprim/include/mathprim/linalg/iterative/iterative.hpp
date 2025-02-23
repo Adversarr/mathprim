@@ -1,4 +1,6 @@
 #pragma once
+#include <limits>
+
 #include "mathprim/core/buffer.hpp"
 #include "mathprim/core/view.hpp"
 #include "mathprim/sparse/basic_sparse.hpp"
@@ -8,11 +10,11 @@ namespace mathprim::iterative_solver {
 ///////////////////////////////////////////////////////////////////////////////
 /// Linear Operator
 ///////////////////////////////////////////////////////////////////////////////
-template <typename Derived, typename Scalar, typename device>
+template <typename Derived, typename Scalar, typename Device>
 class basic_linear_operator {
 public:
-  using vector_type = continuous_view<Scalar, shape_t<keep_dim>, device>;
-  using const_vector = continuous_view<const Scalar, shape_t<keep_dim>, device>;
+  using vector_type = continuous_view<Scalar, shape_t<keep_dim>, Device>;
+  using const_vector = continuous_view<const Scalar, shape_t<keep_dim>, Device>;
 
   index_t rows() const {
     return rows_;
@@ -38,38 +40,45 @@ private:
   index_t cols_;
 };
 
-template <typename spmv>
-class sparse_matrix
-    : public basic_linear_operator<sparse_matrix<spmv>, typename spmv::scalar_type, typename spmv::device_type> {
+template <typename SparseBlas>
+class sparse_matrix : public basic_linear_operator<sparse_matrix<SparseBlas>, typename SparseBlas::scalar_type,
+                                                   typename SparseBlas::device_type> {
 public:
-  using base = basic_linear_operator<sparse_matrix<spmv>, typename spmv::scalar_type, typename spmv::device_type>;
-  using Scalar = typename spmv::scalar_type;
+  using base = basic_linear_operator<sparse_matrix<SparseBlas>, typename SparseBlas::scalar_type,
+                                     typename SparseBlas::device_type>;
+  friend base;
+  using Scalar = typename SparseBlas::scalar_type;
   using vector_type = typename base::vector_type;
   using const_vector = typename base::const_vector;
-  using const_sparse_view = typename spmv::const_sparse_view;
+  using const_sparse_view = typename SparseBlas::const_sparse_view;
 
   explicit sparse_matrix(const_sparse_view mat) : base(mat.rows(), mat.cols()), spmv_(mat) {}
 
+protected:
   void apply_impl(Scalar alpha, const_vector x, Scalar beta, vector_type y) {
-    spmv_.gemv(alpha, x, beta, y);
+    spmv_.gemv(alpha, x, beta, y, false);
   }
 
   void apply_transpose_impl(Scalar alpha, const_vector x, Scalar beta, vector_type y) {
-    throw std::runtime_error("Not implemented.");
+    if (spmv_.matrix().property() == sparse::sparse_property::symmetric) {
+      spmv_.gemv(alpha, x, beta, y, true);
+    } else {
+      throw std::runtime_error("Not implemented for unsymmetric matrix.");
+    }
   }
 
 private:
-  spmv spmv_;
+  SparseBlas spmv_;
 };
 
 ///////////////////////////////////////////////////////////////////////////////
 /// Preconditioner
 ///////////////////////////////////////////////////////////////////////////////
-template <typename Derived, typename Scalar, typename device>
+template <typename Derived, typename Scalar, typename Device>
 class basic_preconditioner {
 public:
-  using vector_type = continuous_view<Scalar, shape_t<keep_dim>, device>;
-  using const_vector = continuous_view<const Scalar, shape_t<keep_dim>, device>;
+  using vector_type = continuous_view<Scalar, shape_t<keep_dim>, Device>;
+  using const_vector = continuous_view<const Scalar, shape_t<keep_dim>, Device>;
 
   // y <- M^-1 * x
   void apply(vector_type y, const_vector x) {
@@ -77,10 +86,10 @@ public:
   }
 };
 
-template <typename Scalar, typename device>
-class none_preconditioner : public basic_preconditioner<none_preconditioner<Scalar, device>, Scalar, device> {
+template <typename Scalar, typename Device>
+class none_preconditioner : public basic_preconditioner<none_preconditioner<Scalar, Device>, Scalar, Device> {
 public:
-  using base = basic_preconditioner<none_preconditioner<Scalar, device>, Scalar, device>;
+  using base = basic_preconditioner<none_preconditioner<Scalar, Device>, Scalar, Device>;
   using vector_type = typename base::vector_type;
   using const_vector = typename base::const_vector;
 
@@ -97,20 +106,18 @@ public:
 ///////////////////////////////////////////////////////////////////////////////
 template <typename Scalar>
 struct iterative_solver_parameters {
+  index_t max_iterations_;
   Scalar norm_tol_;
-  // Scalar amax_tol_;
-  int max_iterations_;
 };
 
 template <typename Scalar>
 struct iterative_solver_result {
-  int iterations_;  ///< number of iterations.
-  Scalar norm_;     ///< l2 norm of the residual.    (norm(r))
-  // Scalar amax_;     ///< l-inf norm of the solution. (amax)
+  index_t iterations_ = {1 << 10};                         ///< number of iterations.
+  Scalar norm_ = {std::numeric_limits<float>::epsilon()};  ///< l2 norm of the residual. (norm(r))
 };
 
-template <typename Derived, typename Scalar, typename device, typename LinearOperatorT, typename BlasT,
-          typename PreconditionerT = none_preconditioner<Scalar, device>>
+template <typename Derived, typename Scalar, typename Device, typename LinearOperatorT, typename BlasT,
+          typename PreconditionerT = none_preconditioner<Scalar, Device>>
 class basic_iterative_solver {
 public:
   using scalar_type = Scalar;
@@ -119,21 +126,26 @@ public:
   using preconditioner_type = PreconditionerT;
   using results_type = iterative_solver_result<Scalar>;
   using parameters_type = iterative_solver_parameters<Scalar>;
-  using vector_type = continuous_view<Scalar, shape_t<keep_dim>, device>;
-  using const_vector = continuous_view<const Scalar, shape_t<keep_dim>, device>;
+  using vector_type = continuous_view<Scalar, shape_t<keep_dim>, Device>;
+  using const_vector = continuous_view<const Scalar, shape_t<keep_dim>, Device>;
 
   explicit basic_iterative_solver(linear_operator_type matrix, blas_type blas = {},
                                   preconditioner_type preconditioner = {}) :
       matrix_(std::move(matrix)),
       blas_(std::move(blas)),
       preconditioner_(std::move(preconditioner)),
-      residual_(make_buffer<Scalar, device>(make_shape(matrix_.rows()))) {}
+      residual_(make_buffer<Scalar, Device>(make_shape(matrix_.rows()))) {}
 
-  // must be virtual
-  virtual ~basic_iterative_solver() = default;
+  // NOT necessary since we use CRTP.
+  // virtual ~basic_iterative_solver() = default;
+  struct no_op {
+    inline void operator()(index_t /* iter */, Scalar /* norm */) const noexcept {}
+  };
 
   // Solve the linear system.
-  results_type apply(const_vector b, vector_type x, const parameters_type& params) {
+  template <typename Callback = no_op>
+  MATHPRIM_NOINLINE results_type apply(const_vector b, vector_type x, const parameters_type& params = {},
+                                       Callback&& cb = {}) {
     // 1. Check the size of b and x.
     const index_t b_size = b.size();
     const index_t x_size = x.size();
@@ -153,14 +165,14 @@ public:
     }
 
     // 3. Apply the solver.
-    return static_cast<Derived*>(this)->apply_impl(b, x, params);
+    return static_cast<Derived*>(this)->template apply_impl<Callback>(b, x, params, std::forward<Callback>(cb));
   }
 
   const_vector residual() const noexcept {
     return residual_.view();
   }
 
-  linear_operator_type& matrix() noexcept {
+  linear_operator_type& linear_operator() noexcept {
     return matrix_;
   }
 
@@ -176,7 +188,7 @@ protected:
   linear_operator_type matrix_;
   blas_type blas_;
   preconditioner_type preconditioner_;
-  continuous_buffer<Scalar, shape_t<keep_dim>, device> residual_;
+  continuous_buffer<Scalar, shape_t<keep_dim>, Device> residual_;
 };
 
 }  // namespace mathprim::iterative_solver

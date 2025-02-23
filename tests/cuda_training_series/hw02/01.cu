@@ -54,7 +54,6 @@ __global__ void stencil_1d(int *in, int *out) {
 
 int main() {
   auto par_cuda = mp::par::cuda();
-  auto par_host = mp::par::seq();
   auto host_in = mp::make_buffer<int>(N + 2 * RADIUS),
        host_out = mp::make_buffer<int>(N + 2 * RADIUS);
   auto device_in = mp::make_buffer<int, mp::device::cuda>(N + 2 * RADIUS),

@@ -262,6 +262,11 @@ MATHPRIM_PRIMFUNC bool is_in_bound(const shape_t<svalues...> &shape,
   return internal::is_in_bound(shape, index, make_index_seq<sizeof...(svalues)>{});
 }
 
+template <index_t ndim>
+MATHPRIM_PRIMFUNC bool is_in_bound(const index_array<ndim> &shape, const index_array<ndim> &index) noexcept {
+  return internal::is_in_bound(shape, index, make_index_seq<ndim>{});
+}
+
 #define MATHPRIM_MAKE_SHAPE_VEC(dim)                                    \
   template <index_t... svalues, typename... Integers>                   \
   shape_t<svalues..., dim> make_shape_vec##dim(Integers &&...values) {  \

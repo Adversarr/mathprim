@@ -49,8 +49,11 @@ struct cpu_blas : public basic_blas<cpu_blas<T>, T, device::cpu> {
   template <typename sshape, typename sstride>
   using const_type = basic_view<const T, sshape, sstride, device::cpu>;
 
+  using base = basic_blas<cpu_blas<T>, T, device::cpu>;
+  friend base;
   using Scalar = T;
 
+protected:
   template <typename sshape_dst, typename sstride_dst, typename sshape_src, typename sstride_src>
   void copy_impl(view_type<sshape_dst, sstride_dst> dst, const_type<sshape_src, sstride_src> src) {
     auto dst_stride = internal::vec_stride(dst);
@@ -176,11 +179,13 @@ struct cpu_blas : public basic_blas<cpu_blas<T>, T, device::cpu> {
 
   // element-wise operatons
   // y = x * y
-  template <typename sshape_a, typename sstride_a, typename sshape_x, typename sstride_x, typename sshape_y,
-            typename sstride_y>
-  void emul_impl(Scalar alpha, const_type<sshape_a, sstride_a> a, const_type<sshape_x, sstride_x> x, Scalar beta,
-                 view_type<sshape_y, sstride_y> y) {
-    cpu_handmade<T>{}.emul_impl(alpha, a, x, beta, y);
+  template <typename SshapeX, typename SstrideX, typename SshapeY, typename SstrideY>
+  MATHPRIM_NOINLINE void emul_impl(const_type<SshapeX, SstrideX> x, view_type<SshapeY, SstrideY> y) {
+    auto total = x.shape(0);
+    MATHPRIM_PRAGMA_UNROLL_HOST
+    for (index_t i = 0; i < total; ++i) {
+      y[i] = x[i] * y[i];
+    }
   }
 
   // // Level 2

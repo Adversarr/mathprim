@@ -124,8 +124,9 @@ GTEST_TEST(blas, emul) {
   for (int i = 0; i < 12; ++i) {
     EXPECT_EQ(x.view()[i], i);
   }
-  // y <- 1.0 a x
-  b.emul(1.0f, a.const_view(), x.const_view(), 0.0f, y.view());
+  // y <- a y
+  b.copy(y.view(), x.const_view());
+  b.emul(a.const_view(), y.view());
   for (int i = 0; i < 12; ++i) {
     EXPECT_EQ(y.view()[i], i * i);
   }

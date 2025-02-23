@@ -151,58 +151,32 @@ Checks: '-*,
     clang-analyzer-unix.Vfork,
     clang-analyzer-unix.cstring.BadSizeArg,
     clang-analyzer-unix.cstring.NullArg,
-    boost-use-to-string,
-'
+    boost-use-to-string,'
 
 
 CheckOptions:
-  - key: readability-identifier-naming.ClassMethodIgnoredRegexp
-    value: "(begin|end)"
-  - key: readability-identifier-naming.ClassCase
-    value: lower_case
-  - key: readability-identifier-naming.EnumCase
-    value: lower_case
-  - key: readability-identifier-naming.EnumConstantCase
-    value: lower_case
-  - key: readability-identifier-naming.LocalVariableCase
-    value: lower_case
-  - key: readability-identifier-naming.StaticConstantCase
-    value: aNy_CasE
-  - key: readability-identifier-naming.ClassMemberPrefix
-    value: ''
-  - key: readability-identifier-naming.ClassMemberSuffix
-    value: '_'
-  - key: readability-identifier-naming.ClassConstantIgnoredRegexp
-    value: '[A-Z_]+'
-  - key: readability-identifier-naming.PrivateMemberPrefix
-    value: ''
-  - key: readability-identifier-naming.PrivateMemberSuffix
-    value: '_'
-  - key: readability-identifier-naming.ProtectedMemberPrefix
-    value: ''
-  - key: readability-identifier-naming.MethodCase
-    value: lower_case
-  - key: readability-identifier-naming.PrivateMethodPrefix
-    value: ''
-  - key: readability-identifier-naming.ProtectedMethodPrefix
-    value: ''
-  - key: readability-identifier-naming.ParameterPackCase
-    value: lower_case
-  - key: readability-identifier-naming.StructCase
-    value: lower_case
-  - key: readability-identifier-naming.TemplateTemplateParameterCase
-    value: aNy_CasE
-  - key: readability-identifier-naming.TemplateUsingCase
-    value: lower_case
-  - key: readability-identifier-naming.TypeTemplateParameterCase
-    value: aNy_CasE
-  - key: readability-identifier-naming.TypedefCase
-    value: lower_case
-  - key: readability-identifier-naming.UnionCase
-    value: lower_case
-  - key: readability-identifier-naming.UsingCase
-    value: lower_case
-
-  - key: readability-identifier-naming.ClassIgnoredRegexp
-    value: "([a-z_]+_t)|([A-Za-z0-9]+_[A-Za-z0-9]+)"
-
+  readability-identifier-naming.ClassMethodIgnoredRegexp: "(begin|end)"
+  readability-identifier-naming.ClassCase: lower_case
+  readability-identifier-naming.ClassConstantCase: lower_case
+  readability-identifier-naming.ClassMemberSuffix: '_'
+  readability-identifier-naming.FunctionCase: lower_case
+  readability-identifier-naming.EnumCase: lower_case
+  readability-identifier-naming.EnumConstantCase: lower_case
+  readability-identifier-naming.LocalVariableCase: lower_case
+  readability-identifier-naming.StaticConstantCase: lower_case
+  readability-identifier-naming.PrivateMemberPrefix: ''
+  readability-identifier-naming.PrivateMemberSuffix: '_'
+  readability-identifier-naming.ProtectedMemberPrefix: ''
+  readability-identifier-naming.ProtectedMemberSuffix: '_'
+  readability-identifier-naming.MethodCase: lower_case
+  readability-identifier-naming.PrivateMethodPrefix: ''
+  readability-identifier-naming.ProtectedMethodPrefix: ''
+  readability-identifier-naming.ParameterPackCase: lower_case
+  readability-identifier-naming.StructCase: lower_case
+  readability-identifier-naming.TemplateParameterCase: CamelCase
+  readability-identifier-naming.TemplateUsingCase: lower_case
+  readability-identifier-naming.TypeTemplateParameterCase: CamelCase
+  readability-identifier-naming.TypedefCase: lower_case
+  readability-identifier-naming.UnionCase: lower_case
+  readability-identifier-naming.UsingCase: lower_case
+  readability-identifier-naming.ClassIgnoredRegexp: "([a-z_]+_t)|([A-Za-z0-9]+_[A-Za-z0-9]+)"

@@ -13,122 +13,127 @@ namespace mathprim {
 namespace internal {
 
 // Flatten
-template <typename seq>
+template <typename Seq>
 struct flatten;
-template <index_t front>
-struct flatten<index_seq<front>> {
-  static constexpr index_t value = front == keep_dim ? keep_dim : front;
+template <index_t Front>
+struct flatten<index_seq<Front>> {
+  static constexpr index_t value = Front == keep_dim ? keep_dim : Front;
 };
-template <index_t front, index_t... args>
-struct flatten<index_seq<front, args...>> {
-  static constexpr index_t value = front == keep_dim ? flatten<index_seq<args...>>::value : front;
+template <index_t Front, index_t... Args>
+struct flatten<index_seq<Front, Args...>> {
+  static constexpr index_t value = Front == keep_dim ? flatten<index_seq<Args...>>::value : Front;
 };
-template <typename seq>
-constexpr index_t flatten_v = flatten<seq>::value;
+template <typename Seq>
+constexpr index_t flatten_v = flatten<Seq>::value;
 
 // Slice a pack
-template <index_t i, typename pack>
-using slice_t = god::to_pack<god::remove_t<i, typename pack::seq>>;
-template <index_t i, typename pack, index_t... seq>
-constexpr MATHPRIM_PRIMFUNC slice_t<i, pack> slice_impl(const pack &full, index_seq<seq...> /*seq*/) noexcept {
-  return slice_t<i, pack>((full.template get<(seq < i ? seq : seq + 1)>())...);
+template <index_t I, typename Pack>
+using slice_t = god::to_pack<god::remove_t<I, typename Pack::seq>>;
+template <index_t I, typename Pack, index_t... Seq>
+constexpr MATHPRIM_PRIMFUNC slice_t<I, Pack> slice_impl(const Pack &full, index_seq<Seq...> /*seq*/) noexcept {
+  return slice_t<I, Pack>((full.template get<(Seq < I ? Seq : Seq + 1)>())...);
 }
 
 // Transpose two dimension
-template <index_t i, index_t j, typename seq>
+template <index_t I, index_t J, typename Seq>
 struct transpose;
-template <index_t i, index_t j, index_t... svalues>
-struct transpose<i, j, index_seq<svalues...>> {
-  using seq = index_seq<svalues...>;
-  template <index_t idx>
-  static constexpr index_t v = god::get_v<seq, idx>;
+template <index_t I, index_t J, index_t... Svalues>
+struct transpose<I, J, index_seq<Svalues...>> {
+  using seq = index_seq<Svalues...>;
+  template <index_t Idx>
+  static constexpr index_t v = god::get_v<seq, Idx>;
   template <typename>
   struct transpose_element;
-  template <index_t... idx>
-  struct transpose_element<index_seq<idx...>> {
-    using type = index_seq<idx == i ? v<j> : (idx == j ? v<i> : v<idx>)...>;
+  template <index_t... Idx>
+  struct transpose_element<index_seq<Idx...>> {
+    using type = index_seq<Idx == I ? v<J> : (Idx == J ? v<I> : v<Idx>)...>;
   };
 
-  using type = typename transpose_element<make_index_seq<sizeof...(svalues)>>::type;
+  using type = typename transpose_element<make_index_seq<sizeof...(Svalues)>>::type;
 };
-template <index_t i, index_t j, typename seq>
-using transpose_t = typename transpose<i, j, seq>::type;
-template <index_t i, index_t j, typename pack>
-using transpose_impl_t = god::to_pack<internal::transpose_t<i, j, typename pack::seq>>;
+template <index_t I, index_t J, typename Seq>
+using transpose_t = typename transpose<I, J, Seq>::type;
+template <index_t I, index_t J, typename Pack>
+using transpose_impl_t = god::to_pack<internal::transpose_t<I, J, typename Pack::seq>>;
 
-template <index_t i, index_t j, typename pack, index_t... idx>
-constexpr MATHPRIM_PRIMFUNC transpose_impl_t<i, j, pack> transpose_impl(const pack &src, index_seq<idx...>) {
-  return transpose_impl_t<i, j, pack>{src.template get<(idx == i ? j : (idx == j ? i : idx))>()...};
+template <index_t i, index_t J, typename Pack, index_t... Idx>
+constexpr MATHPRIM_PRIMFUNC transpose_impl_t<i, J, Pack> transpose_impl(const Pack &src, index_seq<Idx...>) {
+  return transpose_impl_t<i, J, Pack>{src.template get<(Idx == i ? J : (Idx == J ? i : Idx))>()...};
 }
 
 // Extend a pack
-template <typename view_type>
+template <typename ViewType>
 struct field_impl;
-template <typename T, typename sshape, typename sstride, typename device>
-struct field_impl<basic_view<T, sshape, sstride, device>> {
-  using new_shape = god::to_pack<god::prepend_t<keep_dim, typename sshape::seq>>;
-  static constexpr index_t old_stride_first = god::car_v<typename sstride::seq>;
-  static constexpr index_t old_shape_first = god::car_v<typename sshape::seq>;
+template <typename T, typename Sshape, typename Sstride, typename Device>
+struct field_impl<basic_view<T, Sshape, Sstride, Device>> {
+  using new_shape = god::to_pack<god::prepend_t<keep_dim, typename Sshape::seq>>;
+  static constexpr index_t old_stride_first = god::car_v<typename Sstride::seq>;
+  static constexpr index_t old_shape_first = god::car_v<typename Sshape::seq>;
   static constexpr index_t new_stride_first
       = (old_shape_first == keep_dim || old_stride_first == keep_dim) ? keep_dim : old_stride_first * old_shape_first;
-  using new_stride = god::to_pack<god::prepend_t<new_stride_first, typename sstride::seq>>;
-  using type = basic_view<T, new_shape, new_stride, device>;
+  using new_stride = god::to_pack<god::prepend_t<new_stride_first, typename Sstride::seq>>;
+  using type = basic_view<T, new_shape, new_stride, Device>;
 };
 
-template <typename view_type>
-using field_t = typename field_impl<view_type>::type;
+template <typename ViewType>
+using field_t = typename field_impl<ViewType>::type;
 
-}  // namespace internal
-
+///////////////////////////////////////////////////////////////////////////////
+/// Operations on packs.
+///////////////////////////////////////////////////////////////////////////////
 // Transpose
-template <index_t i, index_t j, typename pack>
-constexpr MATHPRIM_PRIMFUNC god::to_pack<internal::transpose_t<i, j, typename pack::seq>> transpose(const pack &src) {
-  static_assert(i < pack::ndim && j < pack::ndim, "The indices must be less than the dimension.");
-  return internal::transpose_impl<i, j>(src, make_index_seq<pack::ndim>{});
+template <index_t I, index_t J, typename Pack>
+constexpr MATHPRIM_PRIMFUNC god::to_pack<internal::transpose_t<I, J, typename Pack::seq>> pack_transpose(
+    const Pack &src) {
+  static_assert(I < Pack::ndim && J < Pack::ndim, "The indices must be less than the dimension.");
+  return internal::transpose_impl<I, J>(src, make_index_seq<Pack::ndim>{});
 }
 
 // Slicing
-template <index_t i, index_t... svalues>
-constexpr MATHPRIM_PRIMFUNC internal::slice_t<i, index_pack<svalues...>> slice(const index_pack<svalues...> &full) {
-  static_assert(i < index_pack<svalues...>::ndim, "The index must be less than the dimension.");
-  return internal::slice_impl<i>(full, make_index_seq<index_pack<svalues...>::ndim - 1>{});
+template <index_t I, index_t... Svalues>
+constexpr MATHPRIM_PRIMFUNC internal::slice_t<I, index_pack<Svalues...>> pack_slice(
+    const index_pack<Svalues...> &full) {
+  static_assert(I < index_pack<Svalues...>::ndim, "The index must be less than the dimension.");
+  return internal::slice_impl<I>(full, make_index_seq<index_pack<Svalues...>::ndim - 1>{});
 }
+
+}  // namespace internal
 
 ///////////////////////////////////////////////////////////////////////////////
 /// General template for buffer view.
 ///////////////////////////////////////////////////////////////////////////////
-template <typename T, typename sshape, typename sstride, typename dev>
+template <typename Scalar, typename Sshape, typename Sstride, typename Dev>
 class basic_view {
 public:
-  static constexpr index_t ndim = sshape::ndim;
-  static constexpr bool is_const = std::is_const_v<T>;
-  using shape_at_compile_time = sshape;
-  using stride_at_compile_time = sstride;
+  static constexpr index_t ndim = Sshape::ndim;
+  static constexpr bool is_const = std::is_const_v<Scalar>;
+  using shape_at_compile_time = Sshape;
+  using stride_at_compile_time = Sstride;
 
-  using value_type = T;
-  using const_type = std::add_const_t<T>;
-  using byte_type = std::conditional_t<std::is_const_v<T>, const char, char>;
-  using reference = T &;
-  using pointer = T *;
+  using value_type = Scalar;
+  using const_type = std::add_const_t<Scalar>;
+  using byte_type = std::conditional_t<std::is_const_v<Scalar>, const char, char>;
+  using reference = Scalar &;
+  using pointer = Scalar *;
   using indexing_type
       = std::conditional_t<ndim == 1, reference,
-                           basic_view<T, internal::slice_t<0, sshape>, internal::slice_t<0, sstride>, dev>>;
+                           basic_view<Scalar, internal::slice_t<0, Sshape>, internal::slice_t<0, Sstride>, Dev>>;
 
-  using flatten_type = std::conditional_t<ndim == 1, basic_view<T, sshape, sstride, dev> /*self*/,
-                                          basic_view<T, shape_t<internal::flatten_v<typename sshape::seq>>,
-                                                     stride_t<god::last_v<typename sstride::seq>>, dev>>;
+  using flatten_type = std::conditional_t<ndim == 1, basic_view<Scalar, Sshape, Sstride, Dev> /*self*/,
+                                          basic_view<Scalar, shape_t<internal::flatten_v<typename Sshape::seq>>,
+                                                     stride_t<god::last_v<typename Sstride::seq>>, Dev>>;
 
-  static constexpr bool is_contiguous_at_compile_time = internal::is_continuous_compile_time_v<sshape, sstride>;
+  static constexpr bool is_contiguous_at_compile_time = internal::is_continuous_compile_time_v<Sshape, Sstride>;
 
   ///////////////////////////////////////////////////////////////////////////////
   /// Constructors
   ///////////////////////////////////////////////////////////////////////////////
   MATHPRIM_PRIMFUNC basic_view() noexcept : data_{nullptr} {}
 
-  MATHPRIM_PRIMFUNC basic_view(pointer data, const sshape &shape) noexcept :
-      basic_view(data, shape, make_default_stride<T>(shape)) {}
+  MATHPRIM_PRIMFUNC basic_view(pointer data, const Sshape &shape) noexcept :
+      basic_view(data, shape, make_default_stride<Scalar>(shape)) {}
 
-  MATHPRIM_PRIMFUNC basic_view(pointer data, const sshape &shape, const sstride &stride) noexcept :
+  MATHPRIM_PRIMFUNC basic_view(pointer data, const Sshape &shape, const Sstride &stride) noexcept :
       shape_(shape), stride_(stride), data_(data) {}
 
   // Allow to copy construct
@@ -137,10 +142,10 @@ public:
   basic_view(basic_view &&) noexcept = default;
 
   template <typename Scalar2, typename sshape2, typename sstride2,
-            typename = std::enable_if_t<std::is_same_v<std::decay_t<Scalar2>, std::decay_t<T>>>>
-  MATHPRIM_PRIMFUNC basic_view(const basic_view<Scalar2, sshape2, sstride2, dev> &other) :  // NOLINT: implicit convert
-      basic_view(other.data(), internal::safe_cast<sshape>(other.shape()),
-                 internal::safe_cast<sstride>(other.stride())) {}
+            typename = std::enable_if_t<std::is_same_v<std::decay_t<Scalar2>, std::decay_t<Scalar>>>>
+  MATHPRIM_PRIMFUNC basic_view(const basic_view<Scalar2, sshape2, sstride2, Dev> &other) :  // NOLINT: implicit convert
+      basic_view(other.data(), internal::safe_cast<Sshape>(other.shape()),
+                 internal::safe_cast<Sstride>(other.stride())) {}
 
   // Do not allow to assign
   basic_view &operator=(const basic_view &) noexcept = default;
@@ -155,7 +160,7 @@ public:
   }
 
   // Return shape
-  MATHPRIM_PRIMFUNC const sshape &shape() const noexcept {
+  MATHPRIM_PRIMFUNC const Sshape &shape() const noexcept {
     return shape_;
   }
 
@@ -172,7 +177,7 @@ public:
   }
 
   // Return stride
-  MATHPRIM_PRIMFUNC const sstride &stride() const noexcept {
+  MATHPRIM_PRIMFUNC const Sstride &stride() const noexcept {
     return stride_;
   }
 
@@ -201,15 +206,15 @@ public:
 
   // Return if the underlying data is contiguous.
   MATHPRIM_PRIMFUNC bool is_contiguous() const noexcept {
-    return stride_ == make_default_stride<T>(shape_);
+    return stride_ == make_default_stride<Scalar>(shape_);
   }
 
   auto begin() const noexcept {
-    return basic_view_iterator<T, sshape, sstride, dev, 0>(*this, 0);
+    return basic_view_iterator<Scalar, Sshape, Sstride, Dev, 0>(*this, 0);
   }
 
   auto end() const noexcept {
-    return basic_view_iterator<T, sshape, sstride, dev, 0>(*this, shape(0));
+    return basic_view_iterator<Scalar, Sshape, Sstride, Dev, 0>(*this, shape(0));
   }
 
   ///////////////////////////////////////////////////////////////////////////////
@@ -260,11 +265,11 @@ public:
    * @tparam j
    * @return The transposed view.
    */
-  template <index_t i = ndim - 1, index_t j = ndim - 2>
+  template <index_t I = ndim - 1, index_t J = ndim - 2>
   MATHPRIM_PRIMFUNC
-      basic_view<T, internal::transpose_impl_t<i, j, sshape>, internal::transpose_impl_t<i, j, sstride>, dev>
+      basic_view<Scalar, internal::transpose_impl_t<I, J, Sshape>, internal::transpose_impl_t<I, J, Sstride>, Dev>
       transpose() const noexcept {
-    return {data_, ::mathprim::transpose<i, j>(shape_), ::mathprim::transpose<i, j>(stride_)};
+    return {data_, internal::pack_transpose<I, J>(shape_), internal::pack_transpose<I, J>(stride_)};
   }
 
   /**
@@ -273,11 +278,11 @@ public:
    * @tparam i
    * @return The sliced view.
    */
-  template <index_t i = 0>
-  MATHPRIM_PRIMFUNC basic_view<T, internal::slice_t<i, sshape>, internal::slice_t<i, sstride>, dev> slice(
+  template <index_t I = 0>
+  MATHPRIM_PRIMFUNC basic_view<Scalar, internal::slice_t<I, Sshape>, internal::slice_t<I, Sstride>, Dev> slice(
       index_t batch = 0) const noexcept {
-    auto offset = batch * stride_.template get<i>();
-    return {data_ + offset, ::mathprim::slice<i>(shape_), ::mathprim::slice<i>(stride_)};
+    auto offset = batch * stride_.template get<I>();
+    return {data_ + offset, internal::pack_slice<I>(shape_), internal::pack_slice<I>(stride_)};
   }
 
   /**
@@ -285,26 +290,24 @@ public:
    *
    * @return The flattened view.
    */
-  MATHPRIM_PRIMFUNC flatten_type
-  flatten() const noexcept {
+  MATHPRIM_PRIMFUNC flatten_type flatten() const noexcept {
     if constexpr (ndim == 1) {
       return *this;
     } else {
 #ifndef NDEBUG
-    const auto drop_last_shape = internal::slice_impl<ndim - 1>(shape_, make_index_seq<ndim - 1>{});
-    const auto drop_last_stride = internal::slice_impl<ndim - 1>(stride_, make_index_seq<ndim - 1>{});
-    MATHPRIM_ASSERT(make_default_stride<T>(drop_last_shape) == drop_last_stride);
+      const auto drop_last_shape = internal::slice_impl<ndim - 1>(shape_, make_index_seq<ndim - 1>{});
+      const auto drop_last_stride = internal::slice_impl<ndim - 1>(stride_, make_index_seq<ndim - 1>{});
+      MATHPRIM_ASSERT(make_default_stride<Scalar>(drop_last_shape) == drop_last_stride);
 #endif
-    return {data_, shape_t<internal::flatten_v<typename sshape::seq>>{shape_.numel()},
-            stride_t<god::last_v<typename sstride::seq>>{stride_.template get<ndim - 1>()}};
+      return {data_, shape_t<internal::flatten_v<typename Sshape::seq>>{shape_.numel()},
+              stride_t<god::last_v<typename Sstride::seq>>{stride_.template get<ndim - 1>()}};
     }
   }
 
-  basic_view<T, shape_t<internal::flatten_v<typename sshape::seq>>, stride_t<god::last_v<typename sstride::seq>>, dev>
-  safe_flatten() const {
+  MATHPRIM_NOINLINE flatten_type safe_flatten() const {
     const auto drop_last_shape = internal::slice_impl<ndim - 1>(shape_, make_index_seq<ndim - 1>{});
     const auto drop_last_stride = internal::slice_impl<ndim - 1>(stride_, make_index_seq<ndim - 1>{});
-    if (make_default_stride<T>(drop_last_shape) != drop_last_stride) {
+    if (make_default_stride<Scalar>(drop_last_shape) != drop_last_stride) {
       throw shape_error("The view is not contiguous enough for flatten.");
     }
 
@@ -316,28 +319,28 @@ public:
    *
    * @return MATHPRIM_PRIMFUNC
    */
-  MATHPRIM_PRIMFUNC basic_view<const T, sshape, sstride, dev> as_const() const {
+  MATHPRIM_PRIMFUNC basic_view<const Scalar, Sshape, Sstride, Dev> as_const() const {
     return {data_, shape_, stride_};
   }
 
-  void swap(basic_view &other) noexcept {
+  MATHPRIM_FORCE_INLINE void swap(basic_view &other) noexcept {
     std::swap(shape_, other.shape_);
     std::swap(stride_, other.stride_);
     std::swap(data_, other.data_);
   }
 
 private:
-  sshape shape_;
-  sstride stride_;
-  T *data_;
+  Sshape shape_;
+  Sstride stride_;
+  Scalar *data_;
 };
 
-template <typename T, typename sshape, typename sstride, typename dev, index_t batch_dim>
+template <typename Scalar, typename Sshape, typename Sstride, typename Dev, index_t BatchDim>
 struct basic_view_iterator {
-  using view_type = basic_view<T, sshape, sstride, dev>;
+  using view_type = basic_view<Scalar, Sshape, Sstride, Dev>;
   using indexing_type = std::conditional_t<
       view_type::ndim == 1, typename view_type::reference,
-      basic_view<T, internal::slice_t<batch_dim, sshape>, internal::slice_t<batch_dim, sstride>, dev>>;
+      basic_view<Scalar, internal::slice_t<BatchDim, Sshape>, internal::slice_t<BatchDim, Sstride>, Dev>>;
   using value_type = std::remove_reference_t<indexing_type>;
   using reference = indexing_type;
   using difference_type = index_t;
@@ -356,7 +359,7 @@ struct basic_view_iterator {
     if constexpr (view_type::ndim == 1) {
       return view[current];
     } else {
-      return view.template slice<batch_dim>(current);
+      return view.template slice<BatchDim>(current);
     }
   }
 
@@ -364,7 +367,7 @@ struct basic_view_iterator {
     if constexpr (view_type::ndim == 1) {
       return view[current + n];
     } else {
-      return view.template slice<batch_dim>(current + n);
+      return view.template slice<BatchDim>(current + n);
     }
   }
 
@@ -442,47 +445,51 @@ struct basic_view_iterator {
 };
 
 // n + I
-template <typename T, typename sshape, typename sstride, typename dev, index_t batch_dim>
-MATHPRIM_PRIMFUNC basic_view_iterator<T, sshape, sstride, dev, batch_dim> operator+(
-    index_t n, const basic_view_iterator<T, sshape, sstride, dev, batch_dim> &it) {
+template <typename T, typename Sshape, typename Sstride, typename Dev, index_t BatchDim>
+MATHPRIM_PRIMFUNC basic_view_iterator<T, Sshape, Sstride, Dev, BatchDim> operator+(
+    index_t n, const basic_view_iterator<T, Sshape, Sstride, Dev, BatchDim> &it) {
   return it + n;
 }
 
-template <typename T, typename sshape, typename device>
-using continuous_view = basic_view<T, sshape, default_stride_t<sshape>, device>;
-template <typename base_view>
-using field_t = internal::field_t<base_view>;
+template <typename T, typename Sshape, typename Device>
+using continuous_view = basic_view<T, Sshape, default_stride_t<Sshape>, Device>;
+template <typename BaseView>
+using field_t = internal::field_t<BaseView>;
 
 ///////////////////////////////////////////////////////////////////////////////
 /// Create views
 ///////////////////////////////////////////////////////////////////////////////
 
-template <typename device = device::cpu, typename T, typename sshape, typename sstride = default_stride_t<sshape>>
-MATHPRIM_PRIMFUNC basic_view<T, sshape, sstride, device> view(T *data, const sshape &shape) {
-  return basic_view<T, sshape, sstride, device>(data, shape);
+template <typename Device = device::cpu, typename T, typename Sshape, typename Sstride = default_stride_t<Sshape>>
+MATHPRIM_PRIMFUNC basic_view<T, Sshape, Sstride, Device> view(T *data, const Sshape &shape) {
+  return basic_view<T, Sshape, Sstride, Device>(data, shape);
 }
 
-template <typename device = device::cpu, typename T, typename sshape, typename sstride = default_stride_t<sshape>>
-MATHPRIM_PRIMFUNC basic_view<T, sshape, sstride, device> view(T *data, const sshape &shape, const sstride &stride) {
-  return basic_view<T, sshape, sstride, device>(data, shape, stride);
+template <typename Device = device::cpu, typename T, typename Sshape, typename Sstride = default_stride_t<Sshape>>
+MATHPRIM_PRIMFUNC basic_view<T, Sshape, Sstride, Device> view(T *data, const Sshape &shape, const Sstride &stride) {
+  return basic_view<T, Sshape, Sstride, Device>(data, shape, stride);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 /// Memcpy between continuous views.
 ///////////////////////////////////////////////////////////////////////////////
-template <typename T1, typename sshape1, typename sstride1, typename dev1, typename T2, typename sshape2,
-          typename sstride2, typename dev2>
-void copy(basic_view<T1, sshape1, sstride1, dev1> dst, basic_view<T2, sshape2, sstride2, dev2> src) {
-  if (!src.is_contiguous() || !dst.is_contiguous()) {
-    throw std::runtime_error("The source or destination view is not contiguous.");
-  }
-
+template <typename T1, typename Sshape1, typename Sstride1, typename Dev1, typename T2, typename Sshape2,
+          typename Sstride2, typename Dev2>
+void copy(basic_view<T1, Sshape1, Sstride1, Dev1> dst, basic_view<T2, Sshape2, Sstride2, Dev2> src,
+          bool enforce_same_shape = true) {
+  MATHPRIM_INTERNAL_CHECK_THROW(src.is_contiguous() && dst.is_contiguous(), std::runtime_error,
+                                "The source or destination view is not contiguous.");
   const auto total = src.numel() * sizeof(T1);
-  const auto avail = dst.numel() * sizeof(T2);
-  if (avail < total) {
-    throw std::runtime_error("The destination buffer is too small.");
+
+  if (enforce_same_shape) {
+    MATHPRIM_INTERNAL_CHECK_THROW(src.shape() == dst.shape(), std::runtime_error,
+                                  "The source and destination view must have the same shape.");
+  } else {
+    const auto avail = dst.numel() * sizeof(T2);
+    MATHPRIM_INTERNAL_CHECK_THROW(total <= avail, std::runtime_error,
+                                  "The source view is too large for the destination view.");
   }
-  device::basic_memcpy<dev2, dev1>{}(dst.data(), src.data(), total);
+  device::basic_memcpy<Dev2, Dev1>{}(dst.data(), src.data(), total);
 }
 
 }  // namespace mathprim

@@ -66,7 +66,7 @@ int main() {
   auto sparse_view = sparse::basic_sparse_view<float, device::cuda,
                                                sparse::sparse_format::csr>(
       d_csr_values, d_csr_row_ptr, d_csr_col_idx, rows, cols, nnz,
-      sparse::sparse_property::general, false);
+      sparse::sparse_property::general);
 
   auto api =
       sparse::blas::cusparse<float, mathprim::sparse::sparse_format::csr>(

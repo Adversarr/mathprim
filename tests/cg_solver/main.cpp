@@ -1,7 +1,7 @@
 
 #include <mathprim/blas/cpu_handmade.hpp>
 #include <mathprim/core/buffer.hpp>
-#include <mathprim/linalg/iterative/cg.hpp>
+#include <mathprim/linalg/iterative/solver/cg.hpp>
 #include <mathprim/parallel/openmp.hpp>
 #include <mathprim/sparse/blas/eigen.hpp>
 #include <mathprim/sparse/blas/naive.hpp>
@@ -47,8 +47,7 @@ int main() {
   row_ptr[rows] = nnz;
 
   sparse::basic_sparse_view<const float, device::cpu, sparse::sparse_format::csr> mat(
-      values.as_const(), row_ptr.as_const(), col_idx.as_const(), rows, cols, nnz, sparse::sparse_property::general,
-      false);
+      values.as_const(), row_ptr.as_const(), col_idx.as_const(), rows, cols, nnz, sparse::sparse_property::general);
 
   using linear_op = iterative_solver::sparse_matrix<sparse::blas::eigen<float, sparse::sparse_format::csr>>;
   iterative_solver::cg<float, device::cpu, linear_op, blas::cpu_handmade<float>> cg{linear_op{mat}};
@@ -60,7 +59,7 @@ int main() {
     xv[i] = 1.0f;
   });
   // b = A * x
-  cg.matrix().apply(1.0f, x.view(), 0.0f, b.view());
+  cg.linear_operator().apply(1.0f, x.view(), 0.0f, b.view());
 
   par::seq().run(make_shape(rows), [xv = x.view(), bv = b.view()](index_t i) {
     xv[i] = (rand() % 100) / 100.0f;
@@ -68,8 +67,8 @@ int main() {
 
   cg.apply(b.view(), x.view(),
            {
-             .norm_tol_ = 1e-6f,
              .max_iterations_ = 100,
+             .norm_tol_ = 1e-6f,
            });
   // par::seq().run(make_shape(rows), [xv = x.view()](index_t i) { std::cout << xv[i] << std::endl; });
 }

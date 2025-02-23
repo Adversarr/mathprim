@@ -216,6 +216,14 @@ struct index_array {
     static_assert(i < ndim, "Index out of range.");
     return data_[i];
   }
+
+  MATHPRIM_PRIMFUNC static index_array<ndim> constant(index_t value) noexcept {
+    index_array<ndim> result;
+    for (index_t i = 0; i < ndim; ++i) {
+      result[i] = value;
+    }
+    return result;
+  }
 };
 
 template <>
@@ -229,6 +237,7 @@ struct index_array<0> {
   MATHPRIM_PRIMFUNC const index_t &operator[](index_t i) const noexcept;
   template <index_t i>
   MATHPRIM_PRIMFUNC index_t get() const noexcept;
+  MATHPRIM_PRIMFUNC static index_array<0> constant(index_t) noexcept;
 };
 
 template <>
@@ -261,6 +270,9 @@ struct index_array<1> {
   MATHPRIM_PRIMFUNC index_t get() const noexcept {
     static_assert(i == 0, "Index out of range.");
     return data_[0];
+  }
+  MATHPRIM_PRIMFUNC static index_array<1> constant(index_t value) noexcept {
+    return index_array<1>{value};
   }
 };
 
@@ -368,6 +380,16 @@ void swap_impl(index_array<ndim> &lhs, index_array<ndim> &rhs) noexcept {
 }
 
 }  // namespace internal
+
+template <index_t NDim>
+MATHPRIM_PRIMFUNC internal::index_iterator<NDim> begin(const index_array<NDim> &shape) noexcept {
+  return internal::index_iterator<NDim>{shape};
+}
+
+template <index_t NDim>
+MATHPRIM_PRIMFUNC internal::index_iterator<NDim> end(const index_array<NDim> &shape) noexcept {
+  return internal::index_iterator<NDim>{shape, true};
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 /// dynamic and static implementation

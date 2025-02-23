@@ -15,9 +15,11 @@ struct cpu_handmade : public basic_blas<cpu_handmade<T>, T, device::cpu> {
   using view_type = basic_view<T, sshape, sstride, device::cpu>;
   template <typename sshape, typename sstride>
   using const_type = basic_view<const T, sshape, sstride, device::cpu>;
-
+  using base = basic_blas<cpu_handmade<T>, T, device::cpu>;
+  friend base;
   using Scalar = T;
 
+protected:
   template <typename sshape_dst, typename sstride_dst, typename sshape_src, typename sstride_src>
   void copy_impl(const view_type<sshape_dst, sstride_dst>& dst, const const_type<sshape_src, sstride_src>& src) {
     auto shape = src.shape();
@@ -125,22 +127,12 @@ struct cpu_handmade : public basic_blas<cpu_handmade<T>, T, device::cpu> {
   }
 
   // Y <- alpha * A * X + beta * Y
-  template <typename sshape_a, typename sstride_a, typename sshape_x, typename sstride_x, typename sshape_y,
-            typename sstride_y>
-  void emul_impl(const Scalar& alpha, const const_type<sshape_a, sstride_a>& a,
-                 const const_type<sshape_x, sstride_x>& x, const Scalar& beta,
-                 const view_type<sshape_y, sstride_y>& y) {
-    auto shape = x.shape();
-    if (beta == static_cast<Scalar>(0)) {
-      MATHPRIM_PRAGMA_UNROLL_HOST
-      for (auto sub : shape) {
-        y(sub) = alpha * a(sub) * x(sub);
-      }
-    } else {
-      MATHPRIM_PRAGMA_UNROLL_HOST
-      for (auto sub : shape) {
-        y(sub) = y(sub) * beta + alpha * a(sub) * x(sub);
-      }
+  template <typename SshapeX, typename SstrideX, typename SshapeY, typename SstrideY>
+  MATHPRIM_NOINLINE void emul_impl(const_type<SshapeX, SstrideX> x, view_type<SshapeY, SstrideY> y) {
+    auto total = x.shape(0);
+    MATHPRIM_PRAGMA_UNROLL_HOST
+    for (index_t i = 0; i < total; ++i) {
+      y[i] = x[i] * y[i];
     }
   }
 

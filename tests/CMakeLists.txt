@@ -8,6 +8,7 @@ add_subdirectory(omp)
 add_subdirectory(benchmark)
 add_subdirectory(sparse_csr)
 add_subdirectory(cg_solver)
+add_subdirectory(npyio)
 
 if(MATHPRIM_BUILD_TESTS_CUDA)
   add_subdirectory(hello_world_cuda)
@@ -22,4 +23,5 @@ endif()
 
 if(MATHPRIM_ENABLE_EIGEN)
   add_subdirectory(eigen)
+  add_subdirectory(nystorm)
 endif()

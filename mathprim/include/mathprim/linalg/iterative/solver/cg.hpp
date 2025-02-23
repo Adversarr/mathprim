@@ -25,7 +25,8 @@ public:
       q_(make_buffer<scalar_type, device>(make_shape(base::matrix_.rows()))),
       d_(make_buffer<scalar_type, device>(make_shape(base::matrix_.rows()))) {}
 
-  results_type apply_impl(const_vector b, vector_type x, const parameters_type& params) {
+  template <typename Callback>
+  results_type apply_impl(const_vector b, vector_type x, const parameters_type& params, Callback&& cb) {
     auto& blas = base::blas_;
     auto& matrix = base::matrix_;
     auto& preconditioner = base::preconditioner_;
@@ -84,6 +85,8 @@ public:
       blas.axpy(beta, cd, q);  // q = q + beta * d
       d.swap(q);
       cd.swap(cq);
+
+      cb(iterations, norm);
     }
 
     return results;

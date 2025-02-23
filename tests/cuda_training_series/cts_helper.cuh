@@ -4,8 +4,6 @@
 #include <mathprim/core/devices/cuda.cuh>
 #include <mathprim/parallel/cuda.cuh>
 #include <mathprim/supports/stringify.hpp>
-namespace mp = mathprim;
-using namespace mp::literal;
 
 #define cts_begin(name, loop_count)                                            \
   cudaEvent_t name##_start, name##_stop;                                       \
@@ -24,3 +22,6 @@ using namespace mp::literal;
   }                                                                            \
   do {                                                                         \
   } while (0)
+
+namespace mp = mathprim;
+using namespace mp::literal;

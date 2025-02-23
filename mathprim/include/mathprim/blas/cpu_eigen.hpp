@@ -17,6 +17,11 @@ struct cpu_eigen : public basic_blas<cpu_eigen<T>, T, device::cpu> {
   template <typename sshape, typename sstride>
   using const_type = basic_view<const T, sshape, sstride, device::cpu>;
 
+  using base = basic_blas<cpu_eigen<T>, T, device::cpu>;
+  friend base;
+  using Scalar = T;
+
+protected:
   template <typename sshape_dst, typename sstride_dst, typename sshape_src, typename sstride_src>
   void copy_impl(view_type<sshape_dst, sstride_dst> dst, const_type<sshape_src, sstride_src> src) {
     auto map_dst = eigen_support::amap(dst);
@@ -83,19 +88,11 @@ struct cpu_eigen : public basic_blas<cpu_eigen<T>, T, device::cpu> {
 
   // element-wise operatons
   // Y <- alpha * A * X + beta * Y
-  template <typename sshape_a, typename sstride_a, typename sshape_x, typename sstride_x, typename sshape_y,
-            typename sstride_y>
-  void emul_impl(T alpha, const_type<sshape_a, sstride_a> a, const_type<sshape_x, sstride_x> x, T beta,
-                 view_type<sshape_y, sstride_y> y) {
+  template <typename SshapeX, typename SstrideX, typename SshapeY, typename SstrideY>
+  MATHPRIM_NOINLINE void emul_impl(const_type<SshapeX, SstrideX> x, view_type<SshapeY, SstrideY> y) {
     auto map_x = eigen_support::amap(x);
     auto map_y = eigen_support::amap(y);
-    auto map_a = eigen_support::amap(a);
-    if (beta == T(0)) {
-      map_y = alpha * map_a.array() * map_x.array();
-    } else {
-      map_y *= beta;
-      map_y.array() += alpha * map_a.array() * map_x.array();
-    }
+    map_y = map_x.cwiseProduct(map_y);
   }
 
   // // Level 2

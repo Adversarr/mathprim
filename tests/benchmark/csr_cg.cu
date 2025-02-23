@@ -3,7 +3,7 @@
 #include <Eigen/Sparse>
 #include <mathprim/blas/cpu_handmade.hpp>
 #include <mathprim/core/buffer.hpp>
-#include <mathprim/linalg/iterative/cg.hpp>
+#include <mathprim/linalg/iterative/solver/cg.hpp>
 #include <mathprim/linalg/iterative/precond/diagonal.hpp>
 #include <mathprim/parallel/openmp.hpp>
 #include <mathprim/sparse/blas/eigen.hpp>
@@ -57,8 +57,7 @@ static void work(benchmark::State &state) {
   row_ptr[rows] = nnz;
 
   sparse::basic_sparse_view<const float, device::cpu, sparse::sparse_format::csr> mat(
-      values.as_const(), row_ptr.as_const(), col_idx.as_const(), rows, cols, nnz, sparse::sparse_property::general,
-      false);
+      values.as_const(), row_ptr.as_const(), col_idx.as_const(), rows, cols, nnz, sparse::sparse_property::general);
 
   using linear_op
       = iterative_solver::sparse_matrix<sparse::blas::naive<float, sparse::sparse_format::csr, par::openmp>>;
@@ -76,7 +75,7 @@ static void work(benchmark::State &state) {
       xv[i] = 1.0f;
     });
     // b = A * x
-    cg.matrix().apply(1.0f, x.view(), 0.0f, b.view());
+    cg.linear_operator().apply(1.0f, x.view(), 0.0f, b.view());
 
     par::seq().run(make_shape(rows), [xv = x.view(), bv = b.view()](index_t i) {
       xv[i] = (i % 100 - 50) / 100.0f;
@@ -85,8 +84,8 @@ static void work(benchmark::State &state) {
     state.ResumeTiming();
     auto result = cg.apply(b.view(), x.view(),
                            {
-                             .norm_tol_ = 1e-6f,
                              .max_iterations_ = dsize * 4,
+                             .norm_tol_ = 1e-6f,
                            });
     state.SetLabel(std::to_string(result.iterations_));
     if (result.norm_ > 1e-6f) {
@@ -134,8 +133,7 @@ static void work_chol(benchmark::State &state) {
   row_ptr[rows] = nnz;
 
   sparse::basic_sparse_view<const float, device::cpu, sparse::sparse_format::csr> mat(
-      values.as_const(), row_ptr.as_const(), col_idx.as_const(), rows, cols, nnz, sparse::sparse_property::general,
-      false);
+      values.as_const(), row_ptr.as_const(), col_idx.as_const(), rows, cols, nnz, sparse::sparse_property::general);
 
   using linear_op = iterative_solver::sparse_matrix<sparse::blas::cholmod<float, sparse::sparse_format::csr>>;
   using preconditioner = iterative_solver::diagonal_preconditioner<float, device::cpu, sparse::sparse_format::csr,
@@ -152,7 +150,7 @@ static void work_chol(benchmark::State &state) {
       xv[i] = 1.0f;
     });
     // b = A * x
-    cg.matrix().apply(1.0f, x.view(), 0.0f, b.view());
+    cg.linear_operator().apply(1.0f, x.view(), 0.0f, b.view());
 
     par::seq().run(make_shape(rows), [xv = x.view(), bv = b.view()](index_t i) {
       xv[i] = (i % 100 - 50) / 100.0f;
@@ -161,8 +159,8 @@ static void work_chol(benchmark::State &state) {
     state.ResumeTiming();
     auto result = cg.apply(b.view(), x.view(),
                            {
-                             .norm_tol_ = 1e-6f,
                              .max_iterations_ = dsize * 4,
+                             .norm_tol_ = 1e-6f,
                            });
     state.SetLabel(std::to_string(result.iterations_));
     if (result.norm_ > 1e-6f) {
@@ -219,7 +217,7 @@ void work_cuda(benchmark::State &state) {
 
   sparse::basic_sparse_view<const float, device::cuda, sparse::sparse_format::csr> mat(
       d_csr_values.const_view(), d_csr_row_ptr.const_view(), d_csr_col_idx.const_view(), rows, cols, nnz,
-      sparse::sparse_property::symmetric, false);
+      sparse::sparse_property::symmetric);
 
   using linear_op = iterative_solver::sparse_matrix<sparse::blas::cusparse<float, sparse::sparse_format::csr>>;
   using blas_t = blas::cublas<float>;
@@ -237,7 +235,7 @@ void work_cuda(benchmark::State &state) {
       d_xv[i] = 1.0f;
     });
     // b = A * x
-    cg.matrix().apply(1.0f, d_x.view(), 0.0f, d_b.view());
+    cg.linear_operator().apply(1.0f, d_x.view(), 0.0f, d_b.view());
 
     parfor.run(make_shape(rows), [d_xv = d_x.view(), d_bv = d_b.view()] __device__(index_t i) {
       d_xv[i] = (i % 100 - 50) / 100.0f;
@@ -246,8 +244,8 @@ void work_cuda(benchmark::State &state) {
     state.ResumeTiming();
     auto result = cg.apply(d_b.view(), d_x.view(),
                            {
-                             .norm_tol_ = 1e-6f,
                              .max_iterations_ = dsize * 4,
+                             .norm_tol_ = 1e-6f,
                            });
     parfor.sync();
     state.SetLabel(std::to_string(result.iterations_));
@@ -295,8 +293,7 @@ void work_eigen_naive(benchmark::State &state) {
   row_ptr[rows] = nnz;
 
   sparse::basic_sparse_view<const float, device::cpu, sparse::sparse_format::csr> mat(
-      values.as_const(), row_ptr.as_const(), col_idx.as_const(), rows, cols, nnz, sparse::sparse_property::general,
-      false);
+      values.as_const(), row_ptr.as_const(), col_idx.as_const(), rows, cols, nnz, sparse::sparse_property::general);
 
   auto ei_mat = eigen_support::map(mat);
 

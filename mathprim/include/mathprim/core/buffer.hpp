@@ -18,58 +18,67 @@ static constexpr bool no_cvref_v = std::is_same_v<std::remove_cv_t<std::remove_r
 template <typename T>
 static constexpr bool is_buffer_supported_v = internal::is_trival_v<T> && internal::no_cvref_v<T>;
 
-template <typename sshape_from, typename sstride_from, typename sshape_to, typename sstride_to>
+template <typename SshapeFrom, typename SstrideFrom, typename SshapeTo, typename SstrideTo>
 static constexpr bool is_buffer_castable_v
-    = is_castable_v<sshape_from, sshape_to> && is_castable_v<sstride_from, sstride_to>;
+    = is_castable_v<SshapeFrom, SshapeTo> && is_castable_v<SstrideFrom, SstrideTo>;
+
 }  // namespace internal
 
-template <typename T, typename sshape, typename sstride, typename dev>
+template <typename Scalar, typename Sshape, typename Sstride, typename Dev>
 class basic_buffer {
 public:
-  using shape_at_compile_time = sshape;
-  using stride_at_compile_time = sstride;
-  static_assert(internal::is_buffer_supported_v<T>, "Unsupported buffer type.");
+  using shape_at_compile_time = Sshape;
+  using stride_at_compile_time = Sstride;
+  static_assert(internal::is_buffer_supported_v<Scalar>, "Unsupported buffer type.");
 
   template <typename, typename, typename, typename>
   friend class basic_buffer;  // ok, they are friends.
 
-  // Move constructor: allow to cast from a buffer with same shape and stride at runtime.
-  template <typename sshape2, typename sstride2,
-            typename = std::enable_if_t<internal::is_buffer_castable_v<sshape2, sstride2, sshape, sstride>>>
-  basic_buffer(basic_buffer<T, sshape2, sstride2, dev> &&other) :  // NOLINT: explicit
-      shape_(other.shape()), stride_(other.stride()), data_(other.data()) {
-    other.data_ = nullptr;
+  // Move constructor: allow implicit cast from a buffer with same shape and stride at runtime.
+  template <typename Sshape2, typename Sstride2,
+            typename = std::enable_if_t<internal::is_buffer_castable_v<Sshape2, Sstride2, Sshape, Sstride>>>
+  basic_buffer(basic_buffer<Scalar, Sshape2, Sstride2, Dev> &&other) :  // NOLINT(google-explicit-constructor)
+      shape_(other.shape()), stride_(other.stride()), data_(std::move(other.data_)) {}
+  template <typename Sshape2, typename Sstride2,
+            typename = std::enable_if_t<internal::is_buffer_castable_v<Sshape2, Sstride2, Sshape, Sstride>>>
+
+  basic_buffer &operator=(basic_buffer<Scalar, Sshape2, Sstride2, Dev> &&other) {
+    if (this != &other) {
+      shape_ = other.shape();
+      stride_ = other.stride();
+      data_ = std::move(other.data_);
+    }
+    return *this;
   }
 
   // not responsible for the allocation but responsible for deallocation
-  basic_buffer(T *data, const sshape &shape) : basic_buffer(data, shape, make_default_stride<T>(shape)) {}
-  basic_buffer(T *data, const sshape &shape, const sstride &stride) : shape_(shape), stride_(stride), data_(data) {}
+  basic_buffer(Scalar *data, const Sshape &shape) : basic_buffer(data, shape, make_default_stride<Scalar>(shape)) {}
+  basic_buffer(Scalar *data, const Sshape &shape, const Sstride &stride) :
+      shape_(shape), stride_(stride), data_(data) {}
 
   // Disable copy constructor and all assignment.
   basic_buffer(const basic_buffer &) = delete;
   basic_buffer &operator=(const basic_buffer &) = delete;
-  basic_buffer &operator=(basic_buffer &&) = delete;
-
-  // Deleter.
-  ~basic_buffer() {
-    if (data_) {
-      dev{}.free(data_);
-      data_ = nullptr;
-    }
-  }
 
   // swap
-
-  template <typename sshape2, typename sstride2,
-            typename = std::enable_if_t<internal::is_buffer_castable_v<sshape2, sstride2, sshape, sstride>>>
-  void swap(basic_buffer<T, sshape2, sstride2, dev> &other) noexcept {
+  template <typename Sshape2, typename Sstride2,
+            typename = std::enable_if_t<internal::is_buffer_castable_v<Sshape2, Sstride2, Sshape, Sstride>>>
+  void swap(basic_buffer<Scalar, Sshape2, Sstride2, Dev> &other) noexcept {
     std::swap(data_, other.data_);
     internal::swap_impl(shape_.dyn_, other.shape_.dyn_);
     internal::swap_impl(stride_.dyn_, other.stride_.dyn_);
   }
 
+  bool valid() const noexcept {
+    return data_ != nullptr;
+  }
+
+  explicit operator bool() const noexcept {
+    return valid();
+  }
+
   // Shape of buffer.
-  const sshape &shape() const noexcept {
+  const Sshape &shape() const noexcept {
     return shape_;
   }
 
@@ -78,7 +87,7 @@ public:
   }
 
   // Stride of buffer.
-  const sstride &stride() const noexcept {
+  const Sstride &stride() const noexcept {
     return stride_;
   }
 
@@ -107,29 +116,29 @@ public:
   }
 
   // Underlying data pointer.
-  T *data() noexcept {
-    return data_;
+  Scalar *data() noexcept {
+    return data_.get();
   }
 
-  const T *data() const noexcept {
-    return data_;
+  const Scalar *data() const noexcept {
+    return data_.get();
   }
 
-  using view_type = basic_view<T, sshape, sstride, dev>;
-  using const_view_type = basic_view<const T, sshape, sstride, dev>;
-  using iterator = basic_view_iterator<T, sshape, sstride, dev, 0>;
-  using const_iterator = basic_view_iterator<const T, sshape, sstride, dev, 0>;
+  using view_type = basic_view<Scalar, Sshape, Sstride, Dev>;
+  using const_view_type = basic_view<const Scalar, Sshape, Sstride, Dev>;
+  using iterator = basic_view_iterator<Scalar, Sshape, Sstride, Dev, 0>;
+  using const_iterator = basic_view_iterator<const Scalar, Sshape, Sstride, Dev, 0>;
 
   // default view, implemented in view.hpp
   view_type view() noexcept {
-    return view_type(data_, shape_, stride_);
+    return view_type(data_.get(), shape_, stride_);
   }
   const_view_type view() const noexcept {
     return const_view();
   }
 
   const_view_type const_view() const noexcept {
-    return const_view_type(data_, shape_, stride_);
+    return const_view_type(data_.get(), shape_, stride_);
   }
 
   iterator begin() noexcept {
@@ -149,17 +158,34 @@ public:
   }
 
   void fill_bytes(int value) {
-    dev{}.memset(data_, value, sizeof(T) * numel());
+    if (!data_) {
+      throw std::runtime_error("Fill bytes on an empty buffer.");
+    }
+    Dev{}.memset(data_.get(), value, sizeof(Scalar) * numel());
   }
 
+  // Return if the underlying data is contiguous.
+  bool is_contiguous() const noexcept {
+    return stride_ == make_default_stride<Scalar>(shape_);
+  }
+
+  template <typename Device2>
+  basic_buffer<Scalar, Sshape, Sstride, Device2> to(const Device2 & = {}) const;
+
 private:
-  sshape shape_;
-  sstride stride_;
-  T *data_;
+  struct no_destructor_deleter {
+    inline void operator()(Scalar *ptr) noexcept {
+      Dev{}.free(ptr);
+    }
+  };
+
+  Sshape shape_;
+  Sstride stride_;
+  std::unique_ptr<Scalar, no_destructor_deleter> data_;
 };
 
-template <typename T, typename sshape, typename dev>
-using continuous_buffer = basic_buffer<T, sshape, default_stride_t<sshape>, dev>;
+template <typename Scalar, typename Sshape, typename Dev>
+using continuous_buffer = basic_buffer<Scalar, Sshape, default_stride_t<Sshape>, Dev>;
 
 /**
  * @brief The default creator for a buffer.
@@ -168,20 +194,33 @@ using continuous_buffer = basic_buffer<T, sshape, default_stride_t<sshape>, dev>
  * @param shape
  * @return buffer, throw exception if failed.
  */
-template <typename T, typename dev = device::cpu, typename sshape>
-continuous_buffer<T, sshape, dev> make_buffer(const sshape &shape) {
-  auto ptr = static_cast<T *>(dev{}.malloc(sizeof(T) * mathprim::numel(shape)));
-  return basic_buffer<T, sshape, default_stride_t<sshape>, dev>(ptr, shape);
+template <typename Scalar, typename Dev = device::cpu, typename Sshape>
+continuous_buffer<Scalar, Sshape, Dev> make_buffer(const Sshape &shape) {
+  auto ptr = static_cast<Scalar *>(Dev{}.malloc(sizeof(Scalar) * mathprim::numel(shape)));
+  return basic_buffer<Scalar, Sshape, default_stride_t<Sshape>, Dev>(ptr, shape);
 }
 
 /**
  * @brief Create a continuous buffer, but no static information.
  *
  */
-template <typename T, typename dev = device::cpu, typename... Args,
+template <typename Scalar, typename Dev = device::cpu, typename... Args,
           typename = std::enable_if_t<(internal::can_hold_v<Args> && ...)>>
 auto make_buffer(Args... shape) {
-  return make_buffer<T, dev>(make_shape(shape...));
+  return make_buffer<Scalar, Dev>(make_shape(shape...));
+}
+
+template <typename Scalar, typename Sshape, typename Sstride, typename Dev>
+template <typename Device2>
+basic_buffer<Scalar, Sshape, Sstride, Device2> basic_buffer<Scalar, Sshape, Sstride, Dev>::to(const Device2 &) const {
+  if (!is_contiguous()) {
+    throw std::runtime_error("Cannot convert a non-contiguous buffer to another device.");
+  }
+
+  // clone a new buffer with given device, preserving its shape and stride.
+  auto buf = make_buffer<Scalar, Device2>(shape_);
+  copy(buf.view(), view());
+  return buf;
 }
 
 }  // namespace mathprim

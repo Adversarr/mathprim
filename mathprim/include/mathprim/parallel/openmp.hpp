@@ -77,11 +77,11 @@ public:
     }
   }
 
-  template <typename Fn, index_t... sgrids>
-  void run_impl(index_pack<sgrids...> grid_dim, Fn&& fn) const noexcept {
+  template <typename Fn, index_t... Sgrids>
+  void run_impl(index_pack<Sgrids...> grid_dim, Fn&& fn) const noexcept {
     const index_t total = grid_dim.numel();
     if (total < threshold_) {
-      seq{}.run_impl(grid_dim, std::forward<Fn>(fn));
+      seq{}.run(grid_dim, std::forward<Fn>(fn));
     } else {
       const index_t n = total / grain_size_;
       const int threads = get_num_threads();

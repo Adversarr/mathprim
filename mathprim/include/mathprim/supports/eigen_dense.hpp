@@ -230,9 +230,10 @@ MATHPRIM_PRIMFUNC matrix_map_t<Scalar, to_eigen_v<s_rows>, to_eigen_v<s_cols>, d
 }
 
 template <typename Scalar, index_t s_rows, index_t s_cols, index_t outer_stride, index_t inner_stride, typename dev>
-MATHPRIM_PRIMFUNC std::conditional_t<::mathprim::internal::is_continuous_compile_time_v<shape_t<s_rows, s_cols>, stride_t<outer_stride, inner_stride>>,
-                                     matrix_cmap_t<Scalar, to_eigen_v<s_rows>, to_eigen_v<s_cols>, dev>,
-                                     matrix_map_t<Scalar, to_eigen_v<s_rows>, to_eigen_v<s_cols>, dev>>
+MATHPRIM_PRIMFUNC std::conditional_t<
+    ::mathprim::internal::is_continuous_compile_time_v<shape_t<s_rows, s_cols>, stride_t<outer_stride, inner_stride>>,
+    matrix_cmap_t<Scalar, to_eigen_v<s_rows>, to_eigen_v<s_cols>, dev>,
+    matrix_map_t<Scalar, to_eigen_v<s_rows>, to_eigen_v<s_cols>, dev>>
 amap(basic_view<Scalar, shape_t<s_rows, s_cols>, stride_t<outer_stride, inner_stride>, dev> view) noexcept {
   if constexpr (::mathprim::internal::is_continuous_compile_time_v<shape_t<s_rows, s_cols>,
                                                                    stride_t<outer_stride, inner_stride>>) {
@@ -243,10 +244,10 @@ amap(basic_view<Scalar, shape_t<s_rows, s_cols>, stride_t<outer_stride, inner_st
 }
 
 template <typename Scalar, index_t s_rows, index_t inner_stride, typename dev>
-MATHPRIM_PRIMFUNC std::conditional_t<
-    ::mathprim::internal::is_continuous_compile_time_v<shape_t<s_rows>, stride_t<inner_stride>>,
-    vector_cmap_t<Scalar, to_eigen_v<s_rows>, dev>, vector_map_t<Scalar, to_eigen_v<s_rows>, dev>>
-amap(basic_view<Scalar, shape_t<s_rows>, stride_t<inner_stride>, dev> view) noexcept {
+MATHPRIM_PRIMFUNC
+    std::conditional_t<::mathprim::internal::is_continuous_compile_time_v<shape_t<s_rows>, stride_t<inner_stride>>,
+                       vector_cmap_t<Scalar, to_eigen_v<s_rows>, dev>, vector_map_t<Scalar, to_eigen_v<s_rows>, dev>>
+    amap(basic_view<Scalar, shape_t<s_rows>, stride_t<inner_stride>, dev> view) noexcept {
   if constexpr (::mathprim::internal::is_continuous_compile_time_v<shape_t<s_rows>, stride_t<inner_stride>>) {
     return cmap<Scalar, s_rows, inner_stride, dev>(view);
   } else {
@@ -308,6 +309,21 @@ MATHPRIM_PRIMFUNC Eigen::Ref<vector_t<Scalar, to_eigen_v<s_rows>>, alignment_v<S
   auto [rows] = view.shape();
   auto [inner] = view.stride();
   return {view.data(), rows, Eigen::InnerStride<Eigen::Dynamic>(inner)};
+}
+
+std::string to_string(Eigen::ComputationInfo info) {
+  switch (info) {
+    case Eigen::Success:
+      return "Success";
+    case Eigen::NumericalIssue:
+      return "NumericalIssue";
+    case Eigen::NoConvergence:
+      return "NoConvergence";
+    case Eigen::InvalidInput:
+      return "InvalidInput";
+    default:
+      return "Unknown";
+  }
 }
 
 }  // namespace mathprim::eigen_support

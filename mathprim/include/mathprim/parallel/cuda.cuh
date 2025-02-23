@@ -14,8 +14,8 @@ namespace par {
 
 namespace internal {
 
-template <typename sgrid_t, typename sblock_t,
-          bool IsNaive = (sgrid_t::ndim <= 3 && sblock_t::ndim <= 3)>
+template <typename SgridT, typename SblockT,
+          bool IsNaive = (SgridT::ndim <= 3 && SblockT::ndim <= 3)>
 struct launcher;
 
 template <typename CudaT>
@@ -57,30 +57,30 @@ MATHPRIM_PRIMFUNC void to_cuda(const index_array<3> &array, CudaT &d) {
   d.z = array[2];
 }
 
-template <index_t n_grids, index_t n_blocks, typename Fn>
+template <index_t NGrids, index_t NBlocks, typename Fn>
 __global__ void do_work_naive(Fn fn) {
-  index_array<n_grids> block_idx;
+  index_array<NGrids> block_idx;
   from_cuda(blockIdx, block_idx);
-  index_array<n_blocks> thread_idx;
+  index_array<NBlocks> thread_idx;
   from_cuda(threadIdx, thread_idx);
   fn(block_idx, thread_idx);
 }
 
-template <index_t... sgrids, index_t... sblocks>
-struct launcher<index_pack<sgrids...>, index_pack<sblocks...>, true> {
+template <index_t... Sgrids, index_t... Sblocks>
+struct launcher<index_pack<Sgrids...>, index_pack<Sblocks...>, true> {
   template <typename Fn>
-  void run(const index_pack<sgrids...> &grids,
-           const index_pack<sblocks...> &blocks, Fn &&fn) const noexcept {
+  void run(const index_pack<Sgrids...> &grids,
+           const index_pack<Sblocks...> &blocks, Fn &&fn) const noexcept {
     dim3 grid_dim;
     to_cuda(grids.to_array(), grid_dim);
     dim3 block_dim;
     to_cuda(blocks.to_array(), block_dim);
-    do_work_naive<sizeof...(sgrids), sizeof...(sblocks)>
+    do_work_naive<sizeof...(Sgrids), sizeof...(Sblocks)>
         <<<grid_dim, block_dim, 0, stream_>>>(fn);
   }
 
   template <typename Fn>
-  void run(const index_pack<sgrids...> &grids, Fn &&fn) const noexcept {
+  void run(const index_pack<Sgrids...> &grids, Fn &&fn) const noexcept {
     auto begin = thrust::make_counting_iterator(0);
     auto end = thrust::make_counting_iterator(grids.numel());
     auto streamed_policy = thrust::cuda::par_nosync.on(stream_);
@@ -94,11 +94,11 @@ struct launcher<index_pack<sgrids...>, index_pack<sblocks...>, true> {
   cudaStream_t stream_;
 };
 
-template <index_t... sgrids, index_t... sblocks>
-struct launcher<index_pack<sgrids...>, index_pack<sblocks...>, false> {
+template <index_t... Sgrids, index_t... Sblocks>
+struct launcher<index_pack<Sgrids...>, index_pack<Sblocks...>, false> {
   template <typename Fn>
-  void run(const index_pack<sgrids...> &grids,
-           const index_pack<sblocks...> &blocks, Fn &&fn) const noexcept {
+  void run(const index_pack<Sgrids...> &grids,
+           const index_pack<Sblocks...> &blocks, Fn &&fn) const noexcept {
     auto total_grids = grids.numel(), total_blocks = blocks.numel();
     auto beg = thrust::make_counting_iterator(0);
     auto end = thrust::make_counting_iterator(total_grids * total_blocks);
@@ -112,7 +112,7 @@ struct launcher<index_pack<sgrids...>, index_pack<sblocks...>, false> {
   }
 
   template <typename Fn>
-  void run(const index_pack<sgrids...> &grids, Fn &&fn) const noexcept {
+  void run(const index_pack<Sgrids...> &grids, Fn &&fn) const noexcept {
     auto total_grids = grids.numel();
     auto beg = thrust::make_counting_iterator(0);
     auto end = thrust::make_counting_iterator(total_grids);
@@ -144,11 +144,11 @@ public:
    * @param block_dim
    * @param fn
    */
-  template <typename Fn, index_t... sgrids, index_t... sblocks>
-  void run_impl(const index_pack<sgrids...> &grid_dim,
-                const index_pack<sblocks...> &block_dim,
+  template <typename Fn, index_t... Sgrids, index_t... Sblocks>
+  void run_impl(const index_pack<Sgrids...> &grid_dim,
+                const index_pack<Sblocks...> &block_dim,
                 Fn &&fn) const noexcept {
-    internal::launcher<index_pack<sgrids...>, index_pack<sblocks...>>{}.run(
+    internal::launcher<index_pack<Sgrids...>, index_pack<Sblocks...>>{}.run(
         grid_dim, block_dim, fn);
   }
 
@@ -160,9 +160,9 @@ public:
    * @param grid_dim
    * @param fn
    */
-  template <typename Fn, index_t... sgrids>
-  void run_impl(const index_pack<sgrids...> &grid_dim, Fn &&fn) const noexcept {
-    internal::launcher<index_pack<sgrids...>, index_pack<>>{}.run(grid_dim, fn);
+  template <typename Fn, index_t... Sgrids>
+  void run_impl(const index_pack<Sgrids...> &grid_dim, Fn &&fn) const noexcept {
+    internal::launcher<index_pack<Sgrids...>, index_pack<>>{}.run(grid_dim, fn);
   }
 
   /// @brief Wait for all operations in the stream to complete, throws exception
@@ -213,19 +213,19 @@ public:
    * @param dst
    * @param src
    */
-  template <typename T1, typename sshape1, typename sstride1, typename dev1,
-            typename T2, typename sshape2, typename sstride2, typename dev2>
-  void copy(basic_view<T1, sshape1, sstride1, dev1> dst,
-            basic_view<T2, sshape2, sstride2, dev2> src) {
+  template <typename T1, typename Sshape1, typename Sstride1, typename Dev1,
+            typename T2, typename Sshape2, typename Sstride2, typename Dev2>
+  void copy(basic_view<T1, Sshape1, Sstride1, Dev1> dst,
+            basic_view<T2, Sshape2, Sstride2, Dev2> src) {
     if (!src.is_contiguous() || !dst.is_contiguous()) {
       throw std::runtime_error(
           "The source or destination view is not contiguous.");
     }
 
-    constexpr bool is_cuda1 = std::is_same_v<dev1, device::cuda>,
-                   is_cpu1 = std::is_same_v<dev1, device::cpu>,
-                   is_cuda2 = std::is_same_v<dev2, device::cuda>,
-                   is_cpu2 = std::is_same_v<dev2, device::cpu>;
+    constexpr bool is_cuda1 = std::is_same_v<Dev1, device::cuda>,
+                   is_cpu1 = std::is_same_v<Dev1, device::cpu>,
+                   is_cuda2 = std::is_same_v<Dev2, device::cuda>,
+                   is_cpu2 = std::is_same_v<Dev2, device::cpu>;
     static_assert(is_cuda1 || is_cpu1, "The src device is not supported.");
     static_assert(is_cuda2 || is_cpu2, "The dst device is not supported.");
 
@@ -250,8 +250,8 @@ public:
         cudaMemcpyAsync(dst.data(), src.data(), total, kind, s));
   }
 
-  template <typename Fn, typename... vmap_args>
-  void vmap_impl(Fn &&fn, vmap_args... args) {
+  template <typename Fn, typename... VmapArgs>
+  void vmap_impl(Fn &&fn, VmapArgs... args) {
     // now args is vmap_arg.
     auto size = (args.size(), ...); // Extract the size of each vmap_arg
     // Expects all vmap_args have the same size

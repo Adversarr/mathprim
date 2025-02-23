@@ -16,7 +16,6 @@ GTEST_TEST(view, iteration) {
   auto v = view<device::cpu>(p, shape);
   auto value0 = v(0, 0, 0);
 
-  auto t = transpose<1, 2>(shape);
   auto transpose_view = v.transpose();
 
   for (int i = 0; i < 4; ++i) {

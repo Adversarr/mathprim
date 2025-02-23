@@ -46,14 +46,13 @@ void csr(benchmark::State& state) {
   row_ptr[rows] = nnz;
 
   sparse::basic_sparse_view<const float, device::cpu, sparse::sparse_format::csr> mat(
-      values.as_const(), row_ptr.as_const(), col_idx.as_const(), rows, cols, nnz, sparse::sparse_property::general,
-      trans);
+      values.as_const(), row_ptr.as_const(), col_idx.as_const(), rows, cols, nnz, sparse::sparse_property::general);
 
   auto h_x = make_buffer<float>(cols);
   auto h_y = make_buffer<float>(rows);
   sparse::blas::naive<float, sparse::sparse_format::csr, be> blas(mat);
   for (auto _ : state) {
-    blas.gemv(1.0f, h_x.const_view(), 0.0f, h_y.view());
+    blas.gemv(1.0f, h_x.const_view(), 0.0f, h_y.view(), trans);
   }
 }
 
@@ -98,14 +97,13 @@ void eigen_sparse_map(benchmark::State& state) {
   row_ptr[rows] = nnz;
 
   sparse::basic_sparse_view<const float, device::cpu, sparse::sparse_format::csr> mat(
-      values.as_const(), row_ptr.as_const(), col_idx.as_const(), rows, cols, nnz, sparse::sparse_property::general,
-      trans);
+      values.as_const(), row_ptr.as_const(), col_idx.as_const(), rows, cols, nnz, sparse::sparse_property::general);
 
   auto h_x = make_buffer<float>(cols);
   auto h_y = make_buffer<float>(rows);
   sparse::blas::eigen<float, sparse::sparse_format::csr> blas(mat);
   for (auto _ : state) {
-    blas.gemv(1.0f, h_x.const_view(), 0.0f, h_y.view());
+    blas.gemv(1.0f, h_x.const_view(), 0.0f, h_y.view(), trans);
   }
 }
 

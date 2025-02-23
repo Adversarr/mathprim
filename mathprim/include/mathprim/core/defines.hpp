@@ -5,12 +5,12 @@
 #  endif
 #endif
 
-
 #include <assert.h>
 
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>  // IWYU pragma: export
+#include <cstdlib>
 #include <cstring>
 #include <memory>  // IWYU pragma: export
 #include <stdexcept>
@@ -91,6 +91,45 @@
 
 #define MATHPRIM_UNUSED(x) ((void)(x))
 
+/**
+ * @brief Throw options:
+ * -1: do not throw exception, print file/line information to stderr and exit
+ *  0: throw exception, print file/line information to stderr.
+ *  1: throw exception only.
+ */
+
+#ifndef MATHPRIM_OPTION_THROW
+// Default to throw exception, and print file/line information to stderr.
+#  define MATHPRIM_OPTION_THROW 0
+#endif
+
+#if MATHPRIM_OPTION_EXIT_ON_THROW == -1
+#  define MATHPRIM_INTERNAL_CHECK_THROW(cond, error_type, msg)                       \
+    do {                                                                             \
+      if (!(cond)) {                                                                 \
+        fprintf(stderr, "Check Failed: (" #cond ") at %s:%d\n", __FILE__, __LINE__); \
+        exit(1);                                                                     \
+      }                                                                              \
+    } while (0)
+#elif MATHPRIM_OPTION_EXIT_ON_THROW == 0
+#  define MATHPRIM_INTERNAL_CHECK_THROW(cond, error_type, msg)          \
+    do {                                                                \
+      if (!(cond)) {                                                    \
+        fprintf(stderr, "Check Failed: (" #cond ") at %s:%d\n", __FILE__, __LINE__); \
+        throw error_type(msg);                                          \
+      }                                                                 \
+    } while (0)
+#else
+#  define MATHPRIM_INTERNAL_CHECK_THROW(cond, error_type, msg) \
+    do {                                                       \
+      if (!(cond)) {                                           \
+        throw error_type(msg);                                 \
+      }                                                        \
+    } while (0)
+#endif
+
+// Enable/Disable move constructor/assignment operator.
+
 // Enable/Disable copy constructor/assignment operator.
 
 #define MATHPRIM_INTERNAL_COPY(cls, option) \
@@ -137,7 +176,7 @@
 #ifndef MATHPRIM_PRAGMA_UNROLL_HOST
 #  ifdef __CUDA_ARCH__
 #    define MATHPRIM_PRAGMA_UNROLL_HOST
-#elif defined(__CUDACC__)
+#  elif defined(__CUDACC__)
 #    define MATHPRIM_PRAGMA_UNROLL_HOST
 #  elif defined(__clang__)
 #    define MATHPRIM_PRAGMA_UNROLL_HOST _Pragma("clang loop unroll_count(4)")
@@ -358,17 +397,17 @@ MATHPRIM_INTERNAL_DECLARE_ERROR(shape_error, runtime_error);
 ///////////////////////////////////////////////////////////////////////////////
 template <index_t N>
 struct index_array;
-template <index_t... svalues>
+template <index_t... Svalues>
 struct index_pack;
-template <index_t... args>
+template <index_t... Args>
 struct index_seq {
-  static constexpr index_t ndim = sizeof...(args);
+  static constexpr index_t ndim = sizeof...(Args);
 };
 
-template <index_t... svalues>
-using shape_t = index_pack<svalues...>;
-template <index_t... svalues>
-using stride_t = index_pack<svalues...>;
+template <index_t... Svalues>
+using shape_t = index_pack<Svalues...>;
+template <index_t... Svalues>
+using stride_t = index_pack<Svalues...>;
 
 /**
  * @brief general buffer type.
@@ -378,7 +417,7 @@ using stride_t = index_pack<svalues...>;
  * @tparam sstride the stride of the buffer.
  * @tparam dev the device type.
  */
-template <typename T, typename sshape, typename sstride, typename dev>
+template <typename Scalar, typename Sshape, typename Sstride, typename Dev>
 class basic_buffer;
 
 /**
@@ -389,7 +428,7 @@ class basic_buffer;
  * @tparam sstride the stride of the buffer.
  * @tparam dev the device type.
  */
-template <typename T, typename sshape, typename sstride, typename dev>
+template <typename Scalar, typename Sshape, typename Sstride, typename Dev>
 class basic_view;
 
 /**
@@ -401,18 +440,16 @@ class basic_view;
  * @tparam dev the device type.
  * @tparam batch_dim the batch dimension.
  */
-template <typename T, typename sshape, typename sstride, typename dev, index_t batch_dim>
+template <typename Scalar, typename Sshape, typename Sstride, typename Dev, index_t BatchDim>
 struct basic_view_iterator;
 
 ///////////////////////////////////////////////////////////////////////////////
 /// Parallelism
 ///////////////////////////////////////////////////////////////////////////////
-/// @brief Parallel backend implementation.
-
 /// @brief Parallel for loop
 namespace par {
-template <class par_impl>
-struct parfor;
+template <typename ParImpl>
+class parfor;
 }
 
 ///////////////////////////////////////////////////////////////////////////////

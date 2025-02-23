@@ -47,10 +47,11 @@ inline cusparseHandle_t get_cusparse_handle() {
 
 }  // namespace internal
 
-template <typename Scalar, sparse_format compression>
-class cusparse : public sparse_blas_base<Scalar, device::cuda, compression> {
+template <typename Scalar, sparse_format Compression>
+class cusparse : public sparse_blas_base<cusparse<Scalar, Compression>, Scalar, device::cuda, Compression> {
 public:
-  using base = sparse_blas_base<Scalar, device::cuda, compression>;
+  using base = sparse_blas_base<cusparse<Scalar, Compression>, Scalar, device::cuda, Compression>;
+  friend base;
   using vector_view = typename base::vector_view;
   using const_vector_view = typename base::const_vector_view;
   using sparse_view = typename base::sparse_view;
@@ -60,7 +61,7 @@ public:
   cusparse(cusparse&& other);
   cusparse& operator=(const cusparse&) = delete;
   cusparse& operator=(cusparse&&) = delete;
-  ~cusparse() override;
+  ~cusparse();
 
   static constexpr cusparseIndexType_t index_type() {
 #if MATHPRIM_USE_LONG_INDEX
@@ -80,11 +81,11 @@ public:
     }
   }
 
+private:
   // y = alpha * A * x + beta * y.
-  void gemv(Scalar alpha, const_vector_view x, Scalar beta, vector_view y) override {
-    this->check_gemv_shape(x, y);
-    if constexpr (compression == sparse_format::csr) {
-      if (this->mat_.is_transpose()) {  // Computes A.T @ x
+  void gemv_impl(Scalar alpha, const_vector_view x, Scalar beta, vector_view y, bool transpose) {
+    if constexpr (Compression == sparse_format::csr) {
+      if (transpose) {  // Computes A.T @ x
         if (this->mat_.property() == sparse_property::symmetric) {
           // Symmetric matrix, use the same code path for both transposed and non-transposed.
           gemv_no_trans(alpha, x, beta, y);
@@ -94,11 +95,11 @@ public:
         } else {
           gemv_trans(alpha, x, beta, y);  // always slower sequential
         }
-      } else {                          // Computes A @ x
+      } else {  // Computes A @ x
         gemv_no_trans(alpha, x, beta, y);
       }
-    } else {                            // csc
-      if (this->mat_.is_transpose()) {  // Computes A.T @ x
+    } else /* csc */ {
+      if (transpose) {  // Computes A.T @ x
         gemv_trans(alpha, x, beta, y);
       } else {  // Computes A @ x
         if (this->mat_.property() == sparse_property::symmetric) {
@@ -114,7 +115,6 @@ public:
     }
   }
 
-private:
   void gemv_no_trans(Scalar alpha, const_vector_view x, Scalar beta, vector_view y);
   void gemv_trans(Scalar alpha, const_vector_view x, Scalar beta, vector_view y);
 
@@ -131,8 +131,8 @@ private:
 /// Implementation for CSR format.
 ///////////////////////////////////////////////////////////////////////////////
 
-template <typename Scalar, sparse_format compression>
-cusparse<Scalar, compression>::cusparse(const_sparse_view mat) : base(mat) {
+template <typename Scalar, sparse_format Compression>
+cusparse<Scalar, Compression>::cusparse(const_sparse_view mat) : base(mat) {
   int64_t rows = this->mat_.rows();
   int64_t cols = this->mat_.cols();
   int64_t nnz = this->mat_.nnz();
@@ -140,7 +140,7 @@ cusparse<Scalar, compression>::cusparse(const_sparse_view mat) : base(mat) {
   void* inner = const_cast<index_t*>(this->mat_.inner_indices().data());
   void* outer = const_cast<index_t*>(this->mat_.outer_ptrs().data());
   auto data_type = this->data_type();
-  if constexpr (compression == sparse_format::csr) {
+  if constexpr (Compression == sparse_format::csr) {
     MATHPRIM_CHECK_CUSPARSE(cusparseCreateCsr(&mat_desc_, rows, cols, nnz, outer, inner, values, index_type(),
                                               index_type(), CUSPARSE_INDEX_BASE_ZERO, data_type));
   } else {
@@ -151,8 +151,8 @@ cusparse<Scalar, compression>::cusparse(const_sparse_view mat) : base(mat) {
   MATHPRIM_CHECK_CUSPARSE(cusparseCreateDnVec(&y_desc_, rows, nullptr, data_type));
 }
 
-template <typename Scalar, sparse_format compression>
-cusparse<Scalar, compression>::~cusparse() {
+template <typename Scalar, sparse_format Compression>
+cusparse<Scalar, Compression>::~cusparse() {
   if (mat_desc_)
     MATHPRIM_CHECK_CUSPARSE(cusparseDestroySpMat(mat_desc_));
   if (x_desc_)
@@ -161,8 +161,8 @@ cusparse<Scalar, compression>::~cusparse() {
     MATHPRIM_CHECK_CUSPARSE(cusparseDestroyDnVec(y_desc_));
 }
 
-template <typename Scalar, sparse_format compression>
-cusparse<Scalar, compression>::cusparse(cusparse&& other): base(other.matrix()) {
+template <typename Scalar, sparse_format Compression>
+cusparse<Scalar, Compression>::cusparse(cusparse&& other) : base(other.matrix()) {
   mat_desc_ = other.mat_desc_;
   x_desc_ = other.x_desc_;
   y_desc_ = other.y_desc_;
@@ -173,8 +173,8 @@ cusparse<Scalar, compression>::cusparse(cusparse&& other): base(other.matrix()) 
   other.y_desc_ = nullptr;
 }
 
-template <typename Scalar, sparse_format compression>
-void cusparse<Scalar, compression>::gemv_no_trans(Scalar alpha, const_vector_view x, Scalar beta, vector_view y) {
+template <typename Scalar, sparse_format Compression>
+void cusparse<Scalar, Compression>::gemv_no_trans(Scalar alpha, const_vector_view x, Scalar beta, vector_view y) {
   // Set up the cuSPARSE handle
   cusparseHandle_t handle = internal::get_cusparse_handle();
 
@@ -205,8 +205,8 @@ void cusparse<Scalar, compression>::gemv_no_trans(Scalar alpha, const_vector_vie
                                        no_transpose_buffer_->data()));
 }
 
-template <typename Scalar, sparse_format compression>
-void cusparse<Scalar, compression>::gemv_trans(Scalar alpha, const_vector_view x, Scalar beta, vector_view y) {
+template <typename Scalar, sparse_format Compression>
+void cusparse<Scalar, Compression>::gemv_trans(Scalar alpha, const_vector_view x, Scalar beta, vector_view y) {
   // Set up the cuSPARSE handle
   cusparseHandle_t handle = internal::get_cusparse_handle();
 
@@ -232,8 +232,8 @@ void cusparse<Scalar, compression>::gemv_trans(Scalar alpha, const_vector_view x
   }
 
   // Perform the SpMV operation
-  MATHPRIM_CHECK_CUSPARSE(cusparseSpMV(handle, op, &alpha, mat_desc, x_desc, &beta, y_desc, data_type(), alg,
-                                       transpose_buffer_->data()));
+  MATHPRIM_CHECK_CUSPARSE(
+      cusparseSpMV(handle, op, &alpha, mat_desc, x_desc, &beta, y_desc, data_type(), alg, transpose_buffer_->data()));
 }
 
 }  // namespace blas

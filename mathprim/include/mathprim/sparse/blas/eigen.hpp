@@ -6,31 +6,32 @@
 
 namespace mathprim::sparse {
 namespace blas {
-template <typename Scalar, sparse_format sparse_compression>
-class eigen : public sparse_blas_base<Scalar, device::cpu, sparse_compression> {
+template <typename Scalar, sparse_format SparseCompression>
+class eigen : public sparse_blas_base<eigen<Scalar, SparseCompression>, Scalar, device::cpu, SparseCompression> {
 public:
-  using base = sparse_blas_base<Scalar, device::cpu, sparse_compression>;
+  using base = sparse_blas_base<eigen<Scalar, SparseCompression>, Scalar, device::cpu, SparseCompression>;
   using vector_view = typename base::vector_view;
   using const_vector_view = typename base::const_vector_view;
   using sparse_view = typename base::sparse_view;
   using const_sparse_view = typename base::const_sparse_view;
   using base::base;
+  friend base;
 
+protected:
   // y = alpha * A * x + beta * y.
-  void gemv(Scalar alpha, const_vector_view x, Scalar beta, vector_view y) override {
-    this->check_gemv_shape(x, y);
-    bool transpose = false;
+  void gemv_impl(Scalar alpha, const_vector_view x, Scalar beta, vector_view y, bool transpose) {
+    bool transpose_actual = false;
 
-    if (this->mat_.is_transpose()) {  // Computes A.T @ x
+    if (transpose) {  // Computes A.T @ x
       if (this->mat_.property() == sparse_property::symmetric) {
         // Symmetric matrix, use the same code path for both transposed and non-transposed.
-        transpose = false;
+        transpose_actual = false;
       } else if (this->mat_.property() == sparse_property::skew_symmetric) {
         // A = -A.T => A.T @ x = -A @ x
-        transpose = false;
+        transpose_actual = false;
         alpha = -alpha;
       } else {
-        transpose = true;
+        transpose_actual = true;
       }
     }
 
@@ -38,7 +39,7 @@ public:
     auto x_map = eigen_support::cmap(x);
     auto y_map = eigen_support::cmap(y);
     y_map *= beta;
-    if (transpose) {
+    if (transpose_actual) {
       y_map += alpha * mat.transpose() * x_map;
     } else {
       y_map += alpha * mat * x_map;

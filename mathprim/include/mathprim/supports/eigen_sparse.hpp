@@ -47,10 +47,10 @@ constexpr sparse::sparse_format mp_sparse_format_v = mp_sparse_format<SparseMatr
 
 }  // namespace internal
 
-template <typename Scalar, sparse::sparse_format sparse_compression>
-Eigen::Map<internal::eigen_sparse_format_t<Scalar, sparse_compression>> map(
-    sparse::basic_sparse_view<Scalar, device::cpu, sparse_compression> mat) {
-  using EigenSparseMatrix = internal::eigen_sparse_format_t<Scalar, sparse_compression>;
+template <typename Scalar, sparse::sparse_format SparseCompression>
+Eigen::Map<internal::eigen_sparse_format_t<Scalar, SparseCompression>> map(
+    sparse::basic_sparse_view<Scalar, device::cpu, SparseCompression> mat) {
+  using EigenSparseMatrix = internal::eigen_sparse_format_t<Scalar, SparseCompression>;
   auto rows = mat.rows();
   auto cols = mat.cols();
   auto nnz = mat.nnz();
@@ -60,10 +60,10 @@ Eigen::Map<internal::eigen_sparse_format_t<Scalar, sparse_compression>> map(
   return Eigen::Map<EigenSparseMatrix>(rows, cols, nnz, outer_ptrs, inner_indices, values);
 }
 
-template <typename Scalar, sparse::sparse_format sparse_compression>
-Eigen::Map<const internal::eigen_sparse_format_t<Scalar, sparse_compression>> map(
-    sparse::basic_sparse_view<const Scalar, device::cpu, sparse_compression> mat) {
-  using EigenSparseMatrix = internal::eigen_sparse_format_t<Scalar, sparse_compression>;
+template <typename Scalar, sparse::sparse_format SparseCompression>
+Eigen::Map<const internal::eigen_sparse_format_t<Scalar, SparseCompression>> map(
+    sparse::basic_sparse_view<const Scalar, device::cpu, SparseCompression> mat) {
+  using EigenSparseMatrix = internal::eigen_sparse_format_t<Scalar, SparseCompression>;
   auto rows = mat.rows();
   auto cols = mat.cols();
   auto nnz = mat.nnz();
@@ -90,7 +90,7 @@ auto view(EigenSparseMatrix<Scalar, Options>& mat, sparse::sparse_property prope
   auto outer_ptrs = ::mathprim::view<dev>(mat.outerIndexPtr(), make_shape(n_outer + 1));
   auto inner_indices = ::mathprim::view<dev>(mat.innerIndexPtr(), make_shape(nnz));
   auto values = ::mathprim::view<dev>(mat.valuePtr(), make_shape(nnz));
-  return RetT(values, outer_ptrs, inner_indices, rows, cols, nnz, property, false);
+  return RetT(values, outer_ptrs, inner_indices, rows, cols, nnz, property);
 }
 
 template <typename dev = device::cpu, typename Scalar, int Options>
@@ -109,7 +109,7 @@ auto view(const EigenSparseMatrix<Scalar, Options>& mat, sparse::sparse_property
   auto outer_ptrs = ::mathprim::view<dev>(mat.outerIndexPtr(), make_shape(n_outer + 1));
   auto inner_indices = ::mathprim::view<dev>(mat.innerIndexPtr(), make_shape(nnz));
   auto values = ::mathprim::view<dev>(mat.valuePtr(), make_shape(nnz));
-  return RetT(values, outer_ptrs, inner_indices, rows, cols, nnz, property, true);
+  return RetT(values, outer_ptrs, inner_indices, rows, cols, nnz, property);
 }
 
 }  // namespace mathprim::eigen_support
