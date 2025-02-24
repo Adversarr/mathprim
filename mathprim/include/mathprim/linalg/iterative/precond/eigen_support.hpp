@@ -34,8 +34,8 @@ public:
 
   template <typename MatType>
   MATHPRIM_NOINLINE void compute(const MatType& mat) {
-    auto mat_map = eigen_support::map(mat);
-    if (! impl_) {
+    auto mat_map = eigen_support::map(mat).eval();
+    if (!impl_) {
       impl_ = std::make_unique<EigenPreconditioner>(mat_map);
     } else {
       impl_->compute(mat_map);
@@ -57,7 +57,10 @@ protected:
 };
 
 template <typename Scalar>
-using eigen_incomplete_cholesky = eigen_preconditioner<Scalar, Eigen::IncompleteCholesky<Scalar, Eigen::Upper>>;
+using eigen_incomplete_cholesky = eigen_preconditioner<Scalar, Eigen::IncompleteCholesky<Scalar>>;
+
+template <typename Scalar>
+using eigen_ilu = eigen_preconditioner<Scalar, Eigen::IncompleteLUT<Scalar>>;
 
 ///! Use diagonal_preconditioner instead
 template <typename Scalar>

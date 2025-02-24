@@ -55,6 +55,10 @@ public:
                         view<Device>(outer_ptrs, make_shape(outer_size(rows, cols, nnz))),
                         view<Device>(inner_indices, make_shape(nnz)), rows, cols, nnz, property) {}
 
+  basic_sparse_view() = default;
+  basic_sparse_view(const basic_sparse_view&) = default;
+  basic_sparse_view& operator=(const basic_sparse_view&) = default;
+
   MATHPRIM_PRIMFUNC
   basic_sparse_view(values_view values, ptrs_view outer_ptrs, ptrs_view inner_indices, index_t rows, index_t cols,
                     index_t nnz, sparse_property property) :
@@ -112,9 +116,9 @@ private:
   ptrs_view outer_ptrs_;
   ptrs_view inner_indices_;
 
-  index_t rows_;
-  index_t cols_;
-  index_t nnz_;
+  index_t rows_{0};
+  index_t cols_{0};
+  index_t nnz_{0};
   sparse_property property_{sparse_property::general};
 };
 
@@ -138,6 +142,7 @@ public:
   using index_buffer = continuous_buffer<index_t, dshape<1>, Device>;
   using view_type = basic_sparse_view<Scalar, Device, SparseCompression>;
   using const_view_type = basic_sparse_view<const Scalar, Device, SparseCompression>;
+  basic_sparse_matrix() = default;
 
   basic_sparse_matrix(index_t rows, index_t cols, index_t nnz, sparse_property property = sparse_property::general) :
       values_(make_buffer<Scalar, Device>(nnz)),
@@ -230,10 +235,10 @@ protected:
   values_buffer values_;
   index_buffer outer_ptrs_;
   index_buffer inner_indices_;
-  index_t rows_;
-  index_t cols_;
-  index_t nnz_;
-  sparse_property property_;
+  index_t rows_{0};
+  index_t cols_{0};
+  index_t nnz_{0};
+  sparse_property property_{sparse_property::general};
 };
 
 // Sparse BLAS basic API.

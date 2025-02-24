@@ -1,5 +1,5 @@
 add_library(mathprim INTERFACE)
-target_include_directories(mathprim INTERFACE 
+target_include_directories(mathprim INTERFACE
   $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include>
   $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
@@ -12,29 +12,35 @@ if(MATHPRIM_ENABLE_WARNINGS)
   endif()
 endif()
 
-if(MATHPRIM_ENABLE_EIGEN)
-  find_package(Eigen3 REQUIRED)
-  message(STATUS "Enabling Eigen")
-  target_link_libraries(mathprim INTERFACE Eigen3::Eigen)
-  target_compile_definitions(mathprim INTERFACE MATHPRIM_ENABLE_EIGEN)
-endif()
+# Eigen is a must.
+find_package(Eigen3 REQUIRED)
+message(STATUS "Enabling Eigen")
+target_link_libraries(mathprim INTERFACE Eigen3::Eigen)
 
 if(MATHPRIM_ENABLE_BLAS)
-  if(APPLE)
-    # Prefer to use Accelerate framework on macOS
-    set(BLA_VENDOR "Apple")
-    target_compile_definitions(mathprim INTERFACE MATHPRIM_BLAS_VENDOR_APPLE)
-    target_compile_definitions(mathprim INTERFACE ACCELERATE_NEW_LAPACK)
+  if(MATHPRIM_ENABLE_MKL)
+    find_package(MKL CONFIG REQUIRED)
+    set(BLA_VENDOR "Intel" CACHE STRING "BLAS vendor")
+    message(STATUS "Enabling MKL as BLAS")
+    target_link_libraries(mathprim INTERFACE MKL::MKL)
+    target_compile_definitions(mathprim INTERFACE MATHPRIM_BLAS_VENDOR_INTEL_MKL)
   else()
-    set(BLA_VENDOR "OpenBLAS")
-    target_compile_definitions(mathprim INTERFACE MATHPRIM_BLAS_VENDOR_OPENBLAS)
+    if(APPLE)
+      # Prefer to use Accelerate framework on macOS
+      set(BLA_VENDOR "Apple" CACHE STRING "BLAS vendor")
+      target_compile_definitions(mathprim INTERFACE MATHPRIM_BLAS_VENDOR_APPLE)
+      target_compile_definitions(mathprim INTERFACE ACCELERATE_NEW_LAPACK)
+    else()
+      set(BLA_VENDOR "OpenBLAS" CACHE STRING "BLAS vendor")
+      target_compile_definitions(mathprim INTERFACE MATHPRIM_BLAS_VENDOR_OPENBLAS)
+    endif()
+
+    find_package(BLAS REQUIRED)
+    message(STATUS "Enabling BLAS:: (${BLA_VENDOR}) -> ${BLAS_LIBRARIES}")
+
+    target_link_libraries(mathprim INTERFACE ${BLAS_LIBRARIES})
+    target_compile_definitions(mathprim INTERFACE MATHPRIM_ENABLE_BLAS)
   endif()
-
-  find_package(BLAS REQUIRED)
-  message(STATUS "Enabling BLAS: ${BLAS_LIBRARIES} ${BLA_VENDOR}")
-
-  target_link_libraries(mathprim INTERFACE ${BLAS_LIBRARIES})
-  target_compile_definitions(mathprim INTERFACE MATHPRIM_ENABLE_BLAS)
 endif()
 
 if(MATHPRIM_ENABLE_CUDA)
@@ -45,26 +51,26 @@ if(MATHPRIM_ENABLE_CUDA)
   target_compile_definitions(mathprim INTERFACE MATHPRIM_ENABLE_CUDA)
   target_compile_options(mathprim INTERFACE $<$<COMPILE_LANGUAGE:CUDA>:--extended-lambda>)
   target_compile_options(mathprim INTERFACE $<$<COMPILE_LANGUAGE:CUDA>:--expt-relaxed-constexpr>)
+
   # OpenMP
-  if (MATHPRIM_ENABLE_OPENMP)
-    if (MSVC)
+  if(MATHPRIM_ENABLE_OPENMP)
+    if(MSVC)
       target_compile_options(mathprim INTERFACE $<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler:/openmp>)
     else()
       target_compile_options(mathprim INTERFACE $<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=-fopenmp>)
     endif()
   endif()
 
-
   # Warnings:
   if(MATHPRIM_ENABLE_WARNINGS)
-
     # cross execution space call:
     if(MSVC)
       target_compile_options(mathprim INTERFACE $<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=/W4>)
-      target_compile_options(mathprim INTERFACE $<$<COMPILE_LANGUAGE:CUDA>:-Werror=cross-execution-space-call>)
+      target_compile_options(mathprim INTERFACE $<$<COMPILE_LANGUAGE:CUDA>:-Wcross-execution-space-call>)
     else()
       target_compile_options(mathprim INTERFACE $<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=-Wall,-Wextra>)
-      target_compile_options(mathprim INTERFACE $<$<COMPILE_LANGUAGE:CUDA>:-Werror=cross-execution-space-call>)
+
+      # target_compile_options(mathprim INTERFACE $<$<COMPILE_LANGUAGE:CUDA>:-W=cross-execution-space-call>)
     endif()
   endif()
 endif()
@@ -88,7 +94,6 @@ if(MATHPRIM_ENABLE_CHOLMOD)
   target_link_libraries(mathprim INTERFACE SuiteSparse::CHOLMOD)
   target_compile_definitions(mathprim INTERFACE MATHPRIM_ENABLE_CHOLMOD)
 endif()
-
 
 include(GNUInstallDirs)
 install(DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/include/

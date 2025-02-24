@@ -132,6 +132,23 @@ static void BM_gemm_blas(benchmark::State& state) {
   }
 }
 
+template <typename Blas, index_t N>
+static void BM_batched_gemm(benchmark::State& state) {
+  index_t batch_size = static_cast<index_t>(state.range(0));
+  auto n = internal::holder<N>{};
+  auto a = make_buffer<float>(batch_size, n, n);
+  auto b = make_buffer<float>(batch_size, n, n);
+  auto c = make_buffer<float>(batch_size, n, n);
+
+  auto a_view = a.view().as_const();
+  auto b_view = b.view().as_const();
+  auto c_view = c.view();
+  Blas bl;
+  for (auto _ : state) {
+    bl.gemm_batched(1.0f, a_view, b_view, 1.0f, c_view);
+  }
+}
+
 BENCHMARK(BM_gemv_handmade)->Range(4, 4 << 10);
 BENCHMARK(BM_gemv_eigen)->Range(4, 4 << 10);
 BENCHMARK(BM_gemv_blas)->Range(4, 4 << 10);
@@ -139,10 +156,14 @@ BENCHMARK(BM_gemv_eigen_naive)->Range(4, 4 << 10);
 BENCHMARK(BM_gemm_handmade)->Range(4, 4 << 7);
 BENCHMARK(BM_gemm_eigen)->Range(4, 4 << 7);
 BENCHMARK(BM_gemm_blas)->Range(4, 4 << 7);
-
 BENCHMARK(BM_axpy_handmade)->Range(4, 4 << 14);
 BENCHMARK(BM_axpy_eigen)->Range(4, 4 << 14);
 BENCHMARK(BM_axpy_blas)->Range(4, 4 << 14);
 
+BENCHMARK_TEMPLATE(BM_batched_gemm, blas::cpu_blas<float>, 4)->Range(4, 4 << 12);
+BENCHMARK_TEMPLATE(BM_batched_gemm, blas::cpu_eigen<float>, 4)->Range(4, 4 << 12);
+
+BENCHMARK_TEMPLATE(BM_batched_gemm, blas::cpu_blas<float>, 32)->Range(4, 4 << 7);
+BENCHMARK_TEMPLATE(BM_batched_gemm, blas::cpu_eigen<float>, 32)->Range(4, 4 << 7);
 
 BENCHMARK_MAIN();

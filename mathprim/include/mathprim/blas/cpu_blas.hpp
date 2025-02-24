@@ -1,5 +1,7 @@
 #pragma once
 
+#include <vector>
+
 #include "mathprim/blas/blas.hpp"
 #include "mathprim/core/defines.hpp"
 #ifdef MATHPRIM_BLAS_VENDOR_APPLE
@@ -7,17 +9,17 @@
 #  ifndef CBLAS_INT
 #    define CBLAS_INT int
 #  endif
-#else
-#  ifdef MATHPRIM_BLAS_VENDOR_OPENBLAS
-#    include <openblas/cblas.h>
-#    ifndef CBLAS_INT
-#      define CBLAS_INT blasint
-#    endif
-#  else
-#    include <cblas.h>
+#elif (defined(MATHPRIM_BLAS_VENDOR_OPENBLAS))
+#  include <openblas/cblas.h>
+#  ifndef CBLAS_INT
+#    define CBLAS_INT blasint
 #  endif
+#elif (defined(MATHPRIM_BLAS_VENDOR_INTEL_MKL))
+#  include <mkl_cblas.h>
+#define CBLAS_INT MKL_INT
+#else
+#  error "Unsupported BLAS vendor."
 #endif
-
 #include <cmath>
 #include <type_traits>
 
@@ -259,6 +261,78 @@ protected:
     } else {
       static_assert(::mathprim::internal::always_false_v<T>, "Unsupported type for BLAS gemm.");
     }
+  }
+
+  template <typename SshapeA, typename SstrideA, typename SshapeB, typename SstrideB, typename SshapeC,
+            typename SstrideC>
+  MATHPRIM_NOINLINE void gemm_batched_impl(Scalar alpha, const_type<SshapeA, SstrideA> A,
+                                           const_type<SshapeB, SstrideB> B, Scalar beta,
+                                           view_type<SshapeC, SstrideC> C) {
+#if (defined(MATHPRIM_BLAS_VENDOR_INTEL_MKL))
+    auto mat_op_C = internal::get_matrix_op(C.template slice<0>(0));
+    if (mat_op_C == internal::matrix_op::transpose) {
+      gemm_batched_impl(alpha, B.transpose(), A.transpose(), beta, C.transpose());
+      return;
+    }
+
+    CBLAS_TRANSPOSE mat_op_A = internal::to_blas(internal::get_matrix_op(A.template slice<0>(0)));
+    CBLAS_TRANSPOSE mat_op_B = internal::to_blas(internal::get_matrix_op(B.template slice<0>(0)));
+    CBLAS_INT lda = 0;
+    CBLAS_INT ldb = 0;
+    CBLAS_INT ldc = C.stride(-2);
+
+    if (mat_op_A == CblasNoTrans) {
+      lda = A.stride(-2);
+    } else {
+      lda = A.stride(-1);
+    }
+
+    if (mat_op_B == CblasNoTrans) {
+      ldb = B.stride(-2);
+    } else {
+      ldb = B.stride(-1);
+    }
+
+    CBLAS_INT batch_size = static_cast<CBLAS_INT>(C.size(0));
+    CBLAS_INT m = C.size(-2);
+    CBLAS_INT n = C.size(-1);
+    CBLAS_INT k = A.size(-1);
+    const Scalar *mat_a = A.data(), *mat_b = B.data();
+    Scalar* mat_c = C.data();
+
+    if constexpr (std::is_same_v<float, Scalar>) {
+      cblas_sgemm_batch_strided(
+        CblasRowMajor,
+        mat_op_A, mat_op_B,
+        m, n, k,
+        alpha, mat_a, lda, A.stride(0),
+        mat_b, ldb, B.stride(0),
+        beta,
+        mat_c, ldc, C.stride(0),
+        batch_size
+      );
+    } else if constexpr (std::is_same_v<double, Scalar>) {
+      cblas_dgemm_batch_strided(
+        CblasRowMajor,
+        mat_op_A, mat_op_B,
+        m, n, k,
+        alpha, mat_a, lda, A.stride(0),
+        mat_b, ldb, B.stride(0),
+        beta,
+        mat_c, ldc, C.stride(0),
+        batch_size
+      );
+    } else {
+      static_assert(::mathprim::internal::always_false_v<Scalar>, "Unsupported type for BLAS gemm.");
+    }
+
+#else
+    // Use a iteration + gemm for OpenBLAS and Apple.
+    index_t batch_size = C.size(0);
+    for (index_t i = 0; i < batch_size; ++i) {
+      gemm_impl(alpha, A.slice(i), B.slice(i), beta, C.slice(i));
+    }
+#endif
   }
 };
 

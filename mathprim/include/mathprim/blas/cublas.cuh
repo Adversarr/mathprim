@@ -304,46 +304,172 @@ protected:
     m = C.shape(0);
     n = C.shape(1);
 
+
+    // The actual call to cublas.
+    cublasOperation_t transA, transB;
+    int mm, nn, kk;
+    const Scalar* aa, *bb;
+    int ldaa, ldbb;
+    Scalar* cc = C.data();
+    if (c_op == internal::matrix_op::none) {
+      mm = n;
+      nn = m;
+      kk = k;
+      transA = b_op == internal::matrix_op::none ? CUBLAS_OP_N : CUBLAS_OP_T;
+      transB = a_op == internal::matrix_op::none ? CUBLAS_OP_N : CUBLAS_OP_T;
+      ldaa = ldb;
+      ldbb = lda;
+      aa = B.data();
+      bb = A.data();
+    } else {
+      mm = m;
+      nn = n;
+      kk = k;
+      transA = a_op == internal::matrix_op::none ? CUBLAS_OP_N : CUBLAS_OP_T;
+      transB = b_op == internal::matrix_op::none ? CUBLAS_OP_T : CUBLAS_OP_N;
+      ldaa = lda;
+      ldbb = ldb;
+      aa = A.data();
+      bb = B.data();
+    }
+
     if constexpr (std::is_same_v<T, float>) {
-      if (c_op == internal::matrix_op::none) { // row major.
-        cublasOperation_t opA =
-            a_op == internal::matrix_op::none ? CUBLAS_OP_N : CUBLAS_OP_T;
-        cublasOperation_t opB =
-            b_op == internal::matrix_op::none ? CUBLAS_OP_N : CUBLAS_OP_T;
-        // transpose A, B, C, and do: C.T <- alpha op(B.T) op(A.T) + beta C.T
-        MATHPRIM_INTERNAL_CUBLAS_CHECK(
-            cublasSgemm(handle, opB, opA, n, m, k, &alpha, B.data(), ldb,
-                        A.data(), lda, &beta, C.data(), ldc));
-      } else { // C is column major, i.e. C is a transpose view.
-        cublasOperation_t opA =
-            a_op == internal::matrix_op::none ? CUBLAS_OP_T : CUBLAS_OP_N;
-        cublasOperation_t opB =
-            b_op == internal::matrix_op::none ? CUBLAS_OP_T : CUBLAS_OP_N;
-        // C.T <- alpha * op(A) * op(B) + beta * C.T
-        MATHPRIM_INTERNAL_CUBLAS_CHECK(
-            cublasSgemm(handle, opA, opB, m, n, k, &alpha, A.data(), lda,
-                        B.data(), ldb, &beta, C.data(), ldc));
-      }
+      MATHPRIM_INTERNAL_CUBLAS_CHECK(cublasSgemm(
+        handle,
+        transA, transB,
+        mm, nn, kk,
+        &alpha,
+        aa, ldaa,
+        bb, ldbb,
+        &beta, cc, ldc));
+      // if (c_op == internal::matrix_op::none) { // row major.
+      //   cublasOperation_t opA =
+      //       a_op == internal::matrix_op::none ? CUBLAS_OP_N : CUBLAS_OP_T;
+      //   cublasOperation_t opB =
+      //       b_op == internal::matrix_op::none ? CUBLAS_OP_N : CUBLAS_OP_T;
+      //   // transpose A, B, C, and do: C.T <- alpha op(B.T) op(A.T) + beta C.T
+      //   MATHPRIM_INTERNAL_CUBLAS_CHECK(
+      //       cublasSgemm(handle, opB, opA, n, m, k, &alpha, B.data(), ldb,
+      //                   A.data(), lda, &beta, C.data(), ldc));
+      // } else { // C is column major, i.e. C is a transpose view.
+      //   cublasOperation_t opA =
+      //       a_op == internal::matrix_op::none ? CUBLAS_OP_T : CUBLAS_OP_N;
+      //   cublasOperation_t opB =
+      //       b_op == internal::matrix_op::none ? CUBLAS_OP_T : CUBLAS_OP_N;
+      //   // C.T <- alpha * op(A) * op(B) + beta * C.T
+      //   MATHPRIM_INTERNAL_CUBLAS_CHECK(
+      //       cublasSgemm(handle, opA, opB, m, n, k, &alpha, A.data(), lda,
+      //                   B.data(), ldb, &beta, C.data(), ldc));
+      // }
     } else if constexpr (std::is_same_v<T, double>) {
-      if (c_op == internal::matrix_op::none) { // row major.
-        cublasOperation_t opA =
-            a_op == internal::matrix_op::none ? CUBLAS_OP_N : CUBLAS_OP_T;
-        cublasOperation_t opB =
-            b_op == internal::matrix_op::none ? CUBLAS_OP_N : CUBLAS_OP_T;
-        // transpose A, B, C, and do: C.T <- alpha op(B.T) op(A.T) + beta C.T
-        MATHPRIM_INTERNAL_CUBLAS_CHECK(
-            cublasDgemm(handle, opB, opA, n, m, k, &alpha, B.data(), ldb,
-                        A.data(), lda, &beta, C.data(), ldc));
-      } else { // C is column major, i.e. C is a transpose view.
-        cublasOperation_t opA =
-            a_op == internal::matrix_op::none ? CUBLAS_OP_T : CUBLAS_OP_N;
-        cublasOperation_t opB =
-            b_op == internal::matrix_op::none ? CUBLAS_OP_T : CUBLAS_OP_N;
-        // C.T <- alpha * op(A) * op(B) + beta * C.T
-        MATHPRIM_INTERNAL_CUBLAS_CHECK(
-            cublasDgemm(handle, opA, opB, m, n, k, &alpha, A.data(), lda,
-                        B.data(), ldb, &beta, C.data(), ldc));
-      }
+      MATHPRIM_INTERNAL_CUBLAS_CHECK(cublasDgemm(
+        handle,
+        transA, transB,
+        mm, nn, kk,
+        &alpha,
+        aa, ldaa,
+        bb, ldbb,
+        &beta, cc, ldc));
+      // if (c_op == internal::matrix_op::none) { // row major.
+      //   cublasOperation_t opA =
+      //       a_op == internal::matrix_op::none ? CUBLAS_OP_N : CUBLAS_OP_T;
+      //   cublasOperation_t opB =
+      //       b_op == internal::matrix_op::none ? CUBLAS_OP_N : CUBLAS_OP_T;
+      //   // transpose A, B, C, and do: C.T <- alpha op(B.T) op(A.T) + beta C.T
+      //   MATHPRIM_INTERNAL_CUBLAS_CHECK(
+      //       cublasDgemm(handle, opB, opA, n, m, k, &alpha, B.data(), ldb,
+      //                   A.data(), lda, &beta, C.data(), ldc));
+      // } else { // C is column major, i.e. C is a transpose view.
+      //   cublasOperation_t opA =
+      //       a_op == internal::matrix_op::none ? CUBLAS_OP_T : CUBLAS_OP_N;
+      //   cublasOperation_t opB =
+      //       b_op == internal::matrix_op::none ? CUBLAS_OP_T : CUBLAS_OP_N;
+      //   // C.T <- alpha * op(A) * op(B) + beta * C.T
+      //   MATHPRIM_INTERNAL_CUBLAS_CHECK(
+      //       cublasDgemm(handle, opA, opB, m, n, k, &alpha, A.data(), lda,
+      //                   B.data(), ldb, &beta, C.data(), ldc));
+      // }
+    } else {
+      static_assert(::mathprim::internal::always_false_v<T>,
+                    "Unsupported type");
+    }
+  }
+
+  template <typename SshapeA, typename SstrideA, typename SshapeB,
+            typename SstrideB, typename SshapeC, typename SstrideC>
+  MATHPRIM_NOINLINE void
+  gemm_batched_impl(Scalar alpha, const_type<SshapeA, SstrideA> A,
+                    const_type<SshapeB, SstrideB> B, Scalar beta,
+                    view_type<SshapeC, SstrideC> C) {
+    auto *handle = internal::get_cublas_handle();
+    auto a_op = internal::get_matrix_op(A.slice(0));
+    auto b_op = internal::get_matrix_op(B.slice(0));
+    auto c_op = internal::get_matrix_op(C.slice(0));
+    int lda = a_op == internal::matrix_op::none ? A.stride(1) : A.stride(2);
+    int ldb = b_op == internal::matrix_op::none ? B.stride(1) : B.stride(2);
+    int ldc = c_op == internal::matrix_op::none ? C.stride(1) : C.stride(2);
+
+    // If c_op == none, then C is row-major, do C.T <- alpha * B.T * A.T + beta
+    // * C.T
+    int m = 0, n = 0, k = 0;
+    k = a_op == internal::matrix_op::none ? A.shape(2) : A.shape(1);
+    m = C.shape(1);
+    n = C.shape(2);
+
+    // The actual call to cublas.
+    cublasOperation_t transA, transB;
+    int mm, nn, kk;
+    const Scalar* aa, *bb;
+    int ldaa, ldbb;
+    Scalar* cc = C.data();
+    int stride_aa, stride_bb, stride_c = C.stride(0);
+    if (c_op == internal::matrix_op::none) {
+      mm = n;
+      nn = m;
+      kk = k;
+      transA = b_op == internal::matrix_op::none ? CUBLAS_OP_N : CUBLAS_OP_T;
+      transB = a_op == internal::matrix_op::none ? CUBLAS_OP_N : CUBLAS_OP_T;
+      ldaa = ldb;
+      ldbb = lda;
+      aa = B.data();
+      bb = A.data();
+      stride_aa = B.stride(0);
+      stride_bb = A.stride(0);
+    } else {
+      mm = m;
+      nn = n;
+      kk = k;
+      transA = a_op == internal::matrix_op::none ? CUBLAS_OP_N : CUBLAS_OP_T;
+      transB = b_op == internal::matrix_op::none ? CUBLAS_OP_T : CUBLAS_OP_N;
+      ldaa = lda;
+      ldbb = ldb;
+      aa = A.data();
+      bb = B.data();
+      stride_aa = A.stride(0);
+      stride_bb = B.stride(0);
+    }
+    index_t batch_size = C.shape(0);
+
+    if constexpr (std::is_same_v<T, float>) {
+      MATHPRIM_INTERNAL_CUBLAS_CHECK(cublasSgemmStridedBatched(
+        handle,
+        transA, transB,
+        mm, nn, kk,
+        &alpha,
+        aa, ldaa, stride_aa,
+        bb, ldbb, stride_bb,
+        &beta, cc, ldc, stride_c,
+        batch_size));
+    } else if constexpr (std::is_same_v<T, double>) {
+      MATHPRIM_INTERNAL_CUBLAS_CHECK(cublasDgemmStridedBatched(
+        handle,
+        transA, transB,
+        mm, nn, kk,
+        &alpha,
+        aa, ldaa, stride_aa,
+        bb, ldbb, stride_bb,
+        &beta, cc, ldc, stride_c,
+        batch_size));
     } else {
       static_assert(::mathprim::internal::always_false_v<T>,
                     "Unsupported type");

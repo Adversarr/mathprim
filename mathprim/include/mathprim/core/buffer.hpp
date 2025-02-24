@@ -41,7 +41,6 @@ public:
       shape_(other.shape()), stride_(other.stride()), data_(std::move(other.data_)) {}
   template <typename Sshape2, typename Sstride2,
             typename = std::enable_if_t<internal::is_buffer_castable_v<Sshape2, Sstride2, Sshape, Sstride>>>
-
   basic_buffer &operator=(basic_buffer<Scalar, Sshape2, Sstride2, Dev> &&other) {
     if (this != &other) {
       shape_ = other.shape();
@@ -57,6 +56,7 @@ public:
       shape_(shape), stride_(stride), data_(data) {}
 
   // Disable copy constructor and all assignment.
+  basic_buffer() = default; // empty buffer, waiting for move assignement.
   basic_buffer(const basic_buffer &) = delete;
   basic_buffer &operator=(const basic_buffer &) = delete;
 

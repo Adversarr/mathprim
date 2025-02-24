@@ -1,6 +1,7 @@
 #pragma once
 #include "mathprim/core/defines.hpp"
 #include "mathprim/core/dim.hpp"
+#include "mathprim/core/view.hpp"
 
 namespace mathprim::blas {
 
@@ -83,7 +84,6 @@ struct basic_blas {
   using view_type = basic_view<Scalar, sshape, sstride, Dev>;
   template <typename sshape, typename sstride>
   using const_type = basic_view<const Scalar, sshape, sstride, Dev>;
-
   /**
    * @brief Copy the elements of src to dst.
    *
@@ -282,6 +282,27 @@ struct basic_blas {
                                   "Incompatible views for BLAS gemm. (C)");
 
     static_cast<Derived *>(this)->gemm_impl(alpha, A, B, beta, C);
+  }
+
+  template <typename SshapeA, typename SstrideA, typename SshapeB, typename SstrideB, typename SshapeC,
+            typename SstrideC>
+  MATHPRIM_NOINLINE void gemm_batched(Scalar alpha, const_type<SshapeA, SstrideA> A,
+                                      const_type<SshapeB, SstrideB> B, Scalar beta,
+                                      view_type<SshapeC, SstrideC> C) {
+    // check for shapes
+    internal::check_mm_shapes(A.slice(0).shape(), B.slice(0).shape(), C.slice(0).shape());
+    // check for capabilities
+    auto a_op = internal::get_matrix_op(A.slice(0));
+    auto b_op = internal::get_matrix_op(B.slice(0));
+    auto c_op = internal::get_matrix_op(C.slice(0));
+    MATHPRIM_INTERNAL_CHECK_THROW(a_op != internal::matrix_op::invalid, std::runtime_error,
+                                  "Incompatible views for BLAS gemm. (A)");
+    MATHPRIM_INTERNAL_CHECK_THROW(b_op != internal::matrix_op::invalid, std::runtime_error,
+                                  "Incompatible views for BLAS gemm. (B)");
+    MATHPRIM_INTERNAL_CHECK_THROW(c_op != internal::matrix_op::invalid, std::runtime_error,
+                                  "Incompatible views for BLAS gemm. (C)");
+
+    static_cast<Derived *>(this)->gemm_batched_impl(alpha, A, B, beta, C);
   }
 };
 

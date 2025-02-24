@@ -23,7 +23,9 @@ struct car<index_seq<front, args...>> {
 };
 
 template <typename seq>
-struct cdr;
+struct cdr {
+  static_assert(!std::is_same_v<seq, seq>, "Unsupported.");
+};
 template <index_t front, index_t... args>
 struct cdr<index_seq<front, args...>> {
   using type = index_seq<args...>;

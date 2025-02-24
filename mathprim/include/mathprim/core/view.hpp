@@ -295,9 +295,12 @@ public:
       return *this;
     } else {
 #ifndef NDEBUG
+      // Only the last dimension can have non-contiguous stride.
+      const index_t stride_last = shape_.template get<ndim - 1>();
       const auto drop_last_shape = internal::slice_impl<ndim - 1>(shape_, make_index_seq<ndim - 1>{});
-      const auto drop_last_stride = internal::slice_impl<ndim - 1>(stride_, make_index_seq<ndim - 1>{});
-      MATHPRIM_ASSERT(make_default_stride<Scalar>(drop_last_shape) == drop_last_stride);
+      const auto drop_last_stride_check = make_default_stride<Scalar>(drop_last_shape).to_array() * stride_last;
+      const auto drop_last_stride = internal::slice_impl<ndim - 1>(stride_, make_index_seq<ndim - 1>{}).to_array();
+      MATHPRIM_ASSERT(drop_last_stride_check == drop_last_stride && "The view is not contiguous enough for flatten.");
 #endif
       return {data_, shape_t<internal::flatten_v<typename Sshape::seq>>{shape_.numel()},
               stride_t<god::last_v<typename Sstride::seq>>{stride_.template get<ndim - 1>()}};

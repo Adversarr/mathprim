@@ -156,6 +156,43 @@ protected:
       }
     }
   }
+
+  template <typename SshapeA, typename SstrideA, typename SshapeB, typename SstrideB, typename SshapeC,
+            typename SstrideC>
+  MATHPRIM_NOINLINE void gemm_batched_impl(Scalar alpha, const_type<SshapeA, SstrideA> A,
+                                           const_type<SshapeB, SstrideB> B, Scalar beta,
+                                           view_type<SshapeC, SstrideC> C) {
+    if (A.is_contiguous() && B.is_contiguous() && C.is_contiguous()) {
+      for (index_t i = 0; i < A.shape(0); ++i) {
+        auto map_A = eigen_support::cmap(A[i]);
+        auto map_B = eigen_support::cmap(B[i]);
+        auto map_C = eigen_support::cmap(C[i]);
+        map_C *= beta;
+        map_C.noalias() += alpha * map_B * map_A;
+      }
+    } else {
+      auto a_transpose = A.transpose();
+      auto b_transpose = B.transpose();
+      auto c_transpose = C.transpose();
+      if (a_transpose.is_contiguous() && b_transpose.is_contiguous() && c_transpose.is_contiguous()) {
+        for (index_t i = 0; i < A.shape(0); ++i) {
+          auto map_A = eigen_support::cmap(a_transpose[i]);
+          auto map_B = eigen_support::cmap(b_transpose[i]);
+          auto map_C = eigen_support::cmap(c_transpose[i]);
+          map_C *= beta;
+          map_C.noalias() += alpha * map_A * map_B;  // C.T += alpha * A.T * B.T <=> C += alpha * B * A
+        }
+      } else {
+        for (index_t i = 0; i < A.shape(0); ++i) {
+          auto map_A = eigen_support::amap(A[i]);
+          auto map_B = eigen_support::amap(B[i]);
+          auto map_C = eigen_support::amap(C[i]);
+          map_C *= beta;
+          map_C.noalias() += alpha * map_B * map_A;
+        }
+      }
+    }
+  }
 };
 
 }  // namespace blas

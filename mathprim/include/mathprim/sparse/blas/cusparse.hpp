@@ -18,11 +18,41 @@ namespace blas {
     }                                                                       \
   } while (0)
 
+#if MATHPRIM_OPTION_EXIT_ON_THROW == -1
+#  define MATHPRIM_INTERNAL_CHECK_THROW_CUSPARSE(cond, error_type, msg)                                              \
+    do {                                                                                                             \
+      cusparseStatus_t status = cond;                                                                                \
+      if (status != CUSPARSE_STATUS_SUCCESS) {                                                                       \
+        fprintf(stderr, "CUSPARSE Failed: (" #cond ") got %s, at %s:%d\n", cusparseGetErrorString(status), __FILE__, \
+                __LINE__);                                                                                           \
+        exit(EXIT_FAILURE);                                                                                          \
+      }                                                                                                              \
+    } while (0)
+#elif MATHPRIM_OPTION_EXIT_ON_THROW == 0
+#  define MATHPRIM_INTERNAL_CHECK_THROW_CUSPARSE(cond, error_type, msg)                                              \
+    do {                                                                                                             \
+      cusparseStatus_t status = cond;                                                                                \
+      if (status != CUSPARSE_STATUS_SUCCESS) {                                                                       \
+        fprintf(stderr, "CUSPARSE Failed: (" #cond ") got %s, at %s:%d\n", cusparseGetErrorString(status), __FILE__, \
+                __LINE__);                                                                                           \
+        throw error_type(msg);                                                                                       \
+      }                                                                                                              \
+    } while (0)
+#else
+#  define MATHPRIM_INTERNAL_CHECK_THROW_CUSPARSE(cond, error_type, msg)         \
+    do {                                                                        \
+      cusparseStatus_t status = cond;                                           \
+      if (status != CUSPARSE_STATUS_SUCCESS) {                                  \
+        throw error_type(msg + std::to_string(cusparseGetErrorString(status))); \
+      }                                                                         \
+    } while (0)
+#endif
+
 namespace internal {
-class cusparse_handle {
+class cusparse_singleton {
 public:
-  static cusparse_handle& instance() {
-    static cusparse_handle handle;
+  static cusparse_singleton& instance() {
+    static cusparse_singleton handle;
     return handle;
   }
 
@@ -31,18 +61,19 @@ public:
   }
 
 private:
-  cusparseHandle_t handle_;
-  cusparse_handle() {
+  cusparseHandle_t handle_ = nullptr;
+
+  cusparse_singleton() noexcept {
     MATHPRIM_CHECK_CUSPARSE(cusparseCreate(&handle_));
   }
 
-  ~cusparse_handle() {
+  ~cusparse_singleton() noexcept {
     MATHPRIM_CHECK_CUSPARSE(cusparseDestroy(handle_));
   }
 };
 
 inline cusparseHandle_t get_cusparse_handle() {
-  return cusparse_handle::instance().get();
+  return cusparse_singleton::instance().get();
 }
 
 }  // namespace internal

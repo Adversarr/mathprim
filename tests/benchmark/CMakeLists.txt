@@ -6,7 +6,6 @@ endmacro(mathprim_add_benchmark)
 
 find_package(benchmark REQUIRED)
 find_package(Eigen3 REQUIRED)
-find_package(BLAS REQUIRED)
 
 mathprim_add_benchmark(map)
 mathprim_add_benchmark(blas)

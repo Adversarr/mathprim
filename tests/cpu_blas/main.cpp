@@ -131,3 +131,39 @@ GTEST_TEST(blas, emul) {
     EXPECT_EQ(y.view()[i], i * i);
   }
 }
+
+GTEST_TEST(blas, batch_gemm) {
+  blas::cpu_blas<float> bl;
+  index_t batch = 4;
+  index_t m = 3, n = 2, k = 4;
+  auto a = make_buffer<float>(batch, m, k);
+  auto b = make_buffer<float>(batch, k, n);
+  auto c = make_buffer<float>(batch, m, n);
+  auto alpha = make_buffer<float>(batch);
+  auto beta = make_buffer<float>(batch);
+  for (index_t i = 0; i < batch; ++i) {
+    for (index_t j = 0; j < m; ++j) {
+      for (index_t l = 0; l < k; ++l) {
+        a.view()(i, j, l) = static_cast<float>(i + j + l);
+      }
+    }
+
+    for (index_t j = 0; j < k; ++j) {
+      for (index_t l = 0; l < n; ++l) {
+        b.view()(i, j, l) = static_cast<float>(i + j + l);
+      }
+    }
+
+    alpha.view()[i] = 1;
+    beta.view()[i] = 0;
+  }
+
+  bl.gemm_batched(1.0f, a.const_view(), b.const_view(), 0.0f, c.view());
+
+  for (index_t i = 0; i < batch; ++i) {
+    bl.gemm(1.0f, a.const_view().slice(i), b.const_view().slice(i), -1.0f, c.view().slice(i));
+  }
+
+  // test norm:
+  EXPECT_FLOAT_EQ(0.0f, bl.norm(c.const_view()));
+}

@@ -216,6 +216,16 @@ protected:
       }
     }
   }
+
+  template <typename SshapeA, typename SstrideA, typename SshapeB, typename SstrideB, typename SshapeC,
+            typename SstrideC>
+  MATHPRIM_NOINLINE void gemm_batched_impl(Scalar alpha, const_type<SshapeA, SstrideA> A,
+                                           const_type<SshapeB, SstrideB> B, Scalar beta,
+                                           view_type<SshapeC, SstrideC> C) {
+    for (index_t i = 0; i < A.shape(0); ++i) {
+      gemm_impl(alpha, A[i], B[i], beta, C[i]);
+    }
+  }
 };
 
 }  // namespace blas
