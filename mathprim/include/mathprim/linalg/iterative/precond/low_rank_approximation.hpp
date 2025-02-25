@@ -1,8 +1,7 @@
 #pragma once
 #include "mathprim/linalg/iterative/iterative.hpp"
 #include "mathprim/sparse/basic_sparse.hpp"
-#include "mathprim/core/utils/timed.hpp"
-#include <cuda_runtime.h>
+
 namespace mathprim::sparse::iterative {
 
 namespace internal {}
