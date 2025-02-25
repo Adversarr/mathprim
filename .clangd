@@ -3,8 +3,7 @@
 CompileFlags:
   Remove: 
     # strip CUDA fatbin args
-    - "-Xcompiler=-Wall,-Wextra"
-    - "-Xcompiler=-fopenmp"
+    - "-Xcompiler=*"
     - "-Xfatbin*"
     # strip CUDA arch flags
     - "-gencode*"

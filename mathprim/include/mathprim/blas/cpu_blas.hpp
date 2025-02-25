@@ -1,7 +1,5 @@
 #pragma once
 
-#include <vector>
-
 #include "mathprim/blas/blas.hpp"
 #include "mathprim/core/defines.hpp"
 #ifdef MATHPRIM_BLAS_VENDOR_APPLE
@@ -56,8 +54,9 @@ struct cpu_blas : public basic_blas<cpu_blas<T>, T, device::cpu> {
   using Scalar = T;
 
 protected:
-  template <typename sshape_dst, typename sstride_dst, typename sshape_src, typename sstride_src>
-  void copy_impl(view_type<sshape_dst, sstride_dst> dst, const_type<sshape_src, sstride_src> src) {
+  template <typename SshapeDst, typename SstrideDst, typename SshapeSrc, typename SstrideSrc>
+  MATHPRIM_NOINLINE void copy_impl(const view_type<SshapeDst, SstrideDst>& dst,
+                                   const const_type<SshapeSrc, SstrideSrc>& src) {
     auto dst_stride = internal::vec_stride(dst);
     auto src_stride = internal::vec_stride(src);
     CBLAS_INT numel = static_cast<CBLAS_INT>(dst.numel());
@@ -71,8 +70,8 @@ protected:
     }
   }
 
-  template <typename sshape, typename sstride>
-  void scal_impl(T alpha, view_type<sshape, sstride> src) {
+  template <typename Sshape, typename Sstride>
+  MATHPRIM_NOINLINE void scal_impl(T alpha, const view_type<Sshape, Sstride>& src) {
     auto stride = internal::vec_stride(src);
     CBLAS_INT numel = static_cast<CBLAS_INT>(src.numel());
 
@@ -164,15 +163,16 @@ protected:
     return out;
   }
 
-  template <typename sshape, typename sstride>
-  index_t amax_impl(const_type<sstride, sshape> x) {
-    auto stride = internal::vec_stride(x);
-    auto numel = static_cast<CBLAS_INT>(x.numel());
+  template <typename Sshape, typename Sstride>
+  MATHPRIM_NOINLINE index_t amax_impl(const const_type<Sstride, Sshape>& x) {
+    const auto stride = internal::vec_stride(x);
+    const auto numel = static_cast<CBLAS_INT>(x.numel());
+    const Scalar* data = x.data();
     index_t out = 0;
     if constexpr (std::is_same_v<Scalar, float>) {
-      out = cblas_isamax(numel, x.data(), stride);
+      out = static_cast<index_t>(cblas_isamax(numel, data, stride));
     } else if constexpr (std::is_same_v<Scalar, double>) {
-      out = cblas_idamax(numel, x.data(), stride);
+      out = static_cast<index_t>(cblas_idamax(numel, data, stride));
     } else {
       static_assert(::mathprim::internal::always_false_v<Scalar>, "Unsupported type for BLAS amax.");
     }
@@ -265,13 +265,13 @@ protected:
 
   template <typename SshapeA, typename SstrideA, typename SshapeB, typename SstrideB, typename SshapeC,
             typename SstrideC>
-  MATHPRIM_NOINLINE void gemm_batched_impl(Scalar alpha, const_type<SshapeA, SstrideA> A,
+  MATHPRIM_NOINLINE void gemm_batch_strided_impl(Scalar alpha, const_type<SshapeA, SstrideA> A,
                                            const_type<SshapeB, SstrideB> B, Scalar beta,
                                            view_type<SshapeC, SstrideC> C) {
 #if (defined(MATHPRIM_BLAS_VENDOR_INTEL_MKL))
     auto mat_op_C = internal::get_matrix_op(C.template slice<0>(0));
     if (mat_op_C == internal::matrix_op::transpose) {
-      gemm_batched_impl(alpha, B.transpose(), A.transpose(), beta, C.transpose());
+      gemm_batch_strided_impl(alpha, B.transpose(), A.transpose(), beta, C.transpose());
       return;
     }
 

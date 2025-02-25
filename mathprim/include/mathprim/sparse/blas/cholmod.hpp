@@ -1,37 +1,40 @@
 #pragma once
 #include <suitesparse/cholmod.h>
 
-#include "mathprim/sparse/basic_sparse.hpp"
 #include "mathprim/core/utils/common.hpp"
+#include "mathprim/core/utils/singleton.hpp"
+#include "mathprim/sparse/basic_sparse.hpp"
+
+namespace mathprim::singletons {
+
+class cholmod_handle : public internal::basic_singleton<cholmod_handle, cholmod_common*> {
+public:
+  using base = internal::basic_singleton<cholmod_handle, cholmod_common*>;
+  friend base;
+
+private:
+  void create_impl(cholmod_common*& handle) noexcept {
+    handle = new cholmod_common;
+    cholmod_start(handle);
+    handle->print = 0;
+  }
+
+  void destroy_impl(cholmod_common*& handle) noexcept {
+    cholmod_finish(handle);
+    delete handle;
+  }
+};
+
+}  // namespace mathprim::external
 
 namespace mathprim::sparse {
 namespace blas {
 
-namespace internal {
-
-class cholmod_handle {
-  cholmod_handle() {
-    cholmod_start(&cholmod_common_);
-    cholmod_common_.print = 0;
-  }
-  
-  ~cholmod_handle() {
-    cholmod_finish(&cholmod_common_);
-  }
-  
-  
-  cholmod_common cholmod_common_;
-public:
-  static cholmod_common& instance() {
-    static cholmod_handle handle;
-    return handle.cholmod_common_;
-  }
-};
-
-
 cholmod_common& get_cholmod_handle() {
-  return cholmod_handle::instance();
+  return *(singletons::cholmod_handle::get());
 }
+
+namespace internal {
 
 const char* to_string(int status) {
   // cholmod_status -> string
@@ -79,7 +82,7 @@ private:
 
 template <typename Scalar, sparse_format SparseCompression>
 blas::cholmod<Scalar, SparseCompression>::cholmod(const_sparse_view mat) : base(mat) {
-  const cholmod_common cholmod_common = internal::get_cholmod_handle();
+  const cholmod_common cholmod_common = get_cholmod_handle();
   MATHPRIM_UNUSED(cholmod_common); // We keep it here to init the handle.
   
   ::std::memset(&chol_mat_, 0, sizeof(chol_mat_));
@@ -133,7 +136,7 @@ blas::cholmod<Scalar, SparseCompression>::cholmod(const_sparse_view mat) : base(
 template <typename Scalar, sparse_format SparseCompression>
 void blas::cholmod<Scalar, SparseCompression>::gemv_impl(Scalar alpha, const_vector_view x, Scalar beta, vector_view y,
                                                          bool transpose) {
-  cholmod_common cholmod_common = internal::get_cholmod_handle();
+  cholmod_common cholmod_common = get_cholmod_handle();
   int result = 0;
   double alpha_arg = alpha;
   double beta_arg = beta;

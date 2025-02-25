@@ -1,7 +1,6 @@
 #pragma once
 #include <cublas_v2.h>
 
-#include <sstream>
 #include <thrust/execution_policy.h>
 #include <thrust/for_each.h>
 #include <thrust/iterator/counting_iterator.h>
@@ -9,53 +8,54 @@
 #include "mathprim/blas/blas.hpp"
 #include "mathprim/core/utils/common.hpp"
 #include "mathprim/core/utils/cuda_utils.cuh"
-
-namespace mathprim {
-
-namespace blas {
-
-namespace internal {
-
-inline void check_status(cublasStatus_t status, const char *file, int line,
-                         const char *expr) {
-  if (status != CUBLAS_STATUS_SUCCESS) {
-    std::ostringstream oss;
-    oss << "CUBLAS error at " << file << ":" << line << ": " << expr << " "
-        << cublasGetStatusName(status);
-    throw std::runtime_error(oss.str());
-  }
-}
+#include "mathprim/core/utils/singleton.hpp"
 
 #define MATHPRIM_INTERNAL_CUBLAS_CHECK(expr)                                   \
-  ::mathprim::blas::internal::check_status((expr), __FILE__, __LINE__, #expr)
+  do {                                                                         \
+    auto status = (expr);                                                      \
+    if (status != CUBLAS_STATUS_SUCCESS) {                                     \
+      throw std::runtime_error("CUBLAS error at" + std::string(__FILE__) +     \
+                               ":" + std::to_string(__LINE__) + ": " +         \
+                               std::string(cublasGetStatusName(status)));      \
+    }                                                                          \
+  } while (0)
 
-class cublas_context final {
-public:
-  cublas_context() {
-    MATHPRIM_INTERNAL_CUBLAS_CHECK(cublasCreate(&handle_));
-    cublasSetMathMode(handle_, CUBLAS_TENSOR_OP_MATH);
-    cublasSetAtomicsMode(handle_, CUBLAS_ATOMICS_ALLOWED);
+#define MATHPRIM_INTERNAL_CUBLAS_CHECK_EXIT(expr)                              \
+  do {                                                                         \
+    auto status = (expr);                                                      \
+    if (status != CUBLAS_STATUS_SUCCESS) {                                     \
+      std::cerr << "CUBLAS error at" << __FILE__ << ":" << __LINE__ << ": "    \
+                << cublasGetStatusName(status) << std::endl;                   \
+      std::exit(EXIT_FAILURE);                                                 \
+    }                                                                          \
+  } while (0)
+
+namespace mathprim {
+namespace singletons {
+
+class cublas_context final
+    : public internal::basic_singleton<cublas_context, cublasHandle_t> {
+  using base = internal::basic_singleton<cublas_context, cublasHandle_t>;
+  friend base;
+  void create_impl(cublasHandle_t &handle) {
+    MATHPRIM_INTERNAL_CUBLAS_CHECK_EXIT(cublasCreate(&handle));
+    MATHPRIM_INTERNAL_CUBLAS_CHECK_EXIT(
+        cublasSetMathMode(handle, CUBLAS_TENSOR_OP_MATH));
+    MATHPRIM_INTERNAL_CUBLAS_CHECK_EXIT(
+        cublasSetAtomicsMode(handle, CUBLAS_ATOMICS_ALLOWED));
   }
-  ~cublas_context() { MATHPRIM_INTERNAL_CUBLAS_CHECK(cublasDestroy(handle_)); }
-  cublas_context(const cublas_context &) = delete;
-  cublas_context &operator=(const cublas_context &) = delete;
-  cublas_context(cublas_context &&) = delete;
-  cublas_context &operator=(cublas_context &&) = delete;
 
-  cublasHandle_t handle() const { return handle_; }
-
-  static cublas_context &instance() {
-    static cublas_context ctx;
-    return ctx;
+  void destroy_impl(cublasHandle_t &handle) {
+    MATHPRIM_INTERNAL_CUBLAS_CHECK_EXIT(cublasDestroy(handle));
   }
-
-private:
-  cublasHandle_t handle_;
 };
 
-cublasHandle_t get_cublas_handle() {
-  return cublas_context::instance().handle();
-}
+} // namespace singletons
+
+namespace blas {
+namespace internal {
+
+cublasHandle_t get_cublas_handle() { return singletons::cublas_context::get(); }
 
 template <typename Scalar>
 __global__ void emul_kernel(const Scalar *x, Scalar *y, index_t total,
@@ -342,25 +342,6 @@ protected:
         aa, ldaa,
         bb, ldbb,
         &beta, cc, ldc));
-      // if (c_op == internal::matrix_op::none) { // row major.
-      //   cublasOperation_t opA =
-      //       a_op == internal::matrix_op::none ? CUBLAS_OP_N : CUBLAS_OP_T;
-      //   cublasOperation_t opB =
-      //       b_op == internal::matrix_op::none ? CUBLAS_OP_N : CUBLAS_OP_T;
-      //   // transpose A, B, C, and do: C.T <- alpha op(B.T) op(A.T) + beta C.T
-      //   MATHPRIM_INTERNAL_CUBLAS_CHECK(
-      //       cublasSgemm(handle, opB, opA, n, m, k, &alpha, B.data(), ldb,
-      //                   A.data(), lda, &beta, C.data(), ldc));
-      // } else { // C is column major, i.e. C is a transpose view.
-      //   cublasOperation_t opA =
-      //       a_op == internal::matrix_op::none ? CUBLAS_OP_T : CUBLAS_OP_N;
-      //   cublasOperation_t opB =
-      //       b_op == internal::matrix_op::none ? CUBLAS_OP_T : CUBLAS_OP_N;
-      //   // C.T <- alpha * op(A) * op(B) + beta * C.T
-      //   MATHPRIM_INTERNAL_CUBLAS_CHECK(
-      //       cublasSgemm(handle, opA, opB, m, n, k, &alpha, A.data(), lda,
-      //                   B.data(), ldb, &beta, C.data(), ldc));
-      // }
     } else if constexpr (std::is_same_v<T, double>) {
       MATHPRIM_INTERNAL_CUBLAS_CHECK(cublasDgemm(
         handle,
@@ -370,25 +351,6 @@ protected:
         aa, ldaa,
         bb, ldbb,
         &beta, cc, ldc));
-      // if (c_op == internal::matrix_op::none) { // row major.
-      //   cublasOperation_t opA =
-      //       a_op == internal::matrix_op::none ? CUBLAS_OP_N : CUBLAS_OP_T;
-      //   cublasOperation_t opB =
-      //       b_op == internal::matrix_op::none ? CUBLAS_OP_N : CUBLAS_OP_T;
-      //   // transpose A, B, C, and do: C.T <- alpha op(B.T) op(A.T) + beta C.T
-      //   MATHPRIM_INTERNAL_CUBLAS_CHECK(
-      //       cublasDgemm(handle, opB, opA, n, m, k, &alpha, B.data(), ldb,
-      //                   A.data(), lda, &beta, C.data(), ldc));
-      // } else { // C is column major, i.e. C is a transpose view.
-      //   cublasOperation_t opA =
-      //       a_op == internal::matrix_op::none ? CUBLAS_OP_T : CUBLAS_OP_N;
-      //   cublasOperation_t opB =
-      //       b_op == internal::matrix_op::none ? CUBLAS_OP_T : CUBLAS_OP_N;
-      //   // C.T <- alpha * op(A) * op(B) + beta * C.T
-      //   MATHPRIM_INTERNAL_CUBLAS_CHECK(
-      //       cublasDgemm(handle, opA, opB, m, n, k, &alpha, A.data(), lda,
-      //                   B.data(), ldb, &beta, C.data(), ldc));
-      // }
     } else {
       static_assert(::mathprim::internal::always_false_v<T>,
                     "Unsupported type");
@@ -398,7 +360,7 @@ protected:
   template <typename SshapeA, typename SstrideA, typename SshapeB,
             typename SstrideB, typename SshapeC, typename SstrideC>
   MATHPRIM_NOINLINE void
-  gemm_batched_impl(Scalar alpha, const_type<SshapeA, SstrideA> A,
+  gemm_batch_strided_impl(Scalar alpha, const_type<SshapeA, SstrideA> A,
                     const_type<SshapeB, SstrideB> B, Scalar beta,
                     view_type<SshapeC, SstrideC> C) {
     auto *handle = internal::get_cublas_handle();

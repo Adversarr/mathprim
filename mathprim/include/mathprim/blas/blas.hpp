@@ -286,7 +286,7 @@ struct basic_blas {
 
   template <typename SshapeA, typename SstrideA, typename SshapeB, typename SstrideB, typename SshapeC,
             typename SstrideC>
-  MATHPRIM_NOINLINE void gemm_batched(Scalar alpha, const_type<SshapeA, SstrideA> A,
+  MATHPRIM_NOINLINE void gemm_batch_strided(Scalar alpha, const_type<SshapeA, SstrideA> A,
                                       const_type<SshapeB, SstrideB> B, Scalar beta,
                                       view_type<SshapeC, SstrideC> C) {
     // check for shapes
@@ -302,7 +302,7 @@ struct basic_blas {
     MATHPRIM_INTERNAL_CHECK_THROW(c_op != internal::matrix_op::invalid, std::runtime_error,
                                   "Incompatible views for BLAS gemm. (C)");
 
-    static_cast<Derived *>(this)->gemm_batched_impl(alpha, A, B, beta, C);
+    static_cast<Derived *>(this)->gemm_batch_strided_impl(alpha, A, B, beta, C);
   }
 };
 

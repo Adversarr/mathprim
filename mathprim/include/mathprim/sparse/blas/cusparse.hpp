@@ -4,11 +4,9 @@
 #include "mathprim/core/defines.hpp"
 #include "mathprim/core/devices/cuda.cuh"
 #include "mathprim/core/utils/common.hpp"
+#include "mathprim/core/utils/singleton.hpp"
 #include "mathprim/sparse/basic_sparse.hpp"
-namespace mathprim::sparse {
-namespace blas {
 
-// TODO: replace exit with exception.
 #define MATHPRIM_CHECK_CUSPARSE(call)                                       \
   do {                                                                      \
     cusparseStatus_t status = call;                                         \
@@ -48,32 +46,26 @@ namespace blas {
     } while (0)
 #endif
 
-namespace internal {
-class cusparse_singleton {
-public:
-  static cusparse_singleton& instance() {
-    static cusparse_singleton handle;
-    return handle;
+namespace mathprim::singletons {
+class cusparse_context : public internal::basic_singleton<cusparse_context, cusparseHandle_t> {
+  using base = internal::basic_singleton<cusparse_context, cusparseHandle_t>;
+  friend base;
+  void create_impl(cusparseHandle_t& handle) noexcept {
+    MATHPRIM_CHECK_CUSPARSE(cusparseCreate(&handle));
   }
-
-  cusparseHandle_t get() const {
-    return handle_;
-  }
-
-private:
-  cusparseHandle_t handle_ = nullptr;
-
-  cusparse_singleton() noexcept {
-    MATHPRIM_CHECK_CUSPARSE(cusparseCreate(&handle_));
-  }
-
-  ~cusparse_singleton() noexcept {
-    MATHPRIM_CHECK_CUSPARSE(cusparseDestroy(handle_));
+  void destroy_impl(cusparseHandle_t& handle) noexcept {
+    MATHPRIM_CHECK_CUSPARSE(cusparseDestroy(handle));
   }
 };
+}  // namespace mathprim::singletons
+
+namespace mathprim::sparse {
+namespace blas {
+
+namespace internal {
 
 inline cusparseHandle_t get_cusparse_handle() {
-  return cusparse_singleton::instance().get();
+  return singletons::cusparse_context::get();
 }
 
 }  // namespace internal

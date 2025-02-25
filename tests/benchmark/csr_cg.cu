@@ -75,7 +75,7 @@ static void work_ic(benchmark::State &state) {
 
   using linear_op
       = iterative_solver::sparse_matrix<sparse::blas::naive<float, sparse::sparse_format::csr, par::openmp>>;
-  using preconditioner = iterative_solver::eigen_ilu<float>;
+  using preconditioner = iterative_solver::eigen_ichol<float>;
   iterative_solver::cg<float, device::cpu, linear_op, BlasImpl, preconditioner> cg{linear_op{mat}, BlasImpl{},
                                                                                    preconditioner{mat}};
 
@@ -369,8 +369,8 @@ void work_cuda_ai(benchmark::State &state) {
 #else
 #define LARGE_RANGE 1 << 5
 #endif
-BENCHMARK_TEMPLATE(work_ic, blas::cpu_eigen<float>)->Range(1 << 4, LARGE_RANGE)->Unit(benchmark::kMillisecond);
-BENCHMARK_TEMPLATE(work, blas::cpu_eigen<float>)->Range(1 << 4, LARGE_RANGE)->Unit(benchmark::kMillisecond);
+// BENCHMARK_TEMPLATE(work_ic, blas::cpu_eigen<float>)->Range(1 << 4, LARGE_RANGE)->Unit(benchmark::kMillisecond);
+// BENCHMARK_TEMPLATE(work, blas::cpu_eigen<float>)->Range(1 << 4, LARGE_RANGE)->Unit(benchmark::kMillisecond);
 BENCHMARK(work_cuda)->Range(1 << 4, LARGE_RANGE)->Unit(benchmark::kMillisecond);
 BENCHMARK(work_cuda_ilu0)->Range(1 << 4, LARGE_RANGE)->Unit(benchmark::kMillisecond);
 BENCHMARK(work_cuda_ic)->Range(1 << 4, LARGE_RANGE)->Unit(benchmark::kMillisecond);

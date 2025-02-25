@@ -158,7 +158,7 @@ GTEST_TEST(blas, batch_gemm) {
     beta.view()[i] = 0;
   }
 
-  bl.gemm_batched(1.0f, a.const_view(), b.const_view(), 0.0f, c.view());
+  bl.gemm_batch_strided(1.0f, a.const_view(), b.const_view(), 0.0f, c.view());
 
   for (index_t i = 0; i < batch; ++i) {
     bl.gemm(1.0f, a.const_view().slice(i), b.const_view().slice(i), -1.0f, c.view().slice(i));

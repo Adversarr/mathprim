@@ -1,5 +1,5 @@
 #include <benchmark/benchmark.h>
-
+#include <iostream>
 #include "mathprim/blas/cpu_blas.hpp"
 #include "mathprim/blas/cpu_eigen.hpp"
 #include "mathprim/blas/cublas.cuh"
@@ -196,12 +196,10 @@ void do_test_ana(benchmark::State &state) {
         h_diag_view[blas::cpu_blas<float>{}.amax(h_diag_view.as_const())];
     for (index_t i = 0; i < k; ++i) {
       h_diag_view[i] = largest / h_diag_view[i] - 1.0f;
-      // printf("%d:%.4e\n", i, diag[i]);
     }
     // copy the diagonal buffer to the preconditioner.
     copy(cg.preconditioner().diag().view(), h_diag_view);
   }
-
   auto b = make_cuda_buffer<float>(n);
   auto x = make_cuda_buffer<float>(n);
   auto x_view = x.view();
@@ -222,6 +220,10 @@ std::vector<int64_t> range_dsize{1024};
 std::vector<int64_t> range_k{16, 64, 256};
 // std::vector<int64_t> range_dsize{256};
 // std::vector<int64_t> range_k{64, 256};
+BENCHMARK(do_test_ana)
+    ->ArgsProduct({range_dsize, range_k})
+    ->Unit(benchmark::kMillisecond);
+
 BENCHMARK_TEMPLATE(do_test_exact, blas_t)
     ->ArgsProduct({{32}, {16}})
     ->Unit(benchmark::kMillisecond);
@@ -229,8 +231,5 @@ BENCHMARK_TEMPLATE(do_test_diagonal, blas_t)
     ->ArgsProduct({range_dsize})
     ->Unit(benchmark::kMillisecond);
 
-BENCHMARK(do_test_ana)
-    ->ArgsProduct({range_dsize, range_k})
-    ->Unit(benchmark::kMillisecond);
 
 BENCHMARK_MAIN();

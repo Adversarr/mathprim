@@ -69,7 +69,7 @@ static void work_ic(benchmark::State &state) {
 
   using linear_op
       = iterative_solver::sparse_matrix<sparse::blas::naive<float, sparse::sparse_format::csr, par::openmp>>;
-  using preconditioner = iterative_solver::eigen_incomplete_cholesky<float>;
+  using preconditioner = iterative_solver::eigen_ichol<float>;
   iterative_solver::cg<float, device::cpu, linear_op, BlasImpl, preconditioner> cg{linear_op{mat}, BlasImpl{},
                                                                                    preconditioner{mat}};
 
@@ -110,7 +110,7 @@ static void work2(benchmark::State &state) {
   auto rows = mat.rows();
 
   using linear_op = iterative_solver::sparse_matrix<sparse::blas::naive<float, sparse::sparse_format::csr>>;
-  using preconditioner = iterative_solver::eigen_incomplete_cholesky<float>;
+  using preconditioner = iterative_solver::eigen_ichol<float>;
 
   iterative_solver::cg<float, device::cpu, linear_op, blas_impl, preconditioner> cg{linear_op{mat}, blas_impl{},
                                                                                     preconditioner{}};

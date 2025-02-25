@@ -50,7 +50,8 @@ template <> struct device_traits<cuda> {
 };
 
 template <> struct basic_memcpy<cuda, cpu> {
-  void operator()(void *dst, const void *src, size_t size) const {
+  MATHPRIM_NOINLINE void operator()(void *dst, const void *src,
+                                    size_t size) const {
     if (const auto status = cudaMemcpy(dst, src, size, cudaMemcpyDeviceToHost);
         status != cudaSuccess) {
       throw cuda_error(status);
@@ -59,7 +60,8 @@ template <> struct basic_memcpy<cuda, cpu> {
 };
 
 template <> struct basic_memcpy<cpu, cuda> {
-  void operator()(void *dst, const void *src, size_t size) const {
+  MATHPRIM_NOINLINE void operator()(void *dst, const void *src,
+                                    size_t size) const {
     if (const auto status = cudaMemcpy(dst, src, size, cudaMemcpyHostToDevice);
         status != cudaSuccess) {
       throw cuda_error(status);
@@ -68,7 +70,8 @@ template <> struct basic_memcpy<cpu, cuda> {
 };
 
 template <> struct basic_memcpy<cuda, cuda> {
-  void operator()(void *dst, const void *src, size_t size) const {
+  MATHPRIM_NOINLINE void operator()(void *dst, const void *src,
+                                    size_t size) const {
     if (const auto status =
             cudaMemcpy(dst, src, size, cudaMemcpyDeviceToDevice);
         status != cudaSuccess) {
@@ -86,10 +89,10 @@ template <> struct basic_memcpy<cuda, cuda> {
  * @param shape
  * @return buffer, throw exception if failed.
  */
-template <typename T, typename sshape>
-continuous_buffer<T, sshape, device::cuda> make_cuda_buffer(const sshape &shape) {
+template <typename T, typename Sshape>
+continuous_buffer<T, Sshape, device::cuda> make_cuda_buffer(const Sshape &shape) {
   auto ptr = static_cast<T *>(device::cuda{}.malloc(sizeof(T) * mathprim::numel(shape)));
-  return basic_buffer<T, sshape, default_stride_t<sshape>, device::cuda>(ptr, shape);
+  return basic_buffer<T, Sshape, default_stride_t<Sshape>, device::cuda>(ptr, shape);
 }
 
 template <typename T,typename... Args,
@@ -103,14 +106,14 @@ auto make_cuda_buffer(Args... shape) {
  * @brief Create a pitched buffer, the last dimension is viewd as a struct.
  *
  */
-template <typename T, index_t sshape_x, index_t sshape_y>
-basic_buffer<T, shape_t<sshape_x, sshape_y>, stride_t<keep_dim, 1>, device::cuda> make_cuda_pitched_buffer(
-    const shape_t<sshape_x, sshape_y> &shape) {
-  T* ptr = nullptr;
+template <typename Scalar, index_t SshapeX, index_t SshapeY>
+MATHPRIM_NOINLINE basic_buffer<Scalar, shape_t<SshapeX, SshapeY>, stride_t<keep_dim, 1>, device::cuda>
+make_cuda_pitched_buffer(const shape_t<SshapeX, SshapeY> &shape) {
+  Scalar* ptr = nullptr;
   size_t pitch = 0;
   auto [height, width] = shape;
-  size_t height_in_bytes = static_cast<size_t>(height) * sizeof(T);
-  size_t width_in_bytes = static_cast<size_t>(width) * sizeof(T);
+  size_t height_in_bytes = static_cast<size_t>(height) * sizeof(Scalar);
+  size_t width_in_bytes = static_cast<size_t>(width) * sizeof(Scalar);
 
   auto error = cudaMallocPitch(&ptr, &pitch, width_in_bytes, height_in_bytes);
   if (error != cudaSuccess) {
@@ -122,12 +125,12 @@ basic_buffer<T, shape_t<sshape_x, sshape_y>, stride_t<keep_dim, 1>, device::cuda
          width_in_bytes, height_in_bytes);
 #endif
 
-  using ret_type = basic_buffer<T, shape_t<sshape_x, sshape_y>, stride_t<keep_dim, 1>, device::cuda>;
+  using ret_type = basic_buffer<Scalar, shape_t<SshapeX, SshapeY>, stride_t<keep_dim, 1>, device::cuda>;
   // Although pitch may not be aligned, free it is still safe.
-  ret_type ret(ptr, shape, stride_t<keep_dim, 1>(pitch / sizeof(T), 1));
+  ret_type ret(ptr, shape, stride_t<keep_dim, 1>(pitch / sizeof(Scalar), 1));
 
   // Expect pitch % sizeof(T) == 0
-  if (pitch % sizeof(T) != 0) {
+  if (pitch % sizeof(Scalar) != 0) {
     throw std::runtime_error("Pitch is not a multiple of sizeof(T).");
   }
 
@@ -135,10 +138,9 @@ basic_buffer<T, shape_t<sshape_x, sshape_y>, stride_t<keep_dim, 1>, device::cuda
 }
 
 // Support for CUDA pitched.
-template <typename T, index_t shape_x, index_t shape_y, index_t stride_x,
-          index_t stride_y>
-cudaPitchedPtr to_cuda_pitched_ptr(basic_view<T, shape_t<shape_x, shape_y>,
-                                              stride_t<stride_x, stride_y>, device::cuda> view) {
+template <typename T, index_t ShapeX, index_t ShapeY, index_t StrideX, index_t StrideY>
+MATHPRIM_PRIMFUNC cudaPitchedPtr to_cuda_pitched_ptr(basic_view<T, shape_t<ShapeX, ShapeY>,
+                                                     stride_t<StrideX, StrideY>, device::cuda> view) {
   const auto [height, width] = view.shape();
   const auto [pitch, stride] = view.stride();
   cudaPitchedPtr ptr;
@@ -151,7 +153,7 @@ cudaPitchedPtr to_cuda_pitched_ptr(basic_view<T, shape_t<shape_x, shape_y>,
 }
 
 template <typename T>
-basic_view<T, dshape<2>, stride_t<keep_dim, 1>, device::cuda>
+MATHPRIM_PRIMFUNC basic_view<T, dshape<2>, stride_t<keep_dim, 1>, device::cuda>
 from_cuda_pitched_ptr(cudaPitchedPtr ptr) {
   T* data = static_cast<T*>(ptr.ptr);
   const auto width = static_cast<index_t>(ptr.xsize / sizeof(T));

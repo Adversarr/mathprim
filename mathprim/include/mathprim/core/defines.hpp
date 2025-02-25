@@ -365,7 +365,7 @@ struct basic_memcpy;
 
 template <>
 struct basic_memcpy<cpu, cpu> {
-  void operator()(void *dst, const void *src, size_t size) const noexcept {
+  MATHPRIM_NOINLINE void operator()(void *dst, const void *src, size_t size) const noexcept {
     std::memcpy(dst, src, size);
   }
 };

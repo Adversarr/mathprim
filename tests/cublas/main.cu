@@ -126,7 +126,7 @@ int main() {
   copy(d_b.view(), d_b.view());
   copy(d_c.view(), d_c.view());
 
-  bl.gemm_batched(1.0f, d_a.const_view(), d_b.const_view(), -1.0f, d_c.view());
+  bl.gemm_batch_strided(1.0f, d_a.const_view(), d_b.const_view(), -1.0f, d_c.view());
   // assert d_c = 0
   auto norm = bl.norm(d_c.const_view());
   std::cout << norm << std::endl;

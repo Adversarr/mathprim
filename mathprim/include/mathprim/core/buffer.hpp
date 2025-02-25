@@ -34,14 +34,19 @@ public:
   template <typename, typename, typename, typename>
   friend class basic_buffer;  // ok, they are friends.
 
+  // Destructor: default and noexcept, all FREE errors will indicates a fatal error.
+  ~basic_buffer() noexcept = default;
+
   // Move constructor: allow implicit cast from a buffer with same shape and stride at runtime.
   template <typename Sshape2, typename Sstride2,
             typename = std::enable_if_t<internal::is_buffer_castable_v<Sshape2, Sstride2, Sshape, Sstride>>>
-  basic_buffer(basic_buffer<Scalar, Sshape2, Sstride2, Dev> &&other) :  // NOLINT(google-explicit-constructor)
+  basic_buffer(basic_buffer<Scalar, Sshape2, Sstride2, Dev> &&other) noexcept :  // NOLINT(google-explicit-constructor)
       shape_(other.shape()), stride_(other.stride()), data_(std::move(other.data_)) {}
+
+  // Move assignment
   template <typename Sshape2, typename Sstride2,
             typename = std::enable_if_t<internal::is_buffer_castable_v<Sshape2, Sstride2, Sshape, Sstride>>>
-  basic_buffer &operator=(basic_buffer<Scalar, Sshape2, Sstride2, Dev> &&other) {
+  basic_buffer &operator=(basic_buffer<Scalar, Sshape2, Sstride2, Dev> &&other) noexcept {
     if (this != &other) {
       shape_ = other.shape();
       stride_ = other.stride();
@@ -50,13 +55,13 @@ public:
     return *this;
   }
 
-  // not responsible for the allocation but responsible for deallocation
+  // For external allocated buffers. not responsible for the allocation but responsible for deallocation
   basic_buffer(Scalar *data, const Sshape &shape) : basic_buffer(data, shape, make_default_stride<Scalar>(shape)) {}
   basic_buffer(Scalar *data, const Sshape &shape, const Sstride &stride) :
       shape_(shape), stride_(stride), data_(data) {}
 
   // Disable copy constructor and all assignment.
-  basic_buffer() = default; // empty buffer, waiting for move assignement.
+  basic_buffer() noexcept = default;  // empty buffer, waiting for move assignement.
   basic_buffer(const basic_buffer &) = delete;
   basic_buffer &operator=(const basic_buffer &) = delete;
 
@@ -169,8 +174,23 @@ public:
     return stride_ == make_default_stride<Scalar>(shape_);
   }
 
+  /**
+   * @brief Return a new buffer with the same shape and stride, but different device.
+   *        It asserts the buffer is contiguous.
+   *
+   * @tparam Device2
+   * @return basic_buffer<Scalar, Sshape, Sstride, Device2>
+   */
   template <typename Device2>
   basic_buffer<Scalar, Sshape, Sstride, Device2> to(const Device2 & = {}) const;
+
+  /**
+   * @brief Return a new buffer with the same shape and stride, but different device.
+   *        It asserts the buffer is contiguous.
+   * 
+   * @return basic_buffer<Scalar, Sshape, Sstride, Dev> 
+   */
+  basic_buffer<Scalar, Sshape, Sstride, Dev> clone() const;
 
 private:
   struct no_destructor_deleter {
@@ -223,4 +243,37 @@ basic_buffer<Scalar, Sshape, Sstride, Device2> basic_buffer<Scalar, Sshape, Sstr
   return buf;
 }
 
+template <typename Scalar, typename Sshape, typename Sstride, typename Dev>
+basic_buffer<Scalar, Sshape, Sstride, Dev> basic_buffer<Scalar, Sshape, Sstride, Dev>::clone() const {
+  if (!is_contiguous()) {
+    throw std::runtime_error("Cannot clone a non-contiguous buffer directly.");
+  }
+
+  auto buf = make_buffer<Scalar, Dev>(shape_);
+  copy(buf.view(), view());
+  return buf;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+/// Memcpy between buffer/views.
+///////////////////////////////////////////////////////////////////////////////
+template <typename T1, typename Sshape1, typename Sstride1, typename Dev1,  //
+          typename T2, typename Sshape2, typename Sstride2, typename Dev2>
+void copy(const basic_buffer<T1, Sshape1, Sstride1, Dev1> &dst, const basic_buffer<T2, Sshape2, Sstride2, Dev2> &src,
+          bool enforce_same_shape = true) {
+  return copy(dst.view(), src.const_view(), enforce_same_shape);
+}
+
+template <typename T1, typename Sshape1, typename Sstride1, typename Dev1,  //
+          typename T2, typename Sshape2, typename Sstride2, typename Dev2>
+void copy(const basic_view<T1, Sshape1, Sstride1, Dev1> &dst, const basic_buffer<T2, Sshape2, Sstride2, Dev2> &src,
+          bool enforce_same_shape = true) {
+  return copy(dst, src.const_view(), enforce_same_shape);
+}
+template <typename T1, typename Sshape1, typename Sstride1, typename Dev1,  //
+          typename T2, typename Sshape2, typename Sstride2, typename Dev2>
+void copy(const basic_buffer<T1, Sshape1, Sstride1, Dev1> &dst, const basic_view<T2, Sshape2, Sstride2, Dev2> &src,
+          bool enforce_same_shape = true) {
+  return copy(dst.view(), src, enforce_same_shape);
+}
 }  // namespace mathprim

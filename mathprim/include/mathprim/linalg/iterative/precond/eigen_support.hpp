@@ -57,7 +57,7 @@ protected:
 };
 
 template <typename Scalar>
-using eigen_incomplete_cholesky = eigen_preconditioner<Scalar, Eigen::IncompleteCholesky<Scalar>>;
+using eigen_ichol = eigen_preconditioner<Scalar, Eigen::IncompleteCholesky<Scalar>>;
 
 template <typename Scalar>
 using eigen_ilu = eigen_preconditioner<Scalar, Eigen::IncompleteLUT<Scalar>>;

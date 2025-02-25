@@ -478,7 +478,7 @@ MATHPRIM_PRIMFUNC basic_view<T, Sshape, Sstride, Device> view(T *data, const Ssh
 ///////////////////////////////////////////////////////////////////////////////
 template <typename T1, typename Sshape1, typename Sstride1, typename Dev1, typename T2, typename Sshape2,
           typename Sstride2, typename Dev2>
-void copy(basic_view<T1, Sshape1, Sstride1, Dev1> dst, basic_view<T2, Sshape2, Sstride2, Dev2> src,
+void copy(const basic_view<T1, Sshape1, Sstride1, Dev1> &dst, const basic_view<T2, Sshape2, Sstride2, Dev2> &src,
           bool enforce_same_shape = true) {
   MATHPRIM_INTERNAL_CHECK_THROW(src.is_contiguous() && dst.is_contiguous(), std::runtime_error,
                                 "The source or destination view is not contiguous.");

@@ -145,7 +145,7 @@ static void BM_batched_gemm(benchmark::State& state) {
   auto c_view = c.view();
   Blas bl;
   for (auto _ : state) {
-    bl.gemm_batched(1.0f, a_view, b_view, 1.0f, c_view);
+    bl.gemm_batch_strided(1.0f, a_view, b_view, 1.0f, c_view);
   }
 }
 
