@@ -13,7 +13,7 @@ struct format_convert {
   using const_view_type = basic_sparse_view<const Scalar, Device, SparseCompression>;
   using coo_matrix = basic_sparse_matrix<Scalar, Device, sparse_format::coo>;
   using const_coo_view = basic_sparse_view<const Scalar, Device, sparse_format::coo>;
-  using dense_type = continuous_buffer<Scalar, dshape<2>, Device>;
+  using dense_type = contiguous_buffer<Scalar, dshape<2>, Device>;
 
 
   // API for converting from one format to another

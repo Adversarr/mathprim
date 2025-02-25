@@ -90,7 +90,7 @@ template <> struct basic_memcpy<cuda, cuda> {
  * @return buffer, throw exception if failed.
  */
 template <typename T, typename Sshape>
-continuous_buffer<T, Sshape, device::cuda> make_cuda_buffer(const Sshape &shape) {
+contiguous_buffer<T, Sshape, device::cuda> make_cuda_buffer(const Sshape &shape) {
   auto ptr = static_cast<T *>(device::cuda{}.malloc(sizeof(T) * mathprim::numel(shape)));
   return basic_buffer<T, Sshape, default_stride_t<Sshape>, device::cuda>(ptr, shape);
 }

@@ -163,7 +163,7 @@ static constexpr Eigen::AlignmentType alignment_v = internal::alignment_impl<T, 
 template <typename T, int rows, int cols, typename dev>
 using matrix_map_t = Eigen::Map<matrix_t<T, cols, rows>, Eigen::Unaligned, Eigen::Stride<dynamic, dynamic>>;
 
-/// Determine a proper type for continuous mapped matrix
+/// Determine a proper type for contiguous mapped matrix
 template <typename T, int rows, int cols, typename dev>
 using matrix_cmap_t = Eigen::Map<matrix_t<T, cols, rows>, alignment_v<T, dev, rows, cols>, Eigen::Stride<0, 0>>;
 
@@ -182,12 +182,12 @@ using matrix_view_t
 template <typename T, int rows, typename dev>
 using vector_map_t = Eigen::Map<vector_t<T, rows>, Eigen::Unaligned, Eigen::InnerStride<dynamic>>;
 
-/// Determine a proper type for continuous mapped vector
+/// Determine a proper type for contiguous mapped vector
 template <typename T, int rows, typename dev>
 using vector_cmap_t = Eigen::Map<vector_t<T, rows>, alignment_v<T, dev, rows, 1>, Eigen::Stride<0, 0>>;
 
 /**
- * @brief Create a continuous map to matrix from a buffer view.
+ * @brief Create a contiguous map to matrix from a buffer view.
  */
 template <typename Scalar, index_t s_rows, index_t s_cols, index_t outer_stride, index_t inner_stride, typename dev>
 MATHPRIM_PRIMFUNC matrix_cmap_t<Scalar, to_eigen_v<s_rows>, to_eigen_v<s_cols>, dev> cmap(
@@ -198,7 +198,7 @@ MATHPRIM_PRIMFUNC matrix_cmap_t<Scalar, to_eigen_v<s_rows>, to_eigen_v<s_cols>, 
 }
 
 /**
- * @brief Create a continuous map to vector from a buffer view.
+ * @brief Create a contiguous map to vector from a buffer view.
  */
 template <typename Scalar, index_t s_rows, index_t inner_stride, typename dev>
 MATHPRIM_PRIMFUNC vector_cmap_t<Scalar, to_eigen_v<s_rows>, dev> cmap(
@@ -231,11 +231,11 @@ MATHPRIM_PRIMFUNC matrix_map_t<Scalar, to_eigen_v<s_rows>, to_eigen_v<s_cols>, d
 
 template <typename Scalar, index_t s_rows, index_t s_cols, index_t outer_stride, index_t inner_stride, typename dev>
 MATHPRIM_PRIMFUNC std::conditional_t<
-    ::mathprim::internal::is_continuous_compile_time_v<shape_t<s_rows, s_cols>, stride_t<outer_stride, inner_stride>>,
+    ::mathprim::internal::is_contiguous_compile_time_v<shape_t<s_rows, s_cols>, stride_t<outer_stride, inner_stride>>,
     matrix_cmap_t<Scalar, to_eigen_v<s_rows>, to_eigen_v<s_cols>, dev>,
     matrix_map_t<Scalar, to_eigen_v<s_rows>, to_eigen_v<s_cols>, dev>>
 amap(basic_view<Scalar, shape_t<s_rows, s_cols>, stride_t<outer_stride, inner_stride>, dev> view) noexcept {
-  if constexpr (::mathprim::internal::is_continuous_compile_time_v<shape_t<s_rows, s_cols>,
+  if constexpr (::mathprim::internal::is_contiguous_compile_time_v<shape_t<s_rows, s_cols>,
                                                                    stride_t<outer_stride, inner_stride>>) {
     return cmap<Scalar, s_rows, s_cols, outer_stride, inner_stride, dev>(view);
   } else {
@@ -245,10 +245,10 @@ amap(basic_view<Scalar, shape_t<s_rows, s_cols>, stride_t<outer_stride, inner_st
 
 template <typename Scalar, index_t s_rows, index_t inner_stride, typename dev>
 MATHPRIM_PRIMFUNC
-    std::conditional_t<::mathprim::internal::is_continuous_compile_time_v<shape_t<s_rows>, stride_t<inner_stride>>,
+    std::conditional_t<::mathprim::internal::is_contiguous_compile_time_v<shape_t<s_rows>, stride_t<inner_stride>>,
                        vector_cmap_t<Scalar, to_eigen_v<s_rows>, dev>, vector_map_t<Scalar, to_eigen_v<s_rows>, dev>>
     amap(basic_view<Scalar, shape_t<s_rows>, stride_t<inner_stride>, dev> view) noexcept {
-  if constexpr (::mathprim::internal::is_continuous_compile_time_v<shape_t<s_rows>, stride_t<inner_stride>>) {
+  if constexpr (::mathprim::internal::is_contiguous_compile_time_v<shape_t<s_rows>, stride_t<inner_stride>>) {
     return cmap<Scalar, s_rows, inner_stride, dev>(view);
   } else {
     return map<Scalar, s_rows, inner_stride, dev>(view);
@@ -267,7 +267,7 @@ MATHPRIM_PRIMFUNC vector_map_t<Scalar, to_eigen_v<s_rows>, dev> map(
 }
 
 /**
- * @brief Create a continuous Eigen::Ref from a buffer view. (matrix)
+ * @brief Create a contiguous Eigen::Ref from a buffer view. (matrix)
  */
 template <typename Scalar, index_t s_rows, index_t s_cols, index_t outer_stride, index_t inner_stride, typename dev>
 MATHPRIM_PRIMFUNC Eigen::Ref<matrix_t<Scalar, to_eigen_v<s_rows>, to_eigen_v<s_cols>>,
@@ -279,7 +279,7 @@ cref(basic_view<Scalar, shape_t<s_rows, s_cols>, stride_t<outer_stride, inner_st
 }
 
 /**
- * @brief Create a continuous Eigen::Ref from a buffer view. (vector)
+ * @brief Create a contiguous Eigen::Ref from a buffer view. (vector)
  */
 template <typename Scalar, index_t s_rows, index_t inner_stride, typename dev>
 MATHPRIM_PRIMFUNC Eigen::Ref<vector_t<Scalar, to_eigen_v<s_rows>>, alignment_v<Scalar, dev, to_eigen_v<s_rows>, 1>>

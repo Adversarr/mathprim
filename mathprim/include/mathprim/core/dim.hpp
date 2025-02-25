@@ -59,7 +59,7 @@ template <typename pack>
 using default_stride_t = god::to_pack<typename default_stride<typename pack::seq>::type>;
 
 template <typename shape, typename stride>
-constexpr bool is_continuous_compile_time_v = internal::is_compile_time_equal_v<default_stride_t<shape>, stride>;
+constexpr bool is_contiguous_compile_time_v = internal::is_compile_time_equal_v<default_stride_t<shape>, stride>;
 
 template <index_t... svalues, index_t ndim, index_t... seq>
 MATHPRIM_PRIMFUNC index_t sub2ind(const index_pack<svalues...> &stride, const index_array<ndim> &subscript,

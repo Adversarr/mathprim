@@ -112,7 +112,7 @@ struct to_mp_view_standard<nb::ndarray<Args...>> {
 
   using mp_shape = to_mp_shape_t<Shape>;
   using mp_dev = to_mp_device_t<typename Config::DeviceType>;
-  using type = mp::continuous_view<Scalar, mp_shape, mp_dev>;
+  using type = mp::contiguous_view<Scalar, mp_shape, mp_dev>;
 };
 template <typename nb_view>
 using to_mp_view_standard_t = typename to_mp_view_standard<nb_view>::type;

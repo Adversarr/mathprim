@@ -205,7 +205,7 @@ private:
 };
 
 template <typename Scalar, typename Sshape, typename Dev>
-using continuous_buffer = basic_buffer<Scalar, Sshape, default_stride_t<Sshape>, Dev>;
+using contiguous_buffer = basic_buffer<Scalar, Sshape, default_stride_t<Sshape>, Dev>;
 
 /**
  * @brief The default creator for a buffer.
@@ -215,13 +215,13 @@ using continuous_buffer = basic_buffer<Scalar, Sshape, default_stride_t<Sshape>,
  * @return buffer, throw exception if failed.
  */
 template <typename Scalar, typename Dev = device::cpu, typename Sshape>
-continuous_buffer<Scalar, Sshape, Dev> make_buffer(const Sshape &shape) {
+contiguous_buffer<Scalar, Sshape, Dev> make_buffer(const Sshape &shape) {
   auto ptr = static_cast<Scalar *>(Dev{}.malloc(sizeof(Scalar) * mathprim::numel(shape)));
   return basic_buffer<Scalar, Sshape, default_stride_t<Sshape>, Dev>(ptr, shape);
 }
 
 /**
- * @brief Create a continuous buffer, but no static information.
+ * @brief Create a contiguous buffer, but no static information.
  *
  */
 template <typename Scalar, typename Dev = device::cpu, typename... Args,

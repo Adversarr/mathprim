@@ -11,9 +11,9 @@ namespace mathprim::io {
 template <typename Scalar, index_t Ndim>
 class numpy {
 public:
-  using buffer_type = continuous_buffer<Scalar, dshape<Ndim>, device::cpu>;
-  using view_type = continuous_view<Scalar, dshape<Ndim>, device::cpu>;
-  using const_view_type = continuous_view<const Scalar, dshape<Ndim>, device::cpu>;
+  using buffer_type = contiguous_buffer<Scalar, dshape<Ndim>, device::cpu>;
+  using view_type = contiguous_view<Scalar, dshape<Ndim>, device::cpu>;
+  using const_view_type = contiguous_view<const Scalar, dshape<Ndim>, device::cpu>;
 
   void write(std::ostream& os, const const_view_type& view);
 

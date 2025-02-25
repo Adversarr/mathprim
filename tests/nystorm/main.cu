@@ -17,9 +17,9 @@
 
 using namespace mathprim;
 using blas_t = blas::cublas<float>;
-using low_rank = iterative_solver::low_rank_preconditioner<
+using low_rank = sparse::iterative::low_rank_preconditioner<
     float, device::cuda, sparse::sparse_format::csr, blas_t>;
-using linear_op = iterative_solver::sparse_matrix<
+using linear_op = sparse::iterative::sparse_matrix<
     sparse::blas::cusparse<float, sparse::sparse_format::csr>>;
 
 // Use a analytical solution for the basis:
@@ -33,7 +33,7 @@ float basis_fn(index_t i, index_t j, index_t dsize, index_t x, index_t y) {
 
 template <typename Blas> void do_test_exact(benchmark::State &state) {
   using solver =
-      iterative_solver::cg<float, device::cuda, linear_op, blas_t, low_rank>;
+      sparse::iterative::cg<float, device::cuda, linear_op, blas_t, low_rank>;
   index_t dsize = state.range(0);
   auto laplacian = sparse::laplace_operator<float, 2>(make_shape(dsize, dsize))
                        .matrix<sparse::sparse_format::csr>();
@@ -115,10 +115,10 @@ template <typename Blas> void do_test_exact(benchmark::State &state) {
 }
 
 template <typename Blas> void do_test_diagonal(benchmark::State &state) {
-  using precond = mathprim::iterative_solver::diagonal_preconditioner<
+  using precond = mathprim::sparse::iterative::diagonal_preconditioner<
       float, device::cuda, sparse::sparse_format::csr, Blas>;
   using solver =
-      iterative_solver::cg<float, device::cuda, linear_op, blas_t, precond>;
+      sparse::iterative::cg<float, device::cuda, linear_op, blas_t, precond>;
   index_t ndim = state.range(0);
   auto laplacian = sparse::laplace_operator<float, 2>(make_shape(ndim, ndim))
                        .matrix<sparse::sparse_format::csr>();
@@ -144,7 +144,7 @@ template <typename Blas> void do_test_diagonal(benchmark::State &state) {
 
 void do_test_ana(benchmark::State &state) {
   using solver =
-      iterative_solver::cg<float, device::cuda, linear_op, blas_t, low_rank>;
+      sparse::iterative::cg<float, device::cuda, linear_op, blas_t, low_rank>;
   index_t dsize = state.range(0);
   auto laplacian = sparse::laplace_operator<float, 2>(make_shape(dsize, dsize))
                        .matrix<sparse::sparse_format::csr>();

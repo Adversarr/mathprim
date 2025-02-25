@@ -26,10 +26,10 @@ static void work(benchmark::State &state) {
   auto rows = mat.rows();
 
   using linear_op
-      = iterative_solver::sparse_matrix<sparse::blas::naive<float, sparse::sparse_format::csr, par::openmp>>;
+      = sparse::iterative::sparse_matrix<sparse::blas::naive<float, sparse::sparse_format::csr, par::openmp>>;
   using preconditioner
-      = iterative_solver::diagonal_preconditioner<float, device::cpu, sparse::sparse_format::csr, BlasImpl>;
-  iterative_solver::cg<float, device::cpu, linear_op, BlasImpl, preconditioner> cg{linear_op{mat}, BlasImpl{},
+      = sparse::iterative::diagonal_preconditioner<float, device::cpu, sparse::sparse_format::csr, BlasImpl>;
+  sparse::iterative::cg<float, device::cpu, linear_op, BlasImpl, preconditioner> cg{linear_op{mat}, BlasImpl{},
                                                                                    preconditioner{mat}};
 
   auto b = make_buffer<float>(rows);
@@ -68,9 +68,9 @@ static void work_ic(benchmark::State &state) {
   auto rows = mat.rows();
 
   using linear_op
-      = iterative_solver::sparse_matrix<sparse::blas::naive<float, sparse::sparse_format::csr, par::openmp>>;
-  using preconditioner = iterative_solver::eigen_ichol<float>;
-  iterative_solver::cg<float, device::cpu, linear_op, BlasImpl, preconditioner> cg{linear_op{mat}, BlasImpl{},
+      = sparse::iterative::sparse_matrix<sparse::blas::naive<float, sparse::sparse_format::csr, par::openmp>>;
+  using preconditioner = sparse::iterative::eigen_ichol<float>;
+  sparse::iterative::cg<float, device::cpu, linear_op, BlasImpl, preconditioner> cg{linear_op{mat}, BlasImpl{},
                                                                                    preconditioner{mat}};
 
   auto b = make_buffer<float>(rows);
@@ -109,10 +109,10 @@ static void work2(benchmark::State &state) {
   auto mat = mat_buf.const_view();
   auto rows = mat.rows();
 
-  using linear_op = iterative_solver::sparse_matrix<sparse::blas::naive<float, sparse::sparse_format::csr>>;
-  using preconditioner = iterative_solver::eigen_ichol<float>;
+  using linear_op = sparse::iterative::sparse_matrix<sparse::blas::naive<float, sparse::sparse_format::csr>>;
+  using preconditioner = sparse::iterative::eigen_ichol<float>;
 
-  iterative_solver::cg<float, device::cpu, linear_op, blas_impl, preconditioner> cg{linear_op{mat}, blas_impl{},
+  sparse::iterative::cg<float, device::cpu, linear_op, blas_impl, preconditioner> cg{linear_op{mat}, blas_impl{},
                                                                                     preconditioner{}};
   cg.preconditioner().compute(mat);
 
@@ -152,10 +152,10 @@ static void work_chol(benchmark::State &state) {
   auto mat = mat_buf.const_view();
   auto rows = mat.rows();
 
-  using linear_op = iterative_solver::sparse_matrix<sparse::blas::cholmod<float, sparse::sparse_format::csr>>;
-  using preconditioner = iterative_solver::diagonal_preconditioner<float, device::cpu, sparse::sparse_format::csr,
+  using linear_op = sparse::iterative::sparse_matrix<sparse::blas::cholmod<float, sparse::sparse_format::csr>>;
+  using preconditioner = sparse::iterative::diagonal_preconditioner<float, device::cpu, sparse::sparse_format::csr,
                                                                    blas::cpu_blas<float>>;
-  iterative_solver::cg<float, device::cpu, linear_op, blas::cpu_blas<float>, preconditioner> cg{
+  sparse::iterative::cg<float, device::cpu, linear_op, blas::cpu_blas<float>, preconditioner> cg{
     linear_op{mat}, blas::cpu_blas<float>{}, preconditioner{mat}};
 
   auto b = make_buffer<float>(rows);

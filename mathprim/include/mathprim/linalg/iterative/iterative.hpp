@@ -5,7 +5,7 @@
 #include "mathprim/core/view.hpp"
 #include "mathprim/sparse/basic_sparse.hpp"
 
-namespace mathprim::iterative_solver {
+namespace mathprim::sparse::iterative {
 
 ///////////////////////////////////////////////////////////////////////////////
 /// Linear Operator
@@ -13,8 +13,8 @@ namespace mathprim::iterative_solver {
 template <typename Derived, typename Scalar, typename Device>
 class basic_linear_operator {
 public:
-  using vector_type = continuous_view<Scalar, shape_t<keep_dim>, Device>;
-  using const_vector = continuous_view<const Scalar, shape_t<keep_dim>, Device>;
+  using vector_type = contiguous_view<Scalar, shape_t<keep_dim>, Device>;
+  using const_vector = contiguous_view<const Scalar, shape_t<keep_dim>, Device>;
 
   index_t rows() const {
     return rows_;
@@ -77,8 +77,8 @@ private:
 template <typename Derived, typename Scalar, typename Device>
 class basic_preconditioner {
 public:
-  using vector_type = continuous_view<Scalar, shape_t<keep_dim>, Device>;
-  using const_vector = continuous_view<const Scalar, shape_t<keep_dim>, Device>;
+  using vector_type = contiguous_view<Scalar, shape_t<keep_dim>, Device>;
+  using const_vector = contiguous_view<const Scalar, shape_t<keep_dim>, Device>;
 
   // y <- M^-1 * x
   void apply(vector_type y, const_vector x) {
@@ -126,8 +126,8 @@ public:
   using preconditioner_type = PreconditionerT;
   using results_type = iterative_solver_result<Scalar>;
   using parameters_type = iterative_solver_parameters<Scalar>;
-  using vector_type = continuous_view<Scalar, shape_t<keep_dim>, Device>;
-  using const_vector = continuous_view<const Scalar, shape_t<keep_dim>, Device>;
+  using vector_type = contiguous_view<Scalar, shape_t<keep_dim>, Device>;
+  using const_vector = contiguous_view<const Scalar, shape_t<keep_dim>, Device>;
 
   explicit basic_iterative_solver(linear_operator_type matrix, blas_type blas = {},
                                   preconditioner_type preconditioner = {}) :
@@ -188,7 +188,7 @@ protected:
   linear_operator_type matrix_;
   blas_type blas_;
   preconditioner_type preconditioner_;
-  continuous_buffer<Scalar, shape_t<keep_dim>, Device> residual_;
+  contiguous_buffer<Scalar, shape_t<keep_dim>, Device> residual_;
 };
 
-}  // namespace mathprim::iterative_solver
+}  // namespace mathprim::sparse::iterative

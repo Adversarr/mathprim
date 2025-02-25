@@ -145,7 +145,7 @@ private:
   cusparseDnVecDescr_t x_desc_{nullptr};
   cusparseDnVecDescr_t y_desc_{nullptr};
 
-  using temp_buffer = continuous_buffer<char, shape_t<keep_dim>, device::cuda>;
+  using temp_buffer = contiguous_buffer<char, shape_t<keep_dim>, device::cuda>;
   std::unique_ptr<temp_buffer> no_transpose_buffer_;
   std::unique_ptr<temp_buffer> transpose_buffer_;
 };

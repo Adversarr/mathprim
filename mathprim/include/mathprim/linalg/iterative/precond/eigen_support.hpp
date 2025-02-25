@@ -3,7 +3,7 @@
 #include "mathprim/supports/eigen_dense.hpp"
 #include "mathprim/supports/eigen_sparse.hpp"  // map for sparse matrix
 
-namespace mathprim::iterative_solver {
+namespace mathprim::sparse::iterative {
 
 template <typename Scalar, typename EigenPreconditioner>
 class eigen_preconditioner
@@ -70,4 +70,4 @@ using eigen_diagonal_preconditioner = eigen_preconditioner<Scalar, Eigen::Diagon
 template <typename Scalar>
 using eigen_identity_preconditioner = eigen_preconditioner<Scalar, Eigen::IdentityPreconditioner>;
 
-}  // namespace mathprim::iterative_solver
+}  // namespace mathprim::sparse::iterative

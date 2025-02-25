@@ -3,7 +3,7 @@
 #include "mathprim/sparse/basic_sparse.hpp"
 #include "mathprim/core/utils/timed.hpp"
 #include <cuda_runtime.h>
-namespace mathprim::iterative_solver {
+namespace mathprim::sparse::iterative {
 
 namespace internal {}
 
@@ -12,14 +12,14 @@ class low_rank_preconditioner
     : public basic_preconditioner<low_rank_preconditioner<Scalar, Device, Compression, Blas>, Scalar, Device> {
 public:
   using const_sparse = sparse::basic_sparse_view<const Scalar, Device, Compression>;
-  using buffer_type = continuous_buffer<Scalar, shape_t<keep_dim>, Device>;
+  using buffer_type = contiguous_buffer<Scalar, shape_t<keep_dim>, Device>;
   using base = basic_preconditioner<low_rank_preconditioner<Scalar, Device, Compression, Blas>, Scalar, Device>;
   friend base;
   using vector_type = typename base::vector_type;
   using const_vector = typename base::const_vector;
-  using basis_type = continuous_buffer<Scalar, dshape<2>, Device>;
-  using diag_type = continuous_buffer<Scalar, dshape<1>, Device>;
-  using temp_type = continuous_buffer<Scalar, dshape<1>, Device>;
+  using basis_type = contiguous_buffer<Scalar, dshape<2>, Device>;
+  using diag_type = contiguous_buffer<Scalar, dshape<1>, Device>;
+  using temp_type = contiguous_buffer<Scalar, dshape<1>, Device>;
 
   explicit low_rank_preconditioner(index_t n, index_t k) :
       mat_U_trans_(make_buffer<Scalar, Device>(make_shape(k, n))),
@@ -74,4 +74,4 @@ protected:
   Blas blas_;
 };
 
-}  // namespace mathprim::iterative_solver
+}  // namespace mathprim::sparse::iterative

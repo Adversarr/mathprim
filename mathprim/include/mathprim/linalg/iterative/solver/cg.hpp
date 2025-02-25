@@ -2,7 +2,7 @@
 #include <iostream>
 
 #include "mathprim/linalg/iterative/iterative.hpp"
-namespace mathprim::iterative_solver {
+namespace mathprim::sparse::iterative {
 
 template <typename Scalar, typename device, typename LinearOperatorT, typename BlasT,
           typename PreconditionerT = none_preconditioner<Scalar, device>>
@@ -93,7 +93,7 @@ public:
   }
 
 private:
-  continuous_buffer<Scalar, shape_t<keep_dim>, device> q_;  // temporary buffer
-  continuous_buffer<Scalar, shape_t<keep_dim>, device> d_;  // search direction
+  contiguous_buffer<Scalar, shape_t<keep_dim>, device> q_;  // temporary buffer
+  contiguous_buffer<Scalar, shape_t<keep_dim>, device> d_;  // search direction
 };
-}  // namespace mathprim::iterative_solver
+}  // namespace mathprim::sparse::iterative

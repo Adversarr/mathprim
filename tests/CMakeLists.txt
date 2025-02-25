@@ -21,3 +21,4 @@ endif()
 
 add_subdirectory(eigen)
 add_subdirectory(nystorm)
+add_subdirectory(cholmod)

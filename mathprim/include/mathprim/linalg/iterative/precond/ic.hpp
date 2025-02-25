@@ -14,7 +14,7 @@
 #  pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 #endif
 
-namespace mathprim::iterative_solver {
+namespace mathprim::sparse::iterative {
 
 template <typename Scalar, typename Device, sparse::sparse_format SparseCompression>
 class ichol;
@@ -275,9 +275,9 @@ private:
   cusparseMatDescr_t descr_ichol_{nullptr};
   csric02Info_t info_ichol_{nullptr};
   cusparseSpMatDescr_t descr_lower_{nullptr};
-  continuous_buffer<Scalar, dshape<1>, device::cuda> chol_nnz_copy_;
-  continuous_buffer<Scalar, dshape<1>, device::cuda> buffer_intern_;
-  continuous_buffer<char, dshape<1>, device::cuda> buffer_l_, buffer_lt_, buffer_chol_;
+  contiguous_buffer<Scalar, dshape<1>, device::cuda> chol_nnz_copy_;
+  contiguous_buffer<Scalar, dshape<1>, device::cuda> buffer_intern_;
+  contiguous_buffer<char, dshape<1>, device::cuda> buffer_l_, buffer_lt_, buffer_chol_;
 
   // solver
   cusparseSpSVDescr_t spsvDescrL_{nullptr}, spsvDescrLtrans_{nullptr};
@@ -286,7 +286,7 @@ private:
   cusparseDnVecDescr_t vec_x_{nullptr}, vec_y_{nullptr}, vec_intern_{nullptr};
 };
 
-}  // namespace mathprim::iterative_solver
+}  // namespace mathprim::sparse::iterative
 
 #ifdef GNUC
 

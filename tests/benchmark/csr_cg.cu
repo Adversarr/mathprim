@@ -30,10 +30,10 @@ static void work(benchmark::State &state) {
   auto rows = mat.rows();
 
   using linear_op
-      = iterative_solver::sparse_matrix<sparse::blas::naive<float, sparse::sparse_format::csr, par::openmp>>;
+      = sparse::iterative::sparse_matrix<sparse::blas::naive<float, sparse::sparse_format::csr, par::openmp>>;
   using preconditioner
-      = iterative_solver::diagonal_preconditioner<float, device::cpu, sparse::sparse_format::csr, BlasImpl>;
-  iterative_solver::cg<float, device::cpu, linear_op, BlasImpl, preconditioner> cg{linear_op{mat}, BlasImpl{},
+      = sparse::iterative::diagonal_preconditioner<float, device::cpu, sparse::sparse_format::csr, BlasImpl>;
+  sparse::iterative::cg<float, device::cpu, linear_op, BlasImpl, preconditioner> cg{linear_op{mat}, BlasImpl{},
                                                                                    preconditioner{mat}};
 
   auto b = make_buffer<float>(rows);
@@ -74,9 +74,9 @@ static void work_ic(benchmark::State &state) {
   auto rows = mat.rows();
 
   using linear_op
-      = iterative_solver::sparse_matrix<sparse::blas::naive<float, sparse::sparse_format::csr, par::openmp>>;
-  using preconditioner = iterative_solver::eigen_ichol<float>;
-  iterative_solver::cg<float, device::cpu, linear_op, BlasImpl, preconditioner> cg{linear_op{mat}, BlasImpl{},
+      = sparse::iterative::sparse_matrix<sparse::blas::naive<float, sparse::sparse_format::csr, par::openmp>>;
+  using preconditioner = sparse::iterative::eigen_ichol<float>;
+  sparse::iterative::cg<float, device::cpu, linear_op, BlasImpl, preconditioner> cg{linear_op{mat}, BlasImpl{},
                                                                                    preconditioner{mat}};
 
   auto b = make_buffer<float>(rows);
@@ -132,11 +132,11 @@ void work_cuda(benchmark::State &state) {
   copy(d_csr_col_idx.view(), col_idx);
   copy(d_csr_row_ptr.view(), row_ptr);
 
-  using linear_op = iterative_solver::sparse_matrix<sparse::blas::cusparse<float, sparse::sparse_format::csr>>;
+  using linear_op = sparse::iterative::sparse_matrix<sparse::blas::cusparse<float, sparse::sparse_format::csr>>;
   using blas_t = blas::cublas<float>;
   using preconditioner
-      = iterative_solver::diagonal_preconditioner<float, device::cuda, sparse::sparse_format::csr, blas_t>;
-  iterative_solver::cg<float, device::cuda, linear_op, blas::cublas<float>, preconditioner> cg{linear_op{mat}, blas_t{},
+      = sparse::iterative::diagonal_preconditioner<float, device::cuda, sparse::sparse_format::csr, blas_t>;
+  sparse::iterative::cg<float, device::cuda, linear_op, blas::cublas<float>, preconditioner> cg{linear_op{mat}, blas_t{},
                                                                                                preconditioner{mat}};
 
   auto d_b = make_cuda_buffer<float>(rows);
@@ -192,12 +192,12 @@ void work_cuda_ilu0(benchmark::State &state) {
   copy(d_csr_col_idx.view(), col_idx);
   copy(d_csr_row_ptr.view(), row_ptr);
 
-  using linear_op = iterative_solver::sparse_matrix<
+  using linear_op = sparse::iterative::sparse_matrix<
       sparse::blas::cusparse<float, sparse::sparse_format::csr>>;
   using blas_t = blas::cublas<float>;
   using preconditioner =
-      iterative_solver::ilu<float, device::cuda, sparse::sparse_format::csr>;
-  iterative_solver::cg<float, device::cuda, linear_op, blas::cublas<float>,
+      sparse::iterative::ilu<float, device::cuda, sparse::sparse_format::csr>;
+  sparse::iterative::cg<float, device::cuda, linear_op, blas::cublas<float>,
                        preconditioner>
       cg{linear_op{mat}, blas_t{}, preconditioner{mat}};
   cg.preconditioner().compute();
@@ -256,12 +256,12 @@ void work_cuda_ic(benchmark::State &state) {
   copy(d_csr_col_idx.view(), col_idx);
   copy(d_csr_row_ptr.view(), row_ptr);
 
-  using linear_op = iterative_solver::sparse_matrix<
+  using linear_op = sparse::iterative::sparse_matrix<
       sparse::blas::cusparse<float, sparse::sparse_format::csr>>;
   using blas_t = blas::cublas<float>;
   using preconditioner =
-      iterative_solver::ichol<float, device::cuda, sparse::sparse_format::csr>;
-  iterative_solver::cg<float, device::cuda, linear_op, blas::cublas<float>,
+      sparse::iterative::ichol<float, device::cuda, sparse::sparse_format::csr>;
+  sparse::iterative::cg<float, device::cuda, linear_op, blas::cublas<float>,
                        preconditioner>
       cg{linear_op{mat}, blas_t{}, preconditioner{mat}};
   cg.preconditioner().compute();
@@ -320,13 +320,13 @@ void work_cuda_ai(benchmark::State &state) {
   copy(d_csr_col_idx.view(), col_idx);
   copy(d_csr_row_ptr.view(), row_ptr);
 
-  using linear_op = iterative_solver::sparse_matrix<
+  using linear_op = sparse::iterative::sparse_matrix<
       sparse::blas::cusparse<float, sparse::sparse_format::csr>>;
   using blas_t = blas::cublas<float>;
-  using preconditioner = iterative_solver::approx_inverse_preconditioner<
+  using preconditioner = sparse::iterative::approx_inverse_preconditioner<
       float, device::cuda, sparse::sparse_format::csr,
       sparse::blas::cusparse<float, mathprim::sparse::sparse_format::csr>>;
-  iterative_solver::cg<float, device::cuda, linear_op, blas::cublas<float>,
+  sparse::iterative::cg<float, device::cuda, linear_op, blas::cublas<float>,
                        preconditioner>
       cg{linear_op{mat}, blas_t{}, preconditioner{mat}};
   cg.preconditioner().compute();

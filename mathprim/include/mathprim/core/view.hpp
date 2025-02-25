@@ -123,7 +123,7 @@ public:
                                           basic_view<Scalar, shape_t<internal::flatten_v<typename Sshape::seq>>,
                                                      stride_t<god::last_v<typename Sstride::seq>>, Dev>>;
 
-  static constexpr bool is_contiguous_at_compile_time = internal::is_continuous_compile_time_v<Sshape, Sstride>;
+  static constexpr bool is_contiguous_at_compile_time = internal::is_contiguous_compile_time_v<Sshape, Sstride>;
 
   ///////////////////////////////////////////////////////////////////////////////
   /// Constructors
@@ -455,7 +455,7 @@ MATHPRIM_PRIMFUNC basic_view_iterator<T, Sshape, Sstride, Dev, BatchDim> operato
 }
 
 template <typename T, typename Sshape, typename Device>
-using continuous_view = basic_view<T, Sshape, default_stride_t<Sshape>, Device>;
+using contiguous_view = basic_view<T, Sshape, default_stride_t<Sshape>, Device>;
 template <typename BaseView>
 using field_t = internal::field_t<BaseView>;
 
@@ -474,7 +474,7 @@ MATHPRIM_PRIMFUNC basic_view<T, Sshape, Sstride, Device> view(T *data, const Ssh
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-/// Memcpy between continuous views.
+/// Memcpy between contiguous views.
 ///////////////////////////////////////////////////////////////////////////////
 template <typename T1, typename Sshape1, typename Sstride1, typename Dev1, typename T2, typename Sshape2,
           typename Sstride2, typename Dev2>

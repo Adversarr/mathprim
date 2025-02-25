@@ -49,8 +49,8 @@ int main() {
   sparse::basic_sparse_view<const float, device::cpu, sparse::sparse_format::csr> mat(
       values.as_const(), row_ptr.as_const(), col_idx.as_const(), rows, cols, nnz, sparse::sparse_property::general);
 
-  using linear_op = iterative_solver::sparse_matrix<sparse::blas::eigen<float, sparse::sparse_format::csr>>;
-  iterative_solver::cg<float, device::cpu, linear_op, blas::cpu_handmade<float>> cg{linear_op{mat}};
+  using linear_op = sparse::iterative::sparse_matrix<sparse::blas::eigen<float, sparse::sparse_format::csr>>;
+  sparse::iterative::cg<float, device::cpu, linear_op, blas::cpu_handmade<float>> cg{linear_op{mat}};
 
   auto b = make_buffer<float>(rows);
   auto x = make_buffer<float>(rows);

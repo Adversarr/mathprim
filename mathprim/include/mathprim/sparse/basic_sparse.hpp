@@ -31,10 +31,10 @@ struct sparse_entry {
 template <typename Scalar, typename Device, sparse_format SparseCompression>
 class basic_sparse_view {
 public:
-  using values_view = continuous_view<Scalar, shape_t<keep_dim>, Device>;
+  using values_view = contiguous_view<Scalar, shape_t<keep_dim>, Device>;
   static constexpr bool is_const = std::is_const_v<Scalar>;
   using index_type = std::conditional_t<is_const, const index_t, index_t>;
-  using ptrs_view = continuous_view<std::conditional_t<is_const, const index_t, index_t>, shape_t<keep_dim>, Device>;
+  using ptrs_view = contiguous_view<std::conditional_t<is_const, const index_t, index_t>, shape_t<keep_dim>, Device>;
 
   static MATHPRIM_PRIMFUNC index_t outer_size(index_t rows, index_t cols, index_t nnz) {
     if constexpr (SparseCompression == sparse_format::csr) {
@@ -138,8 +138,8 @@ class basic_sparse_matrix {
   }
 
 public:
-  using values_buffer = continuous_buffer<Scalar, dshape<1>, Device>;
-  using index_buffer = continuous_buffer<index_t, dshape<1>, Device>;
+  using values_buffer = contiguous_buffer<Scalar, dshape<1>, Device>;
+  using index_buffer = contiguous_buffer<index_t, dshape<1>, Device>;
   using view_type = basic_sparse_view<Scalar, Device, SparseCompression>;
   using const_view_type = basic_sparse_view<const Scalar, Device, SparseCompression>;
   basic_sparse_matrix() = default;
@@ -248,8 +248,8 @@ public:
   using scalar_type = Scalar;
   using device_type = Device;
   static constexpr sparse_format compression = SparseCompression;
-  using vector_view = continuous_view<Scalar, shape_t<keep_dim>, Device>;
-  using const_vector_view = continuous_view<const Scalar, shape_t<keep_dim>, Device>;
+  using vector_view = contiguous_view<Scalar, shape_t<keep_dim>, Device>;
+  using const_vector_view = contiguous_view<const Scalar, shape_t<keep_dim>, Device>;
   using sparse_view = basic_sparse_view<Scalar, Device, SparseCompression>;
   using const_sparse_view = basic_sparse_view<const Scalar, Device, SparseCompression>;
   explicit sparse_blas_base(const_sparse_view matrix_view) : mat_(matrix_view) {}

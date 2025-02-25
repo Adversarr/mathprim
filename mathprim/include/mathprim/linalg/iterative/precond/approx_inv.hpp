@@ -4,7 +4,7 @@
 #include "mathprim/core/buffer.hpp"
 #include "mathprim/linalg/iterative/iterative.hpp"
 
-namespace mathprim::iterative_solver {
+namespace mathprim::sparse::iterative {
 
 namespace internal {
 template <typename Scalar>
@@ -162,6 +162,6 @@ private:
   std::unique_ptr<SparseBlas> bl_;
   const_sparse_view matrix_;                                    // matrix to decompose.
   sparse_matrix lo_;                                            // the approx inverse decomposition of A.
-  continuous_buffer<Scalar, dshape<1>, Device> buffer_intern_;  // buffer for intermediate computation.
+  contiguous_buffer<Scalar, dshape<1>, Device> buffer_intern_;  // buffer for intermediate computation.
 };
-}  // namespace mathprim::iterative_solver
+}  // namespace mathprim::sparse::iterative

@@ -2,7 +2,7 @@
 #include "mathprim/core/buffer.hpp"
 #include "mathprim/linalg/iterative/iterative.hpp"
 
-namespace mathprim::iterative_solver {
+namespace mathprim::sparse::iterative {
 
 namespace internal {
 
@@ -11,7 +11,7 @@ struct diagonal_extract;
 
 template <typename Scalar>
 struct diagonal_extract<Scalar, device::cpu, sparse::sparse_format::csr> {
-  using buffer_type = continuous_buffer<Scalar, shape_t<keep_dim>, device::cpu>;
+  using buffer_type = contiguous_buffer<Scalar, shape_t<keep_dim>, device::cpu>;
 
   static buffer_type extract(
       const sparse::basic_sparse_view<const Scalar, device::cpu, sparse::sparse_format::csr>& mat) {
@@ -39,7 +39,7 @@ struct diagonal_extract<Scalar, device::cpu, sparse::sparse_format::csr> {
 
 template <typename Scalar>
 struct diagonal_extract<Scalar, device::cpu, sparse::sparse_format::csc> {
-  using buffer_type = continuous_buffer<Scalar, shape_t<keep_dim>, device::cpu>;
+  using buffer_type = contiguous_buffer<Scalar, shape_t<keep_dim>, device::cpu>;
 
   static buffer_type extract(
       const sparse::basic_sparse_view<const Scalar, device::cpu, sparse::sparse_format::csr>& mat) {
@@ -73,7 +73,7 @@ class diagonal_preconditioner
     : public basic_preconditioner<diagonal_preconditioner<Scalar, Device, Compression, Blas>, Scalar, Device> {
 public:
   using const_sparse = sparse::basic_sparse_view<const Scalar, Device, Compression>;
-  using buffer_type = continuous_buffer<Scalar, shape_t<keep_dim>, Device>;
+  using buffer_type = contiguous_buffer<Scalar, shape_t<keep_dim>, Device>;
   using base = basic_preconditioner<diagonal_preconditioner<Scalar, Device, Compression, Blas>, Scalar, Device>;
   using vector_type = typename base::vector_type;
   using const_vector = typename base::const_vector;
@@ -93,7 +93,7 @@ private:
   Blas blas_;
 };
 
-}  // namespace mathprim::iterative_solver
+}  // namespace mathprim::sparse::iterative
 
 ///////////////////////////////////////////////////////////////////////////////
 /// CUDA implementation
@@ -102,10 +102,10 @@ private:
 #ifdef __CUDACC__
 #  include "mathprim/parallel/cuda.cuh"
 
-namespace mathprim::iterative_solver::internal {
+namespace mathprim::sparse::iterative::internal {
 template <typename Scalar>
 struct diagonal_extract<Scalar, device::cuda, sparse::sparse_format::csr> {
-  using buffer_type = continuous_buffer<Scalar, shape_t<keep_dim>, device::cuda>;
+  using buffer_type = contiguous_buffer<Scalar, shape_t<keep_dim>, device::cuda>;
 
   static buffer_type extract(
       const sparse::basic_sparse_view<const Scalar, device::cuda, sparse::sparse_format::csr>& mat) {
@@ -129,7 +129,7 @@ struct diagonal_extract<Scalar, device::cuda, sparse::sparse_format::csr> {
 
 template <typename Scalar>
 struct diagonal_extract<Scalar, device::cuda, sparse::sparse_format::csc> {
-  using buffer_type = continuous_buffer<Scalar, shape_t<keep_dim>, device::cuda>;
+  using buffer_type = contiguous_buffer<Scalar, shape_t<keep_dim>, device::cuda>;
 
   static buffer_type extract(
       const sparse::basic_sparse_view<const Scalar, device::cuda, sparse::sparse_format::csc>& mat) {
@@ -150,5 +150,5 @@ struct diagonal_extract<Scalar, device::cuda, sparse::sparse_format::csc> {
     return diag;
   }
 };
-}  // namespace mathprim::iterative_solver::internal
+}  // namespace mathprim::sparse::iterative::internal
 #endif

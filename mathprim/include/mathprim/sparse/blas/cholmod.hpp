@@ -16,7 +16,7 @@ private:
   void create_impl(cholmod_common*& handle) noexcept {
     handle = new cholmod_common;
     cholmod_start(handle);
-    handle->print = 0;
+    handle->supernodal = CHOLMOD_AUTO;
   }
 
   void destroy_impl(cholmod_common*& handle) noexcept {
@@ -25,13 +25,13 @@ private:
   }
 };
 
-}  // namespace mathprim::external
+}  // namespace mathprim::singletons
 
 namespace mathprim::sparse {
 namespace blas {
 
-cholmod_common& get_cholmod_handle() {
-  return *(singletons::cholmod_handle::get());
+cholmod_common* get_cholmod_handle() {
+  return singletons::cholmod_handle::get();
 }
 
 namespace internal {
@@ -82,7 +82,7 @@ private:
 
 template <typename Scalar, sparse_format SparseCompression>
 blas::cholmod<Scalar, SparseCompression>::cholmod(const_sparse_view mat) : base(mat) {
-  const cholmod_common cholmod_common = get_cholmod_handle();
+  cholmod_common* cholmod_common = get_cholmod_handle();
   MATHPRIM_UNUSED(cholmod_common); // We keep it here to init the handle.
   
   ::std::memset(&chol_mat_, 0, sizeof(chol_mat_));
@@ -136,7 +136,7 @@ blas::cholmod<Scalar, SparseCompression>::cholmod(const_sparse_view mat) : base(
 template <typename Scalar, sparse_format SparseCompression>
 void blas::cholmod<Scalar, SparseCompression>::gemv_impl(Scalar alpha, const_vector_view x, Scalar beta, vector_view y,
                                                          bool transpose) {
-  cholmod_common cholmod_common = get_cholmod_handle();
+  cholmod_common* cholmod_common = get_cholmod_handle();
   int result = 0;
   double alpha_arg = alpha;
   double beta_arg = beta;
@@ -147,14 +147,14 @@ void blas::cholmod<Scalar, SparseCompression>::gemv_impl(Scalar alpha, const_vec
       chol_x_.x = const_cast<Scalar*>(x.data());
       chol_y_.x = y.data();
 
-      result = cholmod_sdmult(&chol_mat_, 0, &alpha_arg, &beta_arg, &chol_x_, &chol_y_, &cholmod_common);
+      result = cholmod_sdmult(&chol_mat_, 0, &alpha_arg, &beta_arg, &chol_x_, &chol_y_, cholmod_common);
     } else {
       // transpose path, set chol_x=y, chol_y=x, and call cholmod_sdmult.
       // y: (col, 1), x: (row, 1)
       chol_x_.x = y.data();
       chol_y_.x = const_cast<Scalar*>(x.data());
 
-      result = cholmod_sdmult(&chol_mat_, 1, &alpha_arg, &beta_arg, &chol_y_, &chol_x_, &cholmod_common);
+      result = cholmod_sdmult(&chol_mat_, 1, &alpha_arg, &beta_arg, &chol_y_, &chol_x_, cholmod_common);
     }
   } else if constexpr (SparseCompression == sparse_format::csr) {
     // view it as csc and do correspondingly.
@@ -164,21 +164,21 @@ void blas::cholmod<Scalar, SparseCompression>::gemv_impl(Scalar alpha, const_vec
       chol_x_.x = y.data();
       chol_y_.x = const_cast<Scalar*>(x.data());
 
-      result = cholmod_sdmult(&chol_mat_, 0, &alpha_arg, &beta_arg, &chol_y_, &chol_x_, &cholmod_common);
+      result = cholmod_sdmult(&chol_mat_, 0, &alpha_arg, &beta_arg, &chol_y_, &chol_x_, cholmod_common);
     } else {
       // csr, we transpose everything.
       // a transpose of csr is csc, set chol_x=x, chol_y=y, and call cholmod_sdmult.
       chol_x_.x = const_cast<Scalar*>(x.data());
       chol_y_.x = y.data();
 
-      result = cholmod_sdmult(&chol_mat_, 1, &alpha_arg, &beta_arg, &chol_x_, &chol_y_, &cholmod_common);
+      result = cholmod_sdmult(&chol_mat_, 1, &alpha_arg, &beta_arg, &chol_x_, &chol_y_, cholmod_common);
     }
   } else {
     static_assert(::mathprim::internal::always_false_v<Scalar>, "Unsupported sparse format for cholmod");
   }
 
   if (result == 0) {
-    throw std::runtime_error(std::string("Cholmod gemv failed.") + internal::to_string(cholmod_common.status));
+    throw std::runtime_error(std::string("Cholmod gemv failed.") + internal::to_string(cholmod_common->status));
   }
 }
 

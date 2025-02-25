@@ -14,13 +14,13 @@
 
 using namespace mathprim;
 using blas_t = blas::cpu_blas<float>;
-using low_rank = iterative_solver::low_rank_preconditioner<float, device::cpu, sparse::sparse_format::csr, blas_t>;
-using linear_op = iterative_solver::sparse_matrix<sparse::blas::naive<float, sparse::sparse_format::csr, par::seq>>;
-using none = iterative_solver::none_preconditioner<float, device::cpu>;
+using low_rank = sparse::iterative::low_rank_preconditioner<float, device::cpu, sparse::sparse_format::csr, blas_t>;
+using linear_op = sparse::iterative::sparse_matrix<sparse::blas::naive<float, sparse::sparse_format::csr, par::seq>>;
+using none = sparse::iterative::none_preconditioner<float, device::cpu>;
 
 template <typename Blas>
 void do_test_exact(benchmark::State& state) {
-  using solver = iterative_solver::cg<float, device::cpu, linear_op, blas_t, low_rank>;
+  using solver = sparse::iterative::cg<float, device::cpu, linear_op, blas_t, low_rank>;
   index_t dsize = state.range(0);
   auto laplacian = sparse::laplace_operator<float, 2>(make_shape(dsize, dsize)).matrix<sparse::sparse_format::csr>();
   index_t n = laplacian.rows();
@@ -60,8 +60,8 @@ void do_test_exact(benchmark::State& state) {
 
 template <typename Blas>
 void do_test_diagonal(benchmark::State& state) {
-  using precond = iterative_solver::diagonal_preconditioner<float, device::cpu, sparse::sparse_format::csr, blas_t>;
-  using solver = iterative_solver::cg<float, device::cpu, linear_op, Blas, precond>;
+  using precond = sparse::iterative::diagonal_preconditioner<float, device::cpu, sparse::sparse_format::csr, blas_t>;
+  using solver = sparse::iterative::cg<float, device::cpu, linear_op, Blas, precond>;
   index_t dsize = state.range(0);
   auto laplacian = sparse::laplace_operator<float, 2>(make_shape(dsize, dsize)).matrix<sparse::sparse_format::csr>();
   index_t n = laplacian.rows();
@@ -95,7 +95,7 @@ float basis_fn(index_t i, index_t j, index_t dsize, index_t x, index_t y) {
 }
 
 void do_test_ana(benchmark::State& state) {
-  using solver = iterative_solver::cg<float, device::cpu, linear_op, blas_t, low_rank>;
+  using solver = sparse::iterative::cg<float, device::cpu, linear_op, blas_t, low_rank>;
   index_t dsize = state.range(0);
   auto laplacian = sparse::laplace_operator<float, 2>(make_shape(dsize, dsize)).matrix<sparse::sparse_format::csr>();
   index_t n = laplacian.rows();
