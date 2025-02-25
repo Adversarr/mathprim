@@ -41,6 +41,10 @@ if(MATHPRIM_ENABLE_BLAS)
     target_link_libraries(mathprim INTERFACE ${BLAS_LIBRARIES})
     target_compile_definitions(mathprim INTERFACE MATHPRIM_ENABLE_BLAS)
   endif()
+else()
+  if(MATHPRIM_ENABLE_MKL)
+    message(FATAL_ERROR "MKL cannot be enabled without BLAS")
+  endif()
 endif()
 
 if(MATHPRIM_ENABLE_CUDA)
@@ -63,13 +67,11 @@ if(MATHPRIM_ENABLE_CUDA)
 
   # Warnings:
   if(MATHPRIM_ENABLE_WARNINGS)
-    # cross execution space call:
     if(MSVC)
       target_compile_options(mathprim INTERFACE $<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=/W4>)
-      target_compile_options(mathprim INTERFACE $<$<COMPILE_LANGUAGE:CUDA>:-Wcross-execution-space-call>)
+      # target_compile_options(mathprim INTERFACE $<$<COMPILE_LANGUAGE:CUDA>:-Wcross-execution-space-call>)
     else()
       target_compile_options(mathprim INTERFACE $<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=-Wall,-Wextra>)
-
       # target_compile_options(mathprim INTERFACE $<$<COMPILE_LANGUAGE:CUDA>:-W=cross-execution-space-call>)
     endif()
   endif()
