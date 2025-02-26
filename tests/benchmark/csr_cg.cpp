@@ -14,6 +14,7 @@
 #include <mathprim/sparse/systems/laplace.hpp>
 
 #include "mathprim/linalg/iterative/precond/eigen_support.hpp"
+#include "mathprim/linalg/iterative/solver/eigen_support.hpp"
 
 using namespace mathprim;
 
@@ -214,9 +215,54 @@ void work_eigen_naive(benchmark::State &state) {
       xv[i] = (i % 100 - 50) / 100.0f;
     }
     state.ResumeTiming();
-    cg.setTolerance(1e-6 / bv.norm());
+    cg.setTolerance(1e-6);
     xv = cg.solveWithGuess(bv, xv);
     state.SetLabel(std::to_string(cg.iterations()));
+  }
+}
+
+
+void work_eigen_wrapped(benchmark::State &state) {
+  int dsize = state.range(0);
+  sparse::laplace_operator<float, 2> lap(make_shape(dsize, dsize));
+  auto mat_buf = lap.matrix<mathprim::sparse::sparse_format::csr>();
+  auto mat = mat_buf.const_view();
+  auto rows = mat.rows();
+  auto ei_mat = eigen_support::map(mat);
+
+  using EigenSolver = Eigen::ConjugateGradient<Eigen::SparseMatrix<float, Eigen::RowMajor, index_t>, Eigen::Upper | Eigen::Lower,
+                           Eigen::IncompleteCholesky<float, Eigen::Upper | Eigen::Lower>>;
+
+  sparse::iterative::basic_eigen_iterative_solver<EigenSolver, float, sparse::sparse_format::csr> cg{mat};
+
+  auto b = make_buffer<float>(rows);
+  auto x = make_buffer<float>(rows);
+  auto bv = eigen_support::map(b.view());
+  auto xv = eigen_support::map(x.view());
+
+  // GT = ones.
+  for (auto _ : state) {
+    state.PauseTiming();
+    par::seq().run(make_shape(rows), [xv = x.view()](index_t i) {
+      xv[i] = 1.0f;
+    });
+    // b = A * x
+    cg.linear_operator().apply(1.0f, x.view(), 0.0f, b.view());
+
+    par::seq().run(make_shape(rows), [xv = x.view(), bv = b.view()](index_t i) {
+      xv[i] = (i % 100 - 50) / 100.0f;
+    });
+
+    state.ResumeTiming();
+    auto result = cg.apply(b.view(), x.view(),
+                           {
+                             .max_iterations_ = dsize * dsize,
+                             .norm_tol_ = 1e-6f,
+                           });
+    state.SetLabel(std::to_string(result.iterations_));
+    if (result.norm_ > 1e-6f) {
+      state.SkipWithError("CG did not converge");
+    }
   }
 }
 
@@ -227,6 +273,7 @@ constexpr index_t lower = 1 << 4, upper = 1 << 6;
 #endif
 
 BENCHMARK(work_eigen_naive)->Range(lower, upper);
+BENCHMARK(work_eigen_wrapped)->Range(lower, upper);
 BENCHMARK(work_chol)->Range(lower, upper);
 BENCHMARK_TEMPLATE(work, blas::cpu_blas<float>)->Range(lower, upper);
 BENCHMARK_TEMPLATE(work, blas::cpu_eigen<float>)->Range(lower, upper);

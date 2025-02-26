@@ -1,15 +1,14 @@
 #pragma once
-#include <iostream>
 
 #include "mathprim/linalg/iterative/iterative.hpp"
 namespace mathprim::sparse::iterative {
 
-template <typename Scalar, typename device, typename LinearOperatorT, typename BlasT,
-          typename PreconditionerT = none_preconditioner<Scalar, device>>
-class cg : public basic_iterative_solver<cg<Scalar, device, LinearOperatorT, BlasT, PreconditionerT>, Scalar, device,
+template <typename Scalar, typename Device, typename LinearOperatorT, typename BlasT,
+          typename PreconditionerT = none_preconditioner<Scalar, Device>>
+class cg : public basic_iterative_solver<cg<Scalar, Device, LinearOperatorT, BlasT, PreconditionerT>, Scalar, Device,
                                          LinearOperatorT, BlasT, PreconditionerT> {
 public:
-  using base = basic_iterative_solver<cg<Scalar, device, LinearOperatorT, BlasT, PreconditionerT>, Scalar, device,
+  using base = basic_iterative_solver<cg<Scalar, Device, LinearOperatorT, BlasT, PreconditionerT>, Scalar, Device,
                                       LinearOperatorT, BlasT, PreconditionerT>;
   using scalar_type = typename base::scalar_type;
   using linear_operator_type = typename base::linear_operator_type;
@@ -22,8 +21,8 @@ public:
 
   explicit cg(linear_operator_type matrix, blas_type blas = {}, preconditioner_type preconditioner = {}) :
       base(std::move(matrix), std::move(blas), std::move(preconditioner)),
-      q_(make_buffer<scalar_type, device>(make_shape(base::matrix_.rows()))),
-      d_(make_buffer<scalar_type, device>(make_shape(base::matrix_.rows()))) {}
+      q_(make_buffer<scalar_type, Device>(make_shape(base::matrix_.rows()))),
+      d_(make_buffer<scalar_type, Device>(make_shape(base::matrix_.rows()))) {}
 
   template <typename Callback>
   results_type apply_impl(const_vector b, vector_type x, const parameters_type& params, Callback&& cb) {
@@ -34,6 +33,8 @@ public:
     const_vector cx = x.as_const();
     vector_type r = residual_buffer.view(), q = q_.view(), d = d_.view();
     const_vector cr = r.as_const(), cq = q.as_const(), cd = d.as_const();
+    const Scalar b_norm = blas.norm(b);
+    const Scalar abs_tol_norm = params.norm_tol_ * b_norm;
 
     // r = b - A * x
     blas.copy(r, b);             // r = b
@@ -47,7 +48,7 @@ public:
     iterations = 0;
     norm = blas.norm(cr);
     // max_norm = blas.amax(cr);
-    bool converged = norm <= params.norm_tol_ /* || max_norm <= params.amax_tol_ */;
+    bool converged = norm <= abs_tol_norm /* || max_norm <= params.amax_tol_ */;
     // Set initial search direction.
     preconditioner.apply(d, r);           // d = M^-1 * r
     Scalar delta_new = blas.dot(cr, cd);  // delta_new = (r, d)
@@ -70,7 +71,7 @@ public:
       // Check convergence.
       norm = blas.norm(cr);
       // max_norm = blas.amax(cr);
-      converged = norm <= params.norm_tol_ /* || max_norm <= params.amax_tol_ */;
+      converged = norm <= abs_tol_norm /* || max_norm <= params.amax_tol_ */;
       if (converged) {
         break;
       }
@@ -89,11 +90,12 @@ public:
       cb(iterations, norm);
     }
 
+    norm /= b_norm;
     return results;
   }
 
 private:
-  contiguous_buffer<Scalar, shape_t<keep_dim>, device> q_;  // temporary buffer
-  contiguous_buffer<Scalar, shape_t<keep_dim>, device> d_;  // search direction
+  contiguous_buffer<Scalar, shape_t<keep_dim>, Device> q_;  // temporary buffer
+  contiguous_buffer<Scalar, shape_t<keep_dim>, Device> d_;  // search direction
 };
 }  // namespace mathprim::sparse::iterative

@@ -29,6 +29,11 @@ public:
     static_cast<Derived*>(this)->solve_impl(lhs, rhs);
   }
 
+  /**
+   * @brief Analyze the non-zero pattern of matrix.
+   * 
+   * @param mat 
+   */
   MATHPRIM_NOINLINE Derived& analyze(const const_matrix_view& mat) {
     mat_ = mat;
     static_cast<Derived*>(this)->analyze_impl();

@@ -11,21 +11,21 @@ using EigenSparseMatrix = Eigen::SparseMatrix<Scalar, Options, index_t>;
 
 namespace internal {
 
-template <typename Scalar, sparse::sparse_format sparse_compression>
+template <typename Scalar, sparse::sparse_format SparseCompression>
 struct eigen_sparse_format;
 
 template <typename Scalar>
 struct eigen_sparse_format<Scalar, sparse::sparse_format::csr> {
-  using type = Eigen::SparseMatrix<Scalar, Eigen::RowMajor>;
+  using type = EigenSparseMatrix<Scalar, Eigen::RowMajor>;
 };
 
 template <typename Scalar>
 struct eigen_sparse_format<Scalar, sparse::sparse_format::csc> {
-  using type = Eigen::SparseMatrix<Scalar, Eigen::ColMajor>;
+  using type = EigenSparseMatrix<Scalar, Eigen::ColMajor>;
 };
 
-template <typename Scalar, sparse::sparse_format sparse_compression>
-using eigen_sparse_format_t = typename eigen_sparse_format<Scalar, sparse_compression>::type;
+template <typename Scalar, sparse::sparse_format SparseCompression>
+using eigen_sparse_format_t = typename eigen_sparse_format<Scalar, SparseCompression>::type;
 
 template <typename SparseMatrixT>
 struct mp_sparse_format {

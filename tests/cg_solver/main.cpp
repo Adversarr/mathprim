@@ -70,5 +70,5 @@ int main() {
              .max_iterations_ = 100,
              .norm_tol_ = 1e-6f,
            });
-  // par::seq().run(make_shape(rows), [xv = x.view()](index_t i) { std::cout << xv[i] << std::endl; });
+  return 0;
 }
