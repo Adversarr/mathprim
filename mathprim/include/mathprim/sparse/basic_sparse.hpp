@@ -8,7 +8,8 @@ enum class sparse_format {
   csr,  // in Eigen, corresponding to compressed sparse row format
   csc,  // in Eigen, corresponding to compressed sparse column format
   coo,  // in coo format, we assume that the indices are sorted by row
-  bsr,  // blocked compress row.
+  /* Future works */
+  // bsr,  // blocked compress row.
 };
 
 enum class sparse_property {
@@ -295,5 +296,80 @@ protected:
   // NOTE: Store the matrix view is necessary for descriptors.
   const_sparse_view mat_;  ///< The sparse matrix view.
 };
+
+/**
+ * @brief Supports for sparse entry visitor
+ * 
+ */
+template <typename F, typename Parallel, typename Scalar, sparse_format SparseCompression>
+void visit(const basic_sparse_view<Scalar, device::cpu, SparseCompression>& view, Parallel&& par, F&& fn) {
+  auto outer = view.outer_ptrs();
+  auto inner = view.inner_indices();
+  auto values = view.values();
+
+  if constexpr (SparseCompression == sparse_format::csr) {
+    par.run(make_shape(view.rows()), [&] (index_t i) {
+      auto start = outer[i];
+      auto end = outer[i + 1];
+      for (index_t j = start; j < end; ++j) {
+        fn(i, inner[j], values[j]);
+      }
+    });
+  } else if constexpr (SparseCompression == sparse_format::csc) {
+    par.run(make_shape(view.cols()), [&] (index_t j) {
+      auto start = outer[j];
+      auto end = outer[j + 1];
+      for (index_t i = start; i < end; ++i) {
+        fn(inner[i], j, values[i]);
+      }
+    });
+  } else if constexpr (SparseCompression == sparse_format::coo) {
+    par.run(make_shape(view.nnz()), [&] (index_t i) {
+      fn(inner[i], outer[i], values[i]);
+    });
+  } else {
+    static_assert(::mathprim::internal::always_false_v<Scalar>, "Not implemented");
+  }
+}
+
+#ifdef __CUDACC__
+/**
+ * @brief Supports for sparse entry visitor
+ * 
+ */
+template <typename F, typename Parallel, typename Scalar, sparse_format SparseCompression>
+void visit(const basic_sparse_view<Scalar, device::cuda, SparseCompression>& view, Parallel&& cuda, F&& fn) {
+  auto outer = view.outer_ptrs();
+  auto inner = view.inner_indices();
+  auto values = view.values();
+
+  if constexpr (SparseCompression == sparse_format::csr) {
+    auto rows = view.rows();
+    cuda.run(make_shape(rows), [outer = outer.data(), inner = inner.data(), values = values.data(), fn] __device__ (index_t i) {
+      auto start = outer[i];
+      auto end = outer[i + 1];
+      for (index_t j = start; j < end; ++j) {
+        fn(i, inner[j], values[j]);
+      }
+    });
+  } else if constexpr (SparseCompression == sparse_format::csc) {
+    auto cols = view.cols();
+    cuda.run(make_shape(cols), [outer = outer.data(), inner = inner.data(), values = values.data(), fn] __device__ (index_t j) {
+      auto start = outer[j];
+      auto end = outer[j + 1];
+      for (index_t i = start; i < end; ++i) {
+        fn(inner[i], j, values[i]);
+      }
+    });
+  } else if constexpr (SparseCompression == sparse_format::coo) {
+    auto nnz = view.nnz();
+    cuda.run(make_shape(nnz), [outer = outer.data(), inner = inner.data(), values = values.data(), fn] __device__ (index_t i) {
+      fn(inner[i], outer[i], values[i]);
+    });
+  } else {
+    static_assert(::mathprim::internal::always_false_v<Scalar>, "Not implemented");
+  }
+}
+#endif
 
 }  // namespace mathprim::sparse

@@ -1,3 +1,4 @@
+#include "mathprim/parallel/cuda.cuh"
 #include <cstdio>
 #include <cstdlib>
 #include <cuda_runtime.h>
@@ -67,6 +68,10 @@ int main() {
                                                sparse::sparse_format::csr>(
       d_csr_values, d_csr_row_ptr, d_csr_col_idx, rows, cols, nnz,
       sparse::sparse_property::general);
+  par::cuda cu;
+  sparse::visit(sparse_view, cu, []__device__(auto i, auto j, auto v) {
+    printf("A[%d][%d] = %.2f\n", i, j, v);
+  });
 
   auto api =
       sparse::blas::cusparse<float, mathprim::sparse::sparse_format::csr>(

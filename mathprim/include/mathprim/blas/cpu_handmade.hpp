@@ -11,17 +11,17 @@ namespace blas {
 template <typename T>
 struct cpu_handmade : public basic_blas<cpu_handmade<T>, T, device::cpu> {
   // Level 1
-  template <typename sshape, typename sstride>
-  using view_type = basic_view<T, sshape, sstride, device::cpu>;
-  template <typename sshape, typename sstride>
-  using const_type = basic_view<const T, sshape, sstride, device::cpu>;
+  template <typename Sshape, typename Sstride>
+  using view_type = basic_view<T, Sshape, Sstride, device::cpu>;
+  template <typename Sshape, typename Sstride>
+  using const_type = basic_view<const T, Sshape, Sstride, device::cpu>;
   using base = basic_blas<cpu_handmade<T>, T, device::cpu>;
   friend base;
   using Scalar = T;
 
 protected:
-  template <typename sshape_dst, typename sstride_dst, typename sshape_src, typename sstride_src>
-  void copy_impl(const view_type<sshape_dst, sstride_dst>& dst, const const_type<sshape_src, sstride_src>& src) {
+  template <typename SshapeDst, typename SstrideDst, typename SshapeSrc, typename SstrideSrc>
+  void copy_impl(const view_type<SshapeDst, SstrideDst>& dst, const const_type<SshapeSrc, SstrideSrc>& src) {
     auto shape = src.shape();
     if (src.is_contiguous() && dst.is_contiguous()) {
       std::memcpy(dst.data(), src.data(), src.size() * sizeof(T));
@@ -32,8 +32,8 @@ protected:
     }
   }
 
-  template <typename sshape, typename sstride>
-  void scal_impl(const T& alpha, const view_type<sshape, sstride>& src) {
+  template <typename Sshape, typename Sstride>
+  void scal_impl(const T& alpha, const view_type<Sshape, Sstride>& src) {
     auto shape = src.shape();
 
     if (src.is_contiguous()) {
@@ -60,8 +60,8 @@ protected:
     }
   }
 
-  template <typename sshape_src, typename sstride_src, typename sshape_dst, typename sstride_dst>
-  void swap_impl(const view_type<sshape_src, sstride_src>& src, const view_type<sshape_dst, sstride_dst>& dst) {
+  template <typename SshapeSrc, typename SstrideSrc, typename SshapeDst, typename SstrideDst>
+  void swap_impl(const view_type<SshapeSrc, SstrideSrc>& src, const view_type<SshapeDst, SstrideDst>& dst) {
     auto shape = src.shape();
     MATHPRIM_PRAGMA_UNROLL_HOST
     for (auto sub : shape) {
@@ -69,8 +69,8 @@ protected:
     }
   }
 
-  template <typename sshape_x, typename sstride_x, typename sshape_y, typename sstride_y>
-  void axpy_impl(T alpha, const const_type<sshape_x, sstride_x>& x, view_type<sshape_y, sstride_y> y) {
+  template <typename SshapeX, typename SstrideX, typename SshapeY, typename SstrideY>
+  void axpy_impl(T alpha, const const_type<SshapeX, SstrideX>& x, view_type<SshapeY, SstrideY> y) {
     auto shape = x.shape();
     MATHPRIM_PRAGMA_UNROLL_HOST
     for (auto sub : shape) {
@@ -78,8 +78,8 @@ protected:
     }
   }
 
-  template <typename sshape_x, typename sstride_x, typename sshape_y, typename sstride_y>
-  T dot_impl(const const_type<sshape_x, sstride_x>& x, const const_type<sshape_y, sstride_y>& y) {
+  template <typename SshapeX, typename SstrideX, typename SshapeY, typename SstrideY>
+  T dot_impl(const const_type<SshapeX, SstrideX>& x, const const_type<SshapeY, SstrideY>& y) {
     auto shape = x.shape();
     T result = 0;
     MATHPRIM_PRAGMA_UNROLL_HOST
@@ -89,8 +89,8 @@ protected:
     return result;
   }
 
-  template <typename sshape, typename sstride>
-  T norm_impl(const const_type<sshape, sstride>& x) {
+  template <typename Sshape, typename Sstride>
+  T norm_impl(const const_type<Sshape, Sstride>& x) {
     auto shape = x.shape();
     T result = 0;
     MATHPRIM_PRAGMA_UNROLL_HOST
@@ -100,8 +100,8 @@ protected:
     return std::sqrt(result);
   }
 
-  template <typename sshape, typename sstride>
-  T asum_impl(const const_type<sshape, sstride>& x) {
+  template <typename Sshape, typename Sstride>
+  T asum_impl(const const_type<Sshape, Sstride>& x) {
     auto shape = x.shape();
     T result = 0;
     MATHPRIM_PRAGMA_UNROLL_HOST
@@ -111,15 +111,16 @@ protected:
     return result;
   }
 
-  template <typename sshape, typename sstride>
-  index_t amax_impl(const const_type<sstride, sshape>& x) {
+  template <typename Sshape, typename Sstride>
+  index_t amax_impl(const const_type<Sstride, Sshape>& x) {
     auto shape = x.shape();
-    float maximum = x(*shape.begin());
+    Scalar maximum = std::abs(x[0]);
     index_t index = 0;
     MATHPRIM_PRAGMA_UNROLL_HOST
     for (auto sub : shape) {
-      if (x(sub) > maximum) {
-        maximum = x(sub);
+      auto ax = std::abs(x(sub));
+      if (ax > maximum) {
+        maximum = ax;
         index = sub[0];
       }
     }
@@ -138,10 +139,10 @@ protected:
 
   // // Level 2
   // // y <- alpha * A * x + beta * y
-  template <typename sshape_A, typename sstride_A, typename sshape_x, typename sstride_x, typename sshape_y,
-            typename sstride_y>
-  void gemv_impl(const T& alpha, const const_type<sshape_A, sstride_A>& A, const const_type<sshape_x, sstride_x>& x,
-                 const T& beta, const view_type<sshape_y, sstride_y>& y) {
+  template <typename SshapeA, typename SstrideA, typename SshapeX, typename SstrideX, typename SshapeY,
+            typename SstrideY>
+  void gemv_impl(const T& alpha, const const_type<SshapeA, SstrideA>& A, const const_type<SshapeX, SstrideX>& x,
+                 const T& beta, const view_type<SshapeY, SstrideY>& y) {
     auto [n, m] = A.shape();
     for (index_t i = 0; i < n; ++i) {
       T sum = 0;
@@ -156,10 +157,10 @@ protected:
   //
   // // Level 3
   // // C <- alpha * A * B + beta * C
-  template <typename sshape_A, typename sstride_A, typename sshape_B, typename sstride_B, typename sshape_C,
-            typename sstride_C>
-  void gemm_impl(const T& alpha, const const_type<sshape_A, sstride_A>& A, const const_type<sshape_B, sstride_B>& B,
-                 const T& beta, const view_type<sshape_C, sstride_C>& C) {
+  template <typename SshapeA, typename SstrideA, typename SshapeB, typename SstrideB, typename SshapeC,
+            typename SstrideC>
+  void gemm_impl(const T& alpha, const const_type<SshapeA, SstrideA>& A, const const_type<SshapeB, SstrideB>& B,
+                 const T& beta, const view_type<SshapeC, SstrideC>& C) {
     auto [m, k] = A.shape();
     auto [k2, n] = B.shape();
 

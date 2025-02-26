@@ -53,11 +53,6 @@ private:
       cholmod_free_dense(&Ework_, common_);
       Ework_ = nullptr;
     }
-    if (sparse_ != nullptr) {
-      // cholmod_free_sparse(&sparse_, common_);
-      delete sparse_;
-      sparse_ = nullptr;
-    }
 
     if (common_ != nullptr) {
       cholmod_finish(common_);
@@ -68,82 +63,39 @@ private:
 
 protected:
   using base::mat_;
-  cholmod_sparse* sparse_{nullptr};
+  cholmod_sparse sparse_{};
   cholmod_factor* factor_{nullptr};
   // Internal workspace reuse
   cholmod_dense *Ywork_ = nullptr, *Ework_ = nullptr;
   // cholmod cm
   cholmod_common* common_{nullptr};
 
-  void analyze_impl(int supernodal = CHOLMOD_SIMPLICIAL, int final_ll = 0, int final_asis = 1) {
+  void analyze_impl() {
+    const int int_true = static_cast<int>(true);
     reset();
     common_ = new cholmod_common;
     cholmod_start(common_);
-    // LDLT:
-    common_->supernodal = supernodal;
-    common_->final_asis = final_asis;
-    common_->final_ll = final_ll;
-    int int_true = static_cast<int>(true);
+    common_->supernodal = CHOLMOD_SIMPLICIAL;
+    common_->final_asis = 1;
+    common_->final_ll = 0;
+    memset(&sparse_, 0, sizeof(cholmod_sparse));
 
-    // store the lower part.
-    // {
-    //   index_t lower_count = 0;
-    //   auto outer = mat_.outer_ptrs();
-    //   auto inner = mat_.inner_indices();
-    //   auto values = mat_.values();
-    //   for (index_t i = 0; i < mat_.rows(); ++i) {
-    //     for (index_t j = outer[i]; j < outer[i + 1]; ++j) {
-    //       if (inner[j] >= i) {
-    //         lower_count++;
-    //       }
-    //     }
-    //   }
-    //   {
-    //     int xtype = CHOLMOD_REAL;
-    //     int dtype = CHOLMOD_DOUBLE;
-    //     sparse_ = cholmod_allocate_sparse(mat_.rows(), mat_.cols(), lower_count,  // matrix
-    //                                       int_true, int_true,                     // sorted, packed
-    //                                       1,                                      // stype > 0 indicates symmetric
-    //                                       xtype + dtype, common_);
-    //   }
-    //   if (sparse_ == nullptr || sparse_->stype == 0) {
-    //     throw std::runtime_error("Failed to allocate sparse matrix.");
-    //   }
-    //   auto* row_pointer = static_cast<int32_t*>(sparse_->p);
-    //   auto* col_indices = static_cast<int32_t*>(sparse_->i);
-    //   auto* values_ptr = static_cast<double*>(sparse_->x);
-    //   index_t current = 0;
-    //   for (index_t i = 0; i < mat_.rows(); ++i) {
-    //     row_pointer[i] = current;
-    //     for (index_t j = outer[i]; j < outer[i + 1]; ++j) {
-    //       if (inner[j] >= i) {
-    //         col_indices[current] = inner[j];
-    //         values_ptr[current] = values[j];
-    //         current++;
-    //       }
-    //     }
-    //   }
-    //   row_pointer[mat_.rows()] = current;
-    // }
-    sparse_ = new cholmod_sparse;
-    memset(sparse_, 0, sizeof(cholmod_sparse));
-    sparse_->nrow = mat_.rows();
-    sparse_->ncol = mat_.cols();
-    sparse_->nzmax = mat_.nnz();
-    sparse_->p = const_cast<index_t*>(mat_.outer_ptrs().data());
-    sparse_->i = const_cast<index_t*>(mat_.inner_indices().data());
-    sparse_->x = const_cast<double*>(mat_.values().data());
-    sparse_->z = nullptr;
-    sparse_->sorted = int_true;
-    sparse_->packed = int_true;
-    sparse_->nz = nullptr;
-    sparse_->itype = CHOLMOD_INT;
-    sparse_->stype = 1;
-    sparse_->dtype = CHOLMOD_DOUBLE;
-    sparse_->xtype = CHOLMOD_REAL;
+    sparse_.nrow = mat_.rows();
+    sparse_.ncol = mat_.cols();
+    sparse_.nzmax = mat_.nnz();
+    sparse_.p = const_cast<index_t*>(mat_.outer_ptrs().data());
+    sparse_.i = const_cast<index_t*>(mat_.inner_indices().data());
+    sparse_.x = const_cast<double*>(mat_.values().data());
+    sparse_.z = nullptr;
+    sparse_.sorted = int_true;
+    sparse_.packed = int_true;
+    sparse_.nz = nullptr;
+    sparse_.itype = CHOLMOD_INT;
+    sparse_.stype = -1;
+    sparse_.dtype = CHOLMOD_DOUBLE;
+    sparse_.xtype = CHOLMOD_REAL;
 
-
-    factor_ = cholmod_analyze(sparse_, common_);
+    factor_ = cholmod_analyze(&sparse_, common_);
     if (factor_ == nullptr) {
       throw std::runtime_error("Failed to analyze the matrix.");
     }
@@ -151,21 +103,10 @@ protected:
 
   void factorize_impl() {
     double beta[2] = {0, 0};
-    int fact_stat = cholmod_factorize_p(sparse_, beta, nullptr, 0, factor_, common_);
-    // cholmod's return value is not reliable, we use Eigen's implementation to check it.
-    if (factor_->minor != factor_->n) {
-      fprintf(stderr, "Matrix is not positive definite. (retry with simplicial LDLT) %d\n", fact_stat);
-      analyze_impl(CHOLMOD_SIMPLICIAL,  // supernodal
-                   0,                   // final_ll
-                   1);                  // final_asis
-      double beta[2] = {0, 0};
-      fact_stat = cholmod_factorize_p(sparse_, beta, nullptr, 0, factor_, common_);
-      // cholmod_factorize(sparse_, factor_, common_);
-    }
-
+    int fact_stat = cholmod_factorize_p(&sparse_, beta, nullptr, 0, factor_, common_);
     // Second stage, if it fails, we throw an exception.
-    if (factor_->minor != factor_->n) {
-      throw std::runtime_error("Failed to factorize the matrix.");
+    if (factor_->minor != factor_->n /* || fact_stat != CHOLMOD_OK */) {
+      throw std::runtime_error("Failed to factorize the matrix." + std::string(blas::internal::to_string(fact_stat)));
     }
   }
 

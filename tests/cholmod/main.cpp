@@ -19,18 +19,11 @@ void work(benchmark::State &state) {
   auto rows = mat.rows();
   auto b = make_buffer<double>(rows);
   auto x = make_buffer<double>(rows);
-  {
-    auto outer = mat.outer_ptrs();
-    auto inner = mat.inner_indices();
-    auto data = mat_buf.values().view();
-    for (index_t i = 0; i < rows; ++i) {
-      for (index_t j = outer[i]; j < outer[i + 1]; ++j) {
-        if (inner[j] == i) {
-          data[j] += 1;
-        }
-      }
+  sparse::visit(mat_buf.view(), par::seq(), [&](index_t i, index_t j, auto &v) {
+    if (i == j) {
+      v += 1;
     }
-  }
+  });
 
   sparse::blas::naive<double, sparse::sparse_format::csr, par::seq> bl{mat};
   // GT = ones.
@@ -66,11 +59,24 @@ void work(benchmark::State &state) {
 }
 
 BENCHMARK_TEMPLATE(work, sparse::direct::eigen_simplicial_chol<double, sparse::sparse_format::csr>)
-    ->Range(16, 512)->RangeMultiplier(2)->Unit(benchmark::kMillisecond);
+    ->Range(16, 512)
+    ->RangeMultiplier(2)
+    ->Unit(benchmark::kMillisecond);
 BENCHMARK_TEMPLATE(work, sparse::direct::eigen_cholmod_simplicial_ldlt<sparse::sparse_format::csr>)
-    ->Range(16, 512)->RangeMultiplier(2)->Unit(benchmark::kMillisecond);
+    ->Range(16, 512)
+    ->RangeMultiplier(2)
+    ->Unit(benchmark::kMillisecond);
+BENCHMARK_TEMPLATE(work, sparse::direct::eigen_cholmod_simplicial_llt<sparse::sparse_format::csr>)
+    ->Range(16, 512)
+    ->RangeMultiplier(2)
+    ->Unit(benchmark::kMillisecond);
 BENCHMARK_TEMPLATE(work, sparse::direct::cholmod_chol<sparse::sparse_format::csr>)
-    ->Range(16, 512)->RangeMultiplier(2)->Unit(benchmark::kMillisecond);
-
+    ->Range(16, 512)
+    ->RangeMultiplier(2)
+    ->Unit(benchmark::kMillisecond);
+// BENCHMARK_TEMPLATE(work, sparse::direct::eigen_cholmod_supernodal_llt<sparse::sparse_format::csr>)
+//     ->Range(16, 512)
+//     ->RangeMultiplier(2)
+//     ->Unit(benchmark::kMillisecond);
 
 BENCHMARK_MAIN();
