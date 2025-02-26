@@ -1,34 +1,44 @@
 #pragma once
-
 #include "mathprim/linalg/iterative/iterative.hpp"
+
 namespace mathprim::sparse::iterative {
 
 template <typename Scalar, typename Device, typename LinearOperatorT, typename BlasT,
           typename PreconditionerT = none_preconditioner<Scalar, Device>>
 class cg : public basic_iterative_solver<cg<Scalar, Device, LinearOperatorT, BlasT, PreconditionerT>, Scalar, Device,
-                                         LinearOperatorT, BlasT, PreconditionerT> {
+                                         LinearOperatorT> {
 public:
   using base = basic_iterative_solver<cg<Scalar, Device, LinearOperatorT, BlasT, PreconditionerT>, Scalar, Device,
-                                      LinearOperatorT, BlasT, PreconditionerT>;
+                                      LinearOperatorT>;
   using scalar_type = typename base::scalar_type;
   using linear_operator_type = typename base::linear_operator_type;
-  using blas_type = typename base::blas_type;
-  using preconditioner_type = typename base::preconditioner_type;
   using results_type = typename base::results_type;
   using parameters_type = typename base::parameters_type;
   using vector_type = typename base::vector_type;
   using const_vector = typename base::const_vector;
+  using blas_type = BlasT;
+  using preconditioner_type = PreconditionerT;
 
   explicit cg(linear_operator_type matrix, blas_type blas = {}, preconditioner_type preconditioner = {}) :
-      base(std::move(matrix), std::move(blas), std::move(preconditioner)),
+      base(std::move(matrix)),
+      blas_(std::move(blas)),
+      preconditioner_(std::move(preconditioner)),
       q_(make_buffer<scalar_type, Device>(make_shape(base::matrix_.rows()))),
       d_(make_buffer<scalar_type, Device>(make_shape(base::matrix_.rows()))) {}
 
+  blas_type& blas() noexcept {
+    return blas_;
+  }
+
+  preconditioner_type& preconditioner() noexcept {
+    return preconditioner_;
+  }
+
   template <typename Callback>
   results_type apply_impl(const_vector b, vector_type x, const parameters_type& params, Callback&& cb) {
-    auto& blas = base::blas_;
+    auto& blas = blas_;
+    auto& preconditioner = preconditioner_;
     auto& matrix = base::matrix_;
-    auto& preconditioner = base::preconditioner_;
     auto& residual_buffer = base::residual_;
     const_vector cx = x.as_const();
     vector_type r = residual_buffer.view(), q = q_.view(), d = d_.view();
@@ -72,6 +82,7 @@ public:
       norm = blas.norm(cr);
       // max_norm = blas.amax(cr);
       converged = norm <= abs_tol_norm /* || max_norm <= params.amax_tol_ */;
+      cb(iterations, norm);
       if (converged) {
         break;
       }
@@ -86,8 +97,6 @@ public:
       blas.axpy(beta, cd, q);  // q = q + beta * d
       d.swap(q);
       cd.swap(cq);
-
-      cb(iterations, norm);
     }
 
     norm /= b_norm;
@@ -97,5 +106,8 @@ public:
 private:
   contiguous_buffer<Scalar, shape_t<keep_dim>, Device> q_;  // temporary buffer
   contiguous_buffer<Scalar, shape_t<keep_dim>, Device> d_;  // search direction
+  blas_type blas_;
+  preconditioner_type preconditioner_;
 };
+
 }  // namespace mathprim::sparse::iterative

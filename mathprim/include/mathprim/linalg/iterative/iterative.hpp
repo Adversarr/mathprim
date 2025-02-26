@@ -116,24 +116,18 @@ struct iterative_solver_result {
   Scalar norm_ = {std::numeric_limits<float>::epsilon()};  ///< l2 norm of the residual. (norm(r))
 };
 
-template <typename Derived, typename Scalar, typename Device, typename LinearOperatorT, typename BlasT,
-          typename PreconditionerT = none_preconditioner<Scalar, Device>>
+template <typename Derived, typename Scalar, typename Device, typename LinearOperatorT>
 class basic_iterative_solver {
 public:
   using scalar_type = Scalar;
   using linear_operator_type = LinearOperatorT;
-  using blas_type = BlasT;
-  using preconditioner_type = PreconditionerT;
   using results_type = iterative_solver_result<Scalar>;
   using parameters_type = iterative_solver_parameters<Scalar>;
   using vector_type = contiguous_view<Scalar, shape_t<keep_dim>, Device>;
   using const_vector = contiguous_view<const Scalar, shape_t<keep_dim>, Device>;
 
-  explicit basic_iterative_solver(linear_operator_type matrix, blas_type blas = {},
-                                  preconditioner_type preconditioner = {}) :
+  explicit basic_iterative_solver(linear_operator_type matrix) :
       matrix_(std::move(matrix)),
-      blas_(std::move(blas)),
-      preconditioner_(std::move(preconditioner)),
       residual_(make_buffer<Scalar, Device>(make_shape(matrix_.rows()))) {}
 
   // NOT necessary since we use CRTP.
@@ -176,18 +170,8 @@ public:
     return matrix_;
   }
 
-  blas_type& blas() noexcept {
-    return blas_;
-  }
-
-  preconditioner_type& preconditioner() noexcept {
-    return preconditioner_;
-  }
-
 protected:
   linear_operator_type matrix_;
-  blas_type blas_;
-  preconditioner_type preconditioner_;
   contiguous_buffer<Scalar, shape_t<keep_dim>, Device> residual_;
 };
 
