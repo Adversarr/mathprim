@@ -134,4 +134,31 @@ private:
   Scalar loss_{};
   parameter_container parameters_;
 };
+
+template <typename Scalar>
+struct stopping_criteria {
+  Scalar tol_change_;  // |f[x] - f[x_prev]| < tol_change => stop
+  Scalar tol_grad_;    // |g| < tol_grad => stop
+  int max_iterations;  // maximum number of iterations
+};
+
+template <typename Derived, typename Scalar, typename Device, typename Problem>  // Implementation of the optimizer
+class basic_optimizer {
+public:
+  basic_optimizer() = default;
+  basic_optimizer(basic_optimizer&&) noexcept = default;
+  basic_optimizer& operator=(basic_optimizer&&) noexcept = default;
+  basic_optimizer(const basic_optimizer&) = default;
+  using stopping_criteria_type = stopping_criteria<Scalar>;
+  using result_type = optim_result<Scalar>;
+
+  template <typename ProblemDerived>
+  result_type optimize(const stopping_criteria_type& criteria) {
+  }
+
+private:
+  template <typename ProblemDerived>
+  result_type optimize_impl();
+};
+
 }  // namespace mathprim::optim

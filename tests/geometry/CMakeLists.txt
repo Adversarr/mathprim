@@ -1,0 +1,1 @@
+mathprim_add_testing(geometry_test geometry_test.cpp)
