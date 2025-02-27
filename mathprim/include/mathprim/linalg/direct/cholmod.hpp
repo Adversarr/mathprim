@@ -9,13 +9,13 @@
 
 namespace mathprim::sparse::direct {
 
-template <sparse_format Format>
-class cholmod_chol : public basic_direct_solver<cholmod_chol<Format>, double, Format, device::cpu> {
+template <typename Scalar, sparse_format Format>
+class cholmod_chol : public basic_direct_solver<cholmod_chol<Scalar, Format>, Scalar, Format, device::cpu> {
 public:
   static_assert(Format == sparse_format::csr || Format == sparse_format::csc,
                 "Cholmod only supports CSR or CSC format. (Symmetric)");
 
-  using base = basic_direct_solver<cholmod_chol<Format>, double, Format, device::cpu>;
+  using base = basic_direct_solver<cholmod_chol<Scalar, Format>, Scalar, Format, device::cpu>;
   using vector_view = typename base::vector_view;
   using const_vector = typename base::const_vector;
   using matrix_view = typename base::matrix_view;
@@ -70,6 +70,16 @@ protected:
   // cholmod cm
   cholmod_common* common_{nullptr};
 
+  int dtype() const {
+    if constexpr (std::is_same_v<Scalar, float>) {
+      return CHOLMOD_SINGLE;
+    } else if constexpr (std::is_same_v<Scalar, double>) {
+      return CHOLMOD_DOUBLE;
+    } else {
+      static_assert(internal::always_false_v<Scalar>, "Unsupported scalar type.");
+    }
+  }
+
   void analyze_impl(int supernodal = CHOLMOD_SUPERNODAL, int final_asis = 0, int final_ll = 1) {
     const int int_true = static_cast<int>(true);
     reset();
@@ -85,14 +95,14 @@ protected:
     sparse_.nzmax = mat_.nnz();
     sparse_.p = const_cast<index_t*>(mat_.outer_ptrs().data());
     sparse_.i = const_cast<index_t*>(mat_.inner_indices().data());
-    sparse_.x = const_cast<double*>(mat_.values().data());
+    sparse_.x = const_cast<Scalar*>(mat_.values().data());
     sparse_.z = nullptr;
     sparse_.sorted = int_true;
     sparse_.packed = int_true;
     sparse_.nz = nullptr;
     sparse_.itype = CHOLMOD_INT;
     sparse_.stype = -1;
-    sparse_.dtype = CHOLMOD_DOUBLE;
+    sparse_.dtype = dtype();
     sparse_.xtype = CHOLMOD_REAL;
 
     factor_ = cholmod_analyze(&sparse_, common_);
@@ -121,16 +131,16 @@ protected:
     cholmod_dense rhs, lhs;
     ::std::memset(&rhs, 0, sizeof(rhs));
     ::std::memset(&lhs, 0, sizeof(lhs));
-    rhs.nzmax = rhs.d = rhs.nrow = (size_t)mat_.rows();
+    rhs.nzmax = rhs.d = rhs.nrow = static_cast<size_t>(mat_.rows());
     rhs.ncol = 1;
-    rhs.x = const_cast<double*>(y.data());
+    rhs.x = const_cast<Scalar*>(y.data());
     rhs.xtype = CHOLMOD_REAL;
-    rhs.dtype = CHOLMOD_DOUBLE;
-    lhs.nzmax = lhs.d = lhs.nrow = (size_t)mat_.rows();
+    rhs.dtype = dtype();
+    lhs.nzmax = lhs.d = lhs.nrow = static_cast<size_t>(mat_.rows());
     lhs.ncol = 1;
     lhs.x = x.data();
     lhs.xtype = CHOLMOD_REAL;
-    lhs.dtype = CHOLMOD_DOUBLE;
+    lhs.dtype = dtype();
 
     cholmod_dense* out = &lhs;
     cholmod_solve2(                         //
