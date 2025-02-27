@@ -317,6 +317,24 @@ public:
     return flatten();
   }
 
+  template <typename Sshape2>
+  MATHPRIM_PRIMFUNC basic_view<Scalar, Sshape2, Sstride, Dev> sub(const index_array<ndim> & anchor, const Sshape2& shape) {
+    // locate the memory
+    const index_t offset = sub2ind(stride_, anchor);
+    return basic_view<Scalar, Sshape2, Sstride, Dev>{data_ + offset, shape, stride_};
+  }
+
+  MATHPRIM_PRIMFUNC basic_view<Scalar, dshape<ndim>, Sstride, Dev> sub(const index_array<ndim> & anchor) {
+    return sub(anchor, dshape<ndim>{shape_.to_array() - anchor});
+  }
+
+  // TODO: disable when ndim > 1.
+  template <typename IntegerStart, typename IntegerEnd>
+  MATHPRIM_PRIMFUNC basic_view<Scalar, dshape<1>, Sstride, Dev> sub(IntegerStart start, IntegerEnd end) {
+    MATHPRIM_ASSERT(start >= 0 && end <= shape(0) && start <= end);
+    return {data_ + start * stride(0), dshape<1>{end - start}, stride_};
+  }
+
   /**
    * @brief Construct a const view with same data.
    *
@@ -456,6 +474,11 @@ MATHPRIM_PRIMFUNC basic_view_iterator<T, Sshape, Sstride, Dev, BatchDim> operato
 
 template <typename T, typename Sshape, typename Device>
 using contiguous_view = basic_view<T, Sshape, default_stride_t<Sshape>, Device>;
+template <typename Scalar, typename Device>
+using contiguous_vector_view = basic_view<Scalar, dshape<1>, default_stride_t<dshape<1>>, Device>;
+template <typename Scalar, typename Device>
+using contiguous_matrix_view = basic_view<Scalar, dshape<2>, default_stride_t<dshape<2>>, Device>;
+
 template <typename BaseView>
 using field_t = internal::field_t<BaseView>;
 
@@ -476,23 +499,40 @@ MATHPRIM_PRIMFUNC basic_view<T, Sshape, Sstride, Device> view(T *data, const Ssh
 ///////////////////////////////////////////////////////////////////////////////
 /// Memcpy between contiguous views.
 ///////////////////////////////////////////////////////////////////////////////
+namespace internal {
+template <typename T1, typename Sshape1, typename Sstride1, typename Dev1, typename T2, typename Sshape2,
+          typename Sstride2, typename Dev2>
+struct memcpy_impl {
+  // Default behaviour: asserts that the source and destination views are contiguous.
+  // All default xxxMEMCPY should work in this way.
+  void operator()(const basic_view<T1, Sshape1, Sstride1, Dev1> &dst,
+                  const basic_view<T2, Sshape2, Sstride2, Dev2> &src) const {
+    MATHPRIM_INTERNAL_CHECK_THROW(src.is_contiguous() && dst.is_contiguous(), std::runtime_error,
+                                  "The source or destination view is not contiguous.");
+    const auto total = src.numel() * sizeof(T1);
+    const auto avail = dst.numel() * sizeof(T2);
+    MATHPRIM_INTERNAL_CHECK_THROW(total <= avail, std::runtime_error,
+                                  "The source view is too large for the destination view.");
+    device::basic_memcpy<Dev2, Dev1>{}(dst.data(), src.data(), total);
+  }
+};
+}
+
 template <typename T1, typename Sshape1, typename Sstride1, typename Dev1, typename T2, typename Sshape2,
           typename Sstride2, typename Dev2>
 void copy(const basic_view<T1, Sshape1, Sstride1, Dev1> &dst, const basic_view<T2, Sshape2, Sstride2, Dev2> &src,
           bool enforce_same_shape = true) {
-  MATHPRIM_INTERNAL_CHECK_THROW(src.is_contiguous() && dst.is_contiguous(), std::runtime_error,
-                                "The source or destination view is not contiguous.");
-  const auto total = src.numel() * sizeof(T1);
-
   if (enforce_same_shape) {
     MATHPRIM_INTERNAL_CHECK_THROW(src.shape() == dst.shape(), std::runtime_error,
                                   "The source and destination view must have the same shape.");
-  } else {
-    const auto avail = dst.numel() * sizeof(T2);
-    MATHPRIM_INTERNAL_CHECK_THROW(total <= avail, std::runtime_error,
-                                  "The source view is too large for the destination view.");
   }
-  device::basic_memcpy<Dev2, Dev1>{}(dst.data(), src.data(), total);
+  internal::memcpy_impl<T1, Sshape1, Sstride1, Dev1, T2, Sshape2, Sstride2, Dev2>{}(dst, src);
+}
+
+template <typename T, typename Sshape, typename Sstride, typename Device>
+inline void zeros(const basic_view<T, Sshape, Sstride, Device> &dst) {
+  MATHPRIM_INTERNAL_CHECK_THROW(dst.is_contiguous(), std::runtime_error, "The view is not contiguous.");
+  Device{}.memset(dst.data(), 0, dst.numel() * sizeof(T));
 }
 
 }  // namespace mathprim

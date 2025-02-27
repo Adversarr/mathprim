@@ -35,7 +35,7 @@ private:
     }
 
     vector_type r = residual_buffer.view(), dx = dx_.view();
-    const_vector cx = x.as_const(), cr = r.as_const(), cdx = dx_.view();
+    const_vector cx = x.as_const(), cr = r.as_const();
     const Scalar b_norm = blas.norm(b);
 
     // initialize r <- b - A * x

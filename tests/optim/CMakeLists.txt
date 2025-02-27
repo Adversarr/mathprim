@@ -1,0 +1,1 @@
+mathprim_add_example(optim_quad quad.cpp)

@@ -182,3 +182,35 @@ GTEST_TEST(blas, handmade) {
     }
   }
 }
+
+GTEST_TEST(view, sub) {
+  auto buf = make_buffer<int>(make_dshape(4, 3, 2));
+  for (auto [i, j, k] : buf.shape()) {
+    buf.view()(i, j, k) = i * 6 + j * 2 + k + 1;
+  }
+  auto bv = buf.view();
+  auto sub = bv.sub(index_array<3>{1, 1, 1}, make_dshape(3, 2, 1));
+  for (auto [i, j, k] : sub.shape()) {
+    EXPECT_EQ(sub(i, j, k), bv(i + 1, j + 1, k + 1));
+  }
+}
+
+GTEST_TEST(view, sub1d) {
+  auto buf = make_buffer<int>(make_dshape(4));
+  for (auto i : buf.shape()) {
+    buf.view()(i) = i + 1;
+  }
+  auto bv = buf.view();
+  {
+    auto sub = bv.sub(index_array<1>{1}, make_dshape(3));
+    for (auto i : sub.shape()) {
+      EXPECT_EQ(sub(i), bv(i + 1));
+    }
+  }
+  {
+    auto sub = bv.sub(1, 4);
+    for (auto i : sub.shape()) {
+      EXPECT_EQ(sub(i), bv(i + 1));
+    }
+  }
+}

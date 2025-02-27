@@ -206,6 +206,10 @@ private:
 
 template <typename Scalar, typename Sshape, typename Dev>
 using contiguous_buffer = basic_buffer<Scalar, Sshape, default_stride_t<Sshape>, Dev>;
+template <typename Scalar, typename Device>
+using contiguous_vector_buffer = basic_buffer<Scalar, dshape<1>, default_stride_t<dshape<1>>, Device>;
+template <typename Scalar, typename Device>
+using contiguous_matrix_buffer = basic_buffer<Scalar, dshape<2>, default_stride_t<dshape<2>>, Device>;
 
 /**
  * @brief The default creator for a buffer.
@@ -276,4 +280,11 @@ void copy(const basic_buffer<T1, Sshape1, Sstride1, Dev1> &dst, const basic_view
           bool enforce_same_shape = true) {
   return copy(dst.view(), src, enforce_same_shape);
 }
+
+template <typename T, typename Sshape, typename Sstride, typename Device>
+inline void zeros(basic_buffer<T, Sshape, Sstride, Device> &dst) {
+  dst.fill_bytes(0);
+}
+
+
 }  // namespace mathprim

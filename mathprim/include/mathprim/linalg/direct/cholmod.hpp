@@ -23,7 +23,7 @@ public:
   friend base;
 
   cholmod_chol() = default;
-  explicit cholmod_chol(const_matrix_view mat) : base(mat_) {
+  explicit cholmod_chol(const_matrix_view mat) : base(mat) {
     base::compute(mat);
   }
 
@@ -70,14 +70,14 @@ protected:
   // cholmod cm
   cholmod_common* common_{nullptr};
 
-  void analyze_impl() {
+  void analyze_impl(int supernodal = CHOLMOD_SUPERNODAL, int final_asis = 0, int final_ll = 1) {
     const int int_true = static_cast<int>(true);
     reset();
     common_ = new cholmod_common;
     cholmod_start(common_);
-    common_->supernodal = CHOLMOD_SIMPLICIAL;
-    common_->final_asis = 1;
-    common_->final_ll = 0;
+    common_->supernodal = supernodal;
+    common_->final_asis = final_asis;
+    common_->final_ll = final_ll;
     memset(&sparse_, 0, sizeof(cholmod_sparse));
 
     sparse_.nrow = mat_.rows();
@@ -104,6 +104,13 @@ protected:
   void factorize_impl() {
     double beta[2] = {0, 0};
     int fact_stat = cholmod_factorize_p(&sparse_, beta, nullptr, 0, factor_, common_);
+    // First stage, if it fails, retry.
+    if (factor_->minor != factor_->n /* || fact_stat != CHOLMOD_OK */) {
+      fprintf(stderr, "WARN: CHOLMOD+Supernodal to factorize the matrix. %d\n", fact_stat);
+      analyze_impl(CHOLMOD_SIMPLICIAL, 1, 0); // Simplicial LDLT.
+      fact_stat = cholmod_factorize_p(&sparse_, beta, nullptr, 0, factor_, common_);
+    }
+
     // Second stage, if it fails, we throw an exception.
     if (factor_->minor != factor_->n /* || fact_stat != CHOLMOD_OK */) {
       throw std::runtime_error("Failed to factorize the matrix." + std::string(blas::internal::to_string(fact_stat)));

@@ -16,10 +16,10 @@
   BreakConstructorInitializers: AfterColon
   # BreakTemplateDeclarationsStyle: Yes
   BracedInitializerIndentWidth: 2
-  AllowShortBlocksOnASingleLine: Never
+  AllowShortBlocksOnASingleLine: Always
   AllowShortCaseLabelsOnASingleLine: false
   AllowShortEnumsOnASingleLine: false
-  AllowShortFunctionsOnASingleLine: Empty
+  AllowShortFunctionsOnASingleLine: InlineOnly
   AllowShortIfStatementsOnASingleLine: Never
   AllowShortLambdasOnASingleLine: Empty
   AllowShortLoopsOnASingleLine: false

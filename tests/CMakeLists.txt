@@ -1,6 +1,11 @@
 find_package(GTest REQUIRED)
 enable_testing()
 
+macro(mathprim_add_example EXAMPLE_NAME SOURCE_FILES)
+  add_executable(${EXAMPLE_NAME} ${SOURCE_FILES})
+  target_link_libraries(${EXAMPLE_NAME} PRIVATE mathprim)
+endmacro(mathprim_add_example)
+
 add_subdirectory(dim_iterator)
 add_subdirectory(cpu_blas)
 add_subdirectory(hello_world)
@@ -22,3 +27,4 @@ endif()
 add_subdirectory(eigen)
 add_subdirectory(nystorm)
 add_subdirectory(cholmod)
+add_subdirectory(optim)

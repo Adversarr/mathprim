@@ -17,7 +17,7 @@ public:
   friend base;
 
   basic_eigen_direct_solver() = default;
-  explicit basic_eigen_direct_solver(const_matrix_view mat) : base(mat_) {
+  explicit basic_eigen_direct_solver(const_matrix_view mat) : base(mat) {
     base::compute(mat);
   }
 

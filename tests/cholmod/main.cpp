@@ -58,18 +58,18 @@ void work(benchmark::State &state) {
   }
 }
 
-BENCHMARK_TEMPLATE(work, sparse::direct::eigen_simplicial_chol<double, sparse::sparse_format::csr>)
-    ->Range(16, 512)
-    ->RangeMultiplier(2)
-    ->Unit(benchmark::kMillisecond);
-BENCHMARK_TEMPLATE(work, sparse::direct::eigen_cholmod_simplicial_ldlt<sparse::sparse_format::csr>)
-    ->Range(16, 512)
-    ->RangeMultiplier(2)
-    ->Unit(benchmark::kMillisecond);
-BENCHMARK_TEMPLATE(work, sparse::direct::eigen_cholmod_simplicial_llt<sparse::sparse_format::csr>)
-    ->Range(16, 512)
-    ->RangeMultiplier(2)
-    ->Unit(benchmark::kMillisecond);
+// BENCHMARK_TEMPLATE(work, sparse::direct::eigen_simplicial_chol<double, sparse::sparse_format::csr>)
+//     ->Range(16, 512)
+//     ->RangeMultiplier(2)
+//     ->Unit(benchmark::kMillisecond);
+// BENCHMARK_TEMPLATE(work, sparse::direct::eigen_cholmod_simplicial_ldlt<sparse::sparse_format::csr>)
+//     ->Range(16, 512)
+//     ->RangeMultiplier(2)
+//     ->Unit(benchmark::kMillisecond);
+// BENCHMARK_TEMPLATE(work, sparse::direct::eigen_cholmod_simplicial_llt<sparse::sparse_format::csr>)
+//     ->Range(16, 512)
+//     ->RangeMultiplier(2)
+    // ->Unit(benchmark::kMillisecond);
 BENCHMARK_TEMPLATE(work, sparse::direct::cholmod_chol<sparse::sparse_format::csr>)
     ->Range(16, 512)
     ->RangeMultiplier(2)
