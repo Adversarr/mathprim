@@ -100,7 +100,13 @@ protected:
     sparse_.sorted = int_true;
     sparse_.packed = int_true;
     sparse_.nz = nullptr;
-    sparse_.itype = CHOLMOD_INT;
+    if constexpr (sizeof(index_t) == 4) {
+      sparse_.itype = CHOLMOD_INT;
+    } else if constexpr (sizeof(index_t) == 8) {
+      sparse_.itype = CHOLMOD_LONG;
+    } else {
+      static_assert(internal::always_false_v<index_t>, "Unsupported index type.");
+    }
     sparse_.stype = -1;
     sparse_.dtype = dtype();
     sparse_.xtype = CHOLMOD_REAL;
