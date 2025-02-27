@@ -105,7 +105,7 @@ protected:
     } else if constexpr (sizeof(index_t) == 8) {
       sparse_.itype = CHOLMOD_LONG;
     } else {
-      static_assert(internal::always_false_v<index_t>, "Unsupported index type.");
+      static_assert(internal::always_false_v<Scalar>, "Unsupported index type.");
     }
     sparse_.stype = -1;
     sparse_.dtype = dtype();

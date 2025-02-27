@@ -1,0 +1,1 @@
+mathprim_add_example(extreme_test main.cu)

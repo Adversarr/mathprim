@@ -40,7 +40,11 @@ void work(benchmark::State &state) {
 
   // solve
   // auto chol = sparse::direct::cholmod_chol<Scalar, device::cpu>{mat};
+  auto start_precond = std::chrono::high_resolution_clock::now();
   auto chol = Solver{mat};
+  auto end = std::chrono::high_resolution_clock::now();
+  auto duration = std::chrono::duration_cast<std::chrono::duration<float, std::milli>>(end - start_precond);
+  std::cout << "Preconditioner time: " << duration.count() << " ms" << std::endl;
   for (auto _ : state) {
     x.fill_bytes(0);
     chol.solve(x.view(), b.view()); // A x = b
@@ -58,30 +62,28 @@ void work(benchmark::State &state) {
   }
 }
 
-BENCHMARK_TEMPLATE(work, double, sparse::direct::eigen_simplicial_chol<double, sparse::sparse_format::csr>)
-    ->Range(16, 512)
-    ->RangeMultiplier(2)
-    ->Unit(benchmark::kMillisecond);
-BENCHMARK_TEMPLATE(work, double, sparse::direct::eigen_cholmod_simplicial_ldlt<sparse::sparse_format::csr>)
-    ->Range(16, 512)
-    ->RangeMultiplier(2)
-    ->Unit(benchmark::kMillisecond);
-BENCHMARK_TEMPLATE(work, double, sparse::direct::eigen_cholmod_simplicial_llt<sparse::sparse_format::csr>)
-    ->Range(16, 512)
-    ->RangeMultiplier(2)
-    ->Unit(benchmark::kMillisecond);
+// BENCHMARK_TEMPLATE(work, double, sparse::direct::eigen_simplicial_chol<double, sparse::sparse_format::csr>)
+//     ->Range(16, 512)
+//     ->RangeMultiplier(2)
+//     ->Unit(benchmark::kMillisecond);
+// BENCHMARK_TEMPLATE(work, double, sparse::direct::eigen_cholmod_simplicial_ldlt<sparse::sparse_format::csr>)
+//     ->Range(16, 1024)
+//     ->RangeMultiplier(2)
+//     ->Unit(benchmark::kMillisecond);
+// BENCHMARK_TEMPLATE(work, double, sparse::direct::eigen_cholmod_simplicial_llt<sparse::sparse_format::csr>)
+//     ->Range(16, 1024)
+//     ->RangeMultiplier(2)
+//     ->Unit(benchmark::kMillisecond);
 
-BENCHMARK_TEMPLATE(work, float, sparse::direct::cholmod_chol<float, sparse::sparse_format::csr>)
-    ->Range(16, 512)
-    ->RangeMultiplier(2)
-    ->Unit(benchmark::kMillisecond);
+// BENCHMARK_TEMPLATE(work, float, sparse::direct::cholmod_chol<float, sparse::sparse_format::csr>)
+//     ->Range(16, 512)
+//     ->RangeMultiplier(2)
+//     ->Unit(benchmark::kMillisecond);
 BENCHMARK_TEMPLATE(work, double, sparse::direct::cholmod_chol<double, sparse::sparse_format::csr>)
-    ->Range(16, 512)
-    ->RangeMultiplier(2)
+    ->ArgsProduct({{512, 1024, 2048}})
     ->Unit(benchmark::kMillisecond);
 BENCHMARK_TEMPLATE(work, double, sparse::direct::eigen_cholmod_supernodal_llt<sparse::sparse_format::csr>)
-    ->Range(16, 512)
-    ->RangeMultiplier(2)
+    ->ArgsProduct({{512, 1024, 2048}})
     ->Unit(benchmark::kMillisecond);
 
 BENCHMARK_MAIN();

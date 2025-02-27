@@ -44,7 +44,6 @@ public:
     vector_type r = residual_buffer.view(), q = q_.view(), d = d_.view();
     const_vector cr = r.as_const(), cq = q.as_const(), cd = d.as_const();
     const Scalar b_norm = blas.norm(b);
-    const Scalar abs_tol_norm = params.norm_tol_ * b_norm;
 
     // r = b - A * x
     blas.copy(r, b);             // r = b
@@ -56,9 +55,9 @@ public:
     auto& norm = results.norm_;
     // auto& max_norm = results.amax_;
     iterations = 0;
-    norm = blas.norm(cr);
+    norm = blas.norm(cr) / b_norm;
     // max_norm = blas.amax(cr);
-    bool converged = norm <= abs_tol_norm /* || max_norm <= params.amax_tol_ */;
+    bool converged = norm <= params.norm_tol_ /* || max_norm <= params.amax_tol_ */;
     // Set initial search direction.
     preconditioner.apply(d, r);           // d = M^-1 * r
     Scalar delta_new = blas.dot(cr, cd);  // delta_new = (r, d)
@@ -79,9 +78,9 @@ public:
       blas.axpy(-alpha, cq, r);  // r = r - alpha * q
 
       // Check convergence.
-      norm = blas.norm(cr);
+      norm = blas.norm(cr) / b_norm;
       // max_norm = blas.amax(cr);
-      converged = norm <= abs_tol_norm /* || max_norm <= params.amax_tol_ */;
+      converged = norm <= params.norm_tol_ /* || max_norm <= params.amax_tol_ */;
       cb(iterations, norm);
       if (converged) {
         break;
