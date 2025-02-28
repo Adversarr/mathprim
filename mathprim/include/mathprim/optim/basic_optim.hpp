@@ -91,6 +91,7 @@ public:
   const_view fused_gradients() const noexcept { return fused_gradients_.const_view(); }
 
   parameter_container& parameters() noexcept { return parameters_; }
+  parameter& at(index_t index) noexcept { return parameters_.at(index); }
 
   template <typename Fn>
   void for_each_parameter(Fn&& fn) {
@@ -100,7 +101,6 @@ public:
 protected:
   void on_setup() {}
 
-  parameter& at(index_t index) noexcept { return parameters_[index]; }
 
   void accumulate_loss(Scalar item) noexcept { loss_ += item; }
 
@@ -185,7 +185,6 @@ public:
 
   const Derived& derived() const noexcept { return static_cast<const Derived&>(*this); }
 
-private:
   stopping_criteria_type stopping_criteria_;
 };
 
@@ -250,10 +249,11 @@ private:
     return {problem.current_value(), 0};
   }
 };
+
 template <typename Scalar>
 std::ostream& operator<<(std::ostream& os, const optim_result<Scalar>& result) {
-  os << "Value: " << result.value_ << ", Last change: " << result.last_change_
-     << ", Gradient norm: " << result.grad_norm_ << ", Iterations: " << result.iterations_;
+  os << "Iter[" << result.iterations_ << "]: loss=" << result.value_ << ", |g|=" << result.grad_norm_
+      << ", delt=" << result.last_change_;
   return os;
 }
 
