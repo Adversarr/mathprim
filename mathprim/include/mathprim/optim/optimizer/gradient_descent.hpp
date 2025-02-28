@@ -28,6 +28,8 @@ public:
 
   gradient_descent_optimizer() = default;
 
+  Linesearch& linesearcher() noexcept { return linesearcher_; }
+
 private:
   template <typename ProblemDerived, typename Callback>
   result_type optimize_impl(basic_problem<ProblemDerived, Scalar, Device>& problem, Callback && callback) {
@@ -64,7 +66,7 @@ private:
     MATHPRIM_INTERNAL_CHECK_THROW(std::isfinite(grad_norm), std::runtime_error, "Initial gradient norm is not finite.");
 
     auto mom_view = momentum_buffer_.view();
-    for (; (iteration < criteria.max_iterations) && (grad_norm >= criteria.tol_grad_);
+    for (; (iteration < criteria.max_iterations_) && (grad_norm >= criteria.tol_grad_);
          ++iteration) {
       callback(result);
       Scalar alpha;

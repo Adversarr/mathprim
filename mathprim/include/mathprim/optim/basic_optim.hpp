@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <vector>
 #include <ostream>
+#include "mathprim/blas/blas.hpp"
 #include "mathprim/core/buffer.hpp"
 #include "mathprim/core/view.hpp"
 
@@ -30,13 +31,18 @@ public:
   const view_type& value() const noexcept { return value_; }
   const view_type& gradient() const noexcept { return gradient_; }
   const std::string& name() const noexcept { return name_; }
+  index_t offset() const noexcept { return offset_; }
 
-  void set_gradient(view_type gradient) noexcept { gradient_ = gradient; }
+  template <typename Derived, typename Scalar2, typename Device2>
+  friend class basic_problem;
 
 private:
+  void set_gradient(view_type gradient) noexcept { gradient_ = gradient; }
+  void set_offset(index_t offset) noexcept { offset_ = offset; }
+
   view_type value_;
   view_type gradient_;
-
+  index_t offset_{};
   // name of the data item (optional)
   std::string name_;
 };
@@ -119,6 +125,7 @@ protected:
       auto& param = parameters_[i];
       index_t size = param.value().size();
       param.set_gradient(fused_gradients_.view().sub(offset, offset + size));
+      param.set_offset(offset);
       offset += size;
     }
   }
@@ -153,7 +160,7 @@ template <typename Scalar>
 struct stopping_criteria {
   Scalar tol_change_{1e-6};  // |f[x] - f[x_prev]| < tol_change => stop
   Scalar tol_grad_{1e-3};    // |g| < tol_grad => stop
-  int max_iterations{100};  // maximum number of iterations
+  int max_iterations_{100};  // maximum number of iterations
 };
 
 template <typename Derived, typename Scalar, typename Device>  // Implementation of the optimizer
@@ -214,21 +221,78 @@ public:
   std::pair<result_type, Scalar> search(basic_problem<ProblemDerived, Scalar, Device>& problem,
                                         const_view neg_search_dir, Scalar init_step,
                                         LinesearchCallback&& callback = {}) {
-    search_direction_ = neg_search_dir;
+    backup_state(problem);
+
+    neg_search_dir_ = neg_search_dir;
     step_size_ = init_step;
     auto result = base::template optimize<ProblemDerived, LinesearchCallback>(
         problem, std::forward<LinesearchCallback>(callback));
+
+    restore_state(problem, true);
     return {result, step_size_};
   }
 
-private:
+protected:
   template <typename ProblemDerived, typename Callback>
   result_type optimize_impl(basic_problem<ProblemDerived, Scalar, Device>& problem, Callback&& callback) {
     return static_cast<Derived&>(*this).template optimize_impl<ProblemDerived, Callback>(
         problem, std::forward<Callback>(callback));
   }
-  const_view search_direction_;
+
+  template <typename ProblemDerived>
+  void backup_state(basic_problem<ProblemDerived, Scalar, Device>& problem) {
+    index_t total_params = problem.fused_gradients().numel();
+    if (!backuped_parameters_ || backuped_parameters_.numel() != total_params) {
+      backuped_parameters_ = make_buffer<Scalar, Device>(total_params);
+    }
+    if (!backuped_gradients_ || backuped_gradients_.numel() != total_params) {
+      backuped_gradients_ = make_buffer<Scalar, Device>(total_params);
+    }
+
+    problem.for_each_parameter([this](auto& param) {
+      auto& value = param.value();
+      auto& gradient = param.gradient();
+      auto offset = param.offset();
+      auto size = value.size();
+      copy(backuped_parameters_.view().sub(offset, offset + size), value);
+    });
+    copy(backuped_gradients_.view(), problem.fused_gradients());
+  }
+
+  template <typename ProblemDerived>
+  void restore_state(basic_problem<ProblemDerived, Scalar, Device>& problem, bool with_grad = false) {
+    problem.for_each_parameter([this](auto& param) {
+      auto& value = param.value();
+      auto& gradient = param.gradient();
+      auto offset = param.offset();
+      auto size = value.size();
+      copy(value, backuped_parameters_.view().sub(offset, offset + size));
+    });
+    if (with_grad) {
+      copy(problem.fused_gradients(), backuped_gradients_);
+    }
+  }
+
+  template <typename ProblemDerived, typename BlasDerived>
+  void step(Scalar step_size, basic_problem<ProblemDerived, Scalar, Device>& problem,
+            blas::basic_blas<BlasDerived, Scalar, Device>& bl) {
+    problem.for_each_parameter([&](auto& param) {
+      auto& value = param.value();
+      auto& gradient = param.gradient();
+      auto offset = param.offset();
+      auto size = value.size();
+      auto neg_dir = neg_search_dir_.sub(offset, offset + size);
+      bl.axpy(-step_size, neg_dir, value);
+    });
+  }
+
+  const_view neg_search_dir_;
+  Scalar min_rel_step_{1e-5}; // relative to input step_size.
+  Scalar max_rel_step_{1e+2}; // relative to input step_size.
   Scalar step_size_{1};
+
+  contiguous_vector_buffer<Scalar, Device> backuped_parameters_;
+  contiguous_vector_buffer<Scalar, Device> backuped_gradients_;
 };
 
 template <typename Scalar, typename Device>

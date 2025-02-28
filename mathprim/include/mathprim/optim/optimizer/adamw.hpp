@@ -110,7 +110,7 @@ private:
 
     auto m = first_mom_.view(), v = second_mom_.view();
     auto m_hat = first_mom_corr_.view(), v_hat = second_mom_corr_.view();
-    for (; (iteration < criteria.max_iterations) && (grad_norm >= criteria.tol_grad_); ++iteration) {
+    for (; (iteration < criteria.max_iterations_) && (grad_norm >= criteria.tol_grad_); ++iteration) {
       callback(result);
       // theta_t <- theta_{t-1} - gamma lambda theta_{t-1}
       if (weight_decay_ > 0) {

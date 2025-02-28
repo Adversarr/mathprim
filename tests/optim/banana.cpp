@@ -15,7 +15,7 @@ int main() {
   gd.learning_rate_ = 0.001;
   gd.momentum_ = 0.1;
   gd.nesterov_ = true;
-  gd.stopping_criteria_.max_iterations = 8192;
+  gd.stopping_criteria_.max_iterations_ = 8192;
   gd.stopping_criteria_.tol_change_ = 0;
   gd.stopping_criteria_.tol_grad_ = 1e-7;
 
@@ -31,7 +31,7 @@ int main() {
   adamw.learning_rate_ = 1e-3;
   adamw.beta1_ = 0.9;
   adamw.beta2_ = 0.99;
-  adamw.stopping_criteria_.max_iterations = 8192;
+  adamw.stopping_criteria_.max_iterations_ = 8192;
   adamw.stopping_criteria_.tol_change_ = 0;
   adamw.stopping_criteria_.tol_grad_ = 1e-7;
   problem.setup();
