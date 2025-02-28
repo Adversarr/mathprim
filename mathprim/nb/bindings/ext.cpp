@@ -45,7 +45,7 @@ void test_view_nb(nb::ndarray<T, shape, dev> arr) {
 }
 
 auto test_field_f32x3() {
-  mp::field_t<mathprim::cpu_vec3f32_const_view_t> view(nullptr, mp::shape_t<-1, 3>(4, 3));
+  mp::batched<mathprim::cpu_vec3f32_const_view_t> view(nullptr, mp::shape_t<-1, 3>(4, 3));
   return nbex::to_nb_array_standard(view);
 }
 

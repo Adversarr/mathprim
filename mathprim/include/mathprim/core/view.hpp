@@ -76,7 +76,7 @@ struct field_impl<basic_view<T, Sshape, Sstride, Device>> {
 };
 
 template <typename ViewType>
-using field_t = typename field_impl<ViewType>::type;
+using batched = typename field_impl<ViewType>::type;
 
 ///////////////////////////////////////////////////////////////////////////////
 /// Operations on packs.
@@ -480,7 +480,7 @@ template <typename Scalar, typename Device>
 using contiguous_matrix_view = basic_view<Scalar, dshape<2>, default_stride_t<dshape<2>>, Device>;
 
 template <typename BaseView>
-using field_t = internal::field_t<BaseView>;
+using batched = internal::batched<BaseView>;
 
 ///////////////////////////////////////////////////////////////////////////////
 /// Create views

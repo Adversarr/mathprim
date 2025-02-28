@@ -1,14 +1,11 @@
 #pragma once
+#include <algorithm>
+#include <vector>
+#include <ostream>
 #include "mathprim/core/buffer.hpp"
 #include "mathprim/core/view.hpp"
-#include <vector>
-namespace mathprim::optim {
 
-template <typename Scalar>
-struct optim_result {
-  Scalar value;
-  int iterations;
-};
+namespace mathprim::optim {
 
 template <typename Scalar, typename Device>
 class parameter_item {
@@ -80,6 +77,8 @@ public:
     return loss_;
   }
 
+  Scalar current_value() const noexcept { return loss_; }
+
   void setup() {
     prepare_fused_gradients();
     derived().on_setup();
@@ -90,6 +89,13 @@ public:
   view_type fused_gradients() noexcept { return fused_gradients_.view(); }
 
   const_view fused_gradients() const noexcept { return fused_gradients_.const_view(); }
+
+  parameter_container& parameters() noexcept { return parameters_; }
+
+  template <typename Fn>
+  void for_each_parameter(Fn&& fn) {
+    std::for_each(parameters_.begin(), parameters_.end(), std::forward<Fn>(fn));
+  }
 
 protected:
   void on_setup() {}
@@ -130,21 +136,32 @@ protected:
   // void eval_gradients_impl() {}
   // void eval_value_impl() {}
 private:
-  buffer_type fused_gradients_; // fused gradients
+  buffer_type fused_gradients_;  // fused gradients
   Scalar loss_{};
   parameter_container parameters_;
 };
 
 template <typename Scalar>
-struct stopping_criteria {
-  Scalar tol_change_;  // |f[x] - f[x_prev]| < tol_change => stop
-  Scalar tol_grad_;    // |g| < tol_grad => stop
-  int max_iterations;  // maximum number of iterations
+struct optim_result {
+  Scalar value_;
+  Scalar last_change_;
+  Scalar grad_norm_;
+  int iterations_;
 };
 
-template <typename Derived, typename Scalar, typename Device, typename Problem>  // Implementation of the optimizer
+template <typename Scalar>
+struct stopping_criteria {
+  Scalar tol_change_{1e-6};  // |f[x] - f[x_prev]| < tol_change => stop
+  Scalar tol_grad_{1e-3};    // |g| < tol_grad => stop
+  int max_iterations{100};  // maximum number of iterations
+};
+
+template <typename Derived, typename Scalar, typename Device>  // Implementation of the optimizer
 class basic_optimizer {
 public:
+  using view_type = contiguous_view<Scalar, dshape<1>, Device>;
+  using const_view = contiguous_view<const Scalar, dshape<1>, Device>;
+
   basic_optimizer() = default;
   basic_optimizer(basic_optimizer&&) noexcept = default;
   basic_optimizer& operator=(basic_optimizer&&) noexcept = default;
@@ -152,13 +169,92 @@ public:
   using stopping_criteria_type = stopping_criteria<Scalar>;
   using result_type = optim_result<Scalar>;
 
-  template <typename ProblemDerived>
-  result_type optimize(const stopping_criteria_type& criteria) {
+  struct do_nothing_cb {
+    inline void operator()(const result_type& ) {}
+  };
+
+  template <typename ProblemDerived, typename Callback = do_nothing_cb>
+  result_type optimize(basic_problem<ProblemDerived, Scalar, Device>& problem, Callback&& callback = {}) {
+    return static_cast<Derived&>(*this).template optimize_impl<ProblemDerived, Callback>(
+        problem, std::forward<Callback>(callback));
+  }
+
+  stopping_criteria_type &criteria() noexcept { return stopping_criteria_; }
+
+  Derived& derived() noexcept { return static_cast<Derived&>(*this); }
+
+  const Derived& derived() const noexcept { return static_cast<const Derived&>(*this); }
+
+private:
+  stopping_criteria_type stopping_criteria_;
+};
+
+template <typename Derived, typename Scalar, typename Device>
+class basic_linesearcher : public basic_optimizer<basic_linesearcher<Derived, Scalar, Device>, Scalar, Device> {
+public:
+  using base = basic_optimizer<basic_linesearcher<Derived, Scalar, Device>, Scalar, Device>;
+  friend base;
+  using stopping_criteria_type = typename base::stopping_criteria_type;
+  using view_type = typename base::view_type;
+  using const_view = typename base::const_view;
+  using result_type = typename base::result_type;
+  basic_linesearcher() = default;
+
+  /**
+   * @brief Search a step size along the search direction.
+   * 
+   * @tparam ProblemDerived 
+   * @tparam base::do_nothing_cb 
+   * @param problem 
+   * @param neg_search_dir 
+   * @param init_step 
+   * @param callback 
+   * @return std::pair<result_type, Scalar> 
+   */
+  template <typename ProblemDerived, typename LinesearchCallback = typename base::do_nothing_cb>
+  std::pair<result_type, Scalar> search(basic_problem<ProblemDerived, Scalar, Device>& problem,
+                                        const_view neg_search_dir, Scalar init_step,
+                                        LinesearchCallback&& callback = {}) {
+    search_direction_ = neg_search_dir;
+    step_size_ = init_step;
+    auto result = base::template optimize<ProblemDerived, LinesearchCallback>(
+        problem, std::forward<LinesearchCallback>(callback));
+    return {result, step_size_};
   }
 
 private:
-  template <typename ProblemDerived>
-  result_type optimize_impl();
+  template <typename ProblemDerived, typename Callback>
+  result_type optimize_impl(basic_problem<ProblemDerived, Scalar, Device>& problem, Callback&& callback) {
+    return static_cast<Derived&>(*this).template optimize_impl<ProblemDerived, Callback>(
+        problem, std::forward<Callback>(callback));
+  }
+  const_view search_direction_;
+  Scalar step_size_{1};
 };
+
+template <typename Scalar, typename Device>
+class no_linesearcher : public basic_linesearcher<no_linesearcher<Scalar, Device>, Scalar, Device> {
+public:
+  using base = basic_linesearcher<no_linesearcher<Scalar, Device>, Scalar, Device>;
+  friend base;
+
+  using stopping_criteria_type = typename base::stopping_criteria_type;
+  using view_type = typename base::view_type;
+  using const_view = typename base::const_view;
+  using result_type = typename base::result_type;
+  no_linesearcher() = default;
+
+private:
+  template <typename ProblemDerived, typename Callback>
+  result_type optimize_impl(basic_problem<ProblemDerived, Scalar, Device>& problem, Callback&& /* callback */) {
+    return {problem.current_value(), 0};
+  }
+};
+template <typename Scalar>
+std::ostream& operator<<(std::ostream& os, const optim_result<Scalar>& result) {
+  os << "Value: " << result.value_ << ", Last change: " << result.last_change_
+     << ", Gradient norm: " << result.grad_norm_ << ", Iterations: " << result.iterations_;
+  return os;
+}
 
 }  // namespace mathprim::optim

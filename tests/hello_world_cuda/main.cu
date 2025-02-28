@@ -21,7 +21,7 @@ __global__ void set_value(float *ptr, int size) {
   }
 }
 
-__global__ void get_value(field_t<cuda_vec4f32_const_view_t> view) {
+__global__ void get_value(batched<cuda_vec4f32_const_view_t> view) {
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (idx == 0) {
     printf("view.size() = %d\n", view.size());
