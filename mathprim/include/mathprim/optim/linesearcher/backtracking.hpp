@@ -50,7 +50,7 @@ private:
       base::restore_state(problem);
       step_size *= step_shrink_factor_;
     }
-    printf("Backtracking line search: iterations = %d\n", iterations);
+
     if (!satisfied) {
       fprintf(stderr, "Warning: backtrack break due to step too small.\n");
     }

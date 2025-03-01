@@ -3,6 +3,7 @@
 #include "mathprim/optim/linesearcher/backtracking.hpp"
 #include "mathprim/optim/optimizer/adamw.hpp"
 #include "mathprim/optim/optimizer/gradient_descent.hpp"
+#include "mathprim/optim/optimizer/l_bfgs.hpp"
 #include <iostream>
 
 using namespace mathprim;
@@ -43,6 +44,31 @@ int main() {
     gd.learning_rate_ = 0.5;
 
     gd.optimize(problem, [](auto& result) {
+      std::cout << result << std::endl;
+    });
+  }
+
+  {
+    optim::l_bfgs_optimizer<double, device::cpu, blas::cpu_eigen<double>> l_bfgs;
+    problem.setup();
+    l_bfgs.criteria().max_iterations_ = 1000;
+    l_bfgs.memory_size_ = 10;
+    l_bfgs.stopping_criteria_.max_iterations_ = 100;
+    l_bfgs.optimize(problem, [](auto& result) {
+      std::cout << result << std::endl;
+    });
+  }
+
+
+  {
+    using ls = optim::backtracking_linesearcher<double, device::cpu, blas::cpu_eigen<double>>;
+    using pr = optim::l_bfgs_preconditioner_identity<double, device::cpu, blas::cpu_eigen<double>>;
+    optim::l_bfgs_optimizer<double, device::cpu, blas::cpu_eigen<double>, ls, pr> l_bfgs;
+    problem.setup();
+    l_bfgs.criteria().max_iterations_ = 1000;
+    l_bfgs.memory_size_ = 5;
+    l_bfgs.stopping_criteria_.max_iterations_ = 100;
+    l_bfgs.optimize(problem, [](auto& result) {
       std::cout << result << std::endl;
     });
   }

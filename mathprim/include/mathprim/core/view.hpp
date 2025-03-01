@@ -318,19 +318,20 @@ public:
   }
 
   template <typename Sshape2>
-  MATHPRIM_PRIMFUNC basic_view<Scalar, Sshape2, Sstride, Dev> sub(const index_array<ndim> & anchor, const Sshape2& shape) {
+  MATHPRIM_PRIMFUNC basic_view<Scalar, Sshape2, Sstride, Dev> sub(const index_array<ndim> &anchor,
+                                                                  const Sshape2 &shape) const noexcept {
     // locate the memory
     const index_t offset = sub2ind(stride_, anchor);
     return basic_view<Scalar, Sshape2, Sstride, Dev>{data_ + offset, shape, stride_};
   }
 
-  MATHPRIM_PRIMFUNC basic_view<Scalar, dshape<ndim>, Sstride, Dev> sub(const index_array<ndim> & anchor) {
+  MATHPRIM_PRIMFUNC basic_view<Scalar, dshape<ndim>, Sstride, Dev> sub(const index_array<ndim> &anchor) const noexcept {
     return sub(anchor, dshape<ndim>{shape_.to_array() - anchor});
   }
 
   // TODO: disable when ndim > 1.
   template <typename IntegerStart, typename IntegerEnd>
-  MATHPRIM_PRIMFUNC basic_view<Scalar, dshape<1>, Sstride, Dev> sub(IntegerStart start, IntegerEnd end) {
+  MATHPRIM_PRIMFUNC basic_view<Scalar, dshape<1>, Sstride, Dev> sub(IntegerStart start, IntegerEnd end) const noexcept {
     MATHPRIM_ASSERT(start >= 0 && end <= shape(0) && start <= end);
     return {data_ + start * stride(0), dshape<1>{end - start}, stride_};
   }

@@ -111,7 +111,6 @@ private:
         break;
       }
     }
-    callback(result);
     return result;
   }
 
