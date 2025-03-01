@@ -56,16 +56,14 @@ private:
 template <typename EigenSolver, typename Scalar, sparse::sparse_format Format>
 class basic_eigen_iterative_solver
     : public basic_iterative_solver<basic_eigen_iterative_solver<EigenSolver, Scalar, Format>, Scalar, device::cpu,
-                                    wrap_eigen_sparse_map<Scalar, Format>, ::mathprim::blas::cpu_handmade<Scalar>> {
+                                    wrap_eigen_sparse_map<Scalar, Format>> {
 public:
   using base = basic_iterative_solver<basic_eigen_iterative_solver<EigenSolver, Scalar, Format>, Scalar, device::cpu,
-                                      wrap_eigen_sparse_map<Scalar, Format>, ::mathprim::blas::cpu_handmade<Scalar>>;
+                                      wrap_eigen_sparse_map<Scalar, Format>>;
   friend base;
   using vector_type = typename base::vector_type;
   using const_vector = typename base::const_vector;
   using linear_operator_type = typename base::linear_operator_type;
-  using blas_type = typename base::blas_type;
-  using preconditioner_type = typename base::preconditioner_type;
   using results_type = typename base::results_type;
   using parameters_type = typename base::parameters_type;
   explicit basic_eigen_iterative_solver(linear_operator_type matrix) :

@@ -150,10 +150,10 @@ private:
 
 template <typename Scalar>
 struct optim_result {
-  Scalar value_;
-  Scalar last_change_;
-  Scalar grad_norm_;
-  int iterations_;
+  Scalar value_{std::numeric_limits<Scalar>::quiet_NaN()};
+  Scalar last_change_{std::numeric_limits<Scalar>::quiet_NaN()};
+  Scalar grad_norm_{std::numeric_limits<Scalar>::quiet_NaN()};
+  int iterations_{0};
 };
 
 template <typename Scalar>
