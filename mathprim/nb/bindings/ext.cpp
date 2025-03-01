@@ -4,7 +4,7 @@
 #include <mathprim/core/view.hpp>
 #include <mathprim/supports/stringify.hpp>
 
-#include "nb_ext.hpp"
+#include "mathprim/supports/bindings/nb_ext.hpp"
 #ifdef MATHPRIM_ENABLE_CUDA
 #  include "bind_cuda.cuh"
 #endif
@@ -23,18 +23,19 @@ void print_mat_view(nb::ndarray<float, nb::shape<-1, -1>>& matrix) {
   std::cout << view << std::endl;
 }
 
-template <typename T, typename sshape, typename dev, typename sstride = mp::default_stride_t<sshape>>
+template <typename T, typename Sshape, typename Dev, typename Sstride = mp::default_stride_t<Sshape>>
 auto test_view() {
   static T* data = nullptr;
-  mp::basic_view<T, sshape, sstride, dev> view(data, sshape());
+  mp::basic_view<T, Sshape, Sstride, Dev> view(data, Sshape());
   return nbex::to_nb_array_standard(view);
 }
 
-template <typename T, typename shape, typename dev>
-void test_view_nb(nb::ndarray<T, shape, dev> arr) {
+template <typename T, typename Shape, typename Dev>
+void test_view_nb(nb::ndarray<T, Shape, Dev> arr) {
+  std::cout << typeid(T).name() << " " << arr.shape(0) << " " << arr.shape(1) << std::endl;
   auto view = nbex::to_mp_view_standard(arr);
   std::cout << view << std::endl;
-  if constexpr (decltype(view)::ndim == 2 && std::is_same_v<dev, nb::device::cpu>) {
+  if constexpr (decltype(view)::ndim == 2 && std::is_same_v<Dev, nb::device::cpu>) {
     for (int i = 0; i < view.shape(0); i++) {
       for (int j = 0; j < view.shape(1); j++) {
         std::cout << view(i, j) << " ";
@@ -49,12 +50,13 @@ auto test_field_f32x3() {
   return nbex::to_nb_array_standard(view);
 }
 
-NB_MODULE(pymathprim, m) {
+NB_MODULE(pymp, m) {
   m.def("add", &add);
   m.def("print_mat_view", &print_mat_view);
   m.def("test_view", &test_view<float, mp::shape_t<4>, mp::device::cpu>, nb::rv_policy::reference);
   m.def("test_view_nb", &test_view_nb<float, nb::shape<-1, 3>, nb::device::cpu>);
-  m.def("test_view_nb", &test_view_nb<float, nb::shape<-1, -1>, nb::device::cpu>);
+  m.def("test_view_nb", &test_view_nb<double, nb::shape<-1, 3>, nb::device::cpu>);
+  
   m.def("test_field_f32x3", &test_field_f32x3, nb::rv_policy::reference);
 #ifdef MATHPRIM_ENABLE_CUDA
   do_binding_cuda(m);

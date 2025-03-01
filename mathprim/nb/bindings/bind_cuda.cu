@@ -1,6 +1,6 @@
 #include "bind_cuda.cuh"
 #include "mathprim/parallel/cuda.cuh"
-#include "nb_ext.hpp"
+#include "mathprim/supports/binding/nb_ext.hpp"
 #include <iostream>
 
 template <typename T, typename shape, typename dev>

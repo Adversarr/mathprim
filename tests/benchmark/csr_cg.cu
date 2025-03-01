@@ -423,7 +423,7 @@ void work_cuda_ai(benchmark::State &state) {
 // BENCHMARK_TEMPLATE(work, blas::cpu_eigen<float>)->Range(1 << 10, 1 << 16);
 // BENCHMARK(work_chol)->Range(1 << 10, 1 << 16);
 #ifdef NDEBUG
-#define LARGE_RANGE 1 << 9
+#define LARGE_RANGE 1 << 10
 #else
 #define LARGE_RANGE 1 << 5
 #endif

@@ -31,4 +31,25 @@ work_cuda_no_prec/512        123 ms
 work_cuda_ilu0/512          1012 ms
 work_cuda_ic/512            1008 ms
 work_cuda_ai/512             104 ms
+
+--- ... enlarge to 1024x1024 problem
+work_cuda/1024                853 ms
+work_cuda_no_prec/1024        794 ms
+work_cuda_ic/1024            5944 ms
+work_cuda_ai/1024             669 ms
+```
+
+## SpMV
+
+On the same problem, and matrix. Torch's default sparse csr [implementation](spmv.py).
+
+```
+spmv takes 0.185872 ms. # n=512
+spmv takes 0.422523 ms. # n=1024
+```
+
+mathprim's:
+```
+work_cuda/512       0.073 ms        0.072 ms
+work_cuda/1024      0.237 ms        0.237 ms
 ```
