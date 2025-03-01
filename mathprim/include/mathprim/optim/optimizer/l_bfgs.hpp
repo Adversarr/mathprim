@@ -1,4 +1,24 @@
-// mathprim/include/mathprim/optim/optimizer/l_bfgs.hpp
+/**
+ * @brief L-BFGS Optimizer.
+ * @ref   https://en.wikipedia.org/wiki/Limited-memory_BFGS
+ *
+ * >>> Two-loop recursion for L-BFGS >>>
+ * |    q <- grad_k
+ * |    for i = k-1, k-2, ..., k-m
+ * |      rho_i <- 1 / (s_i^T y_i)
+ * |      alpha_i <- rho_i s_i^T q
+ * |      q <- q - alpha_i y_i
+ * |    z <- H_0 q ==> Preconditioner of L-BFGS
+ * |    for i = k-m, k-m+1, ..., k-1
+ * |      beta <- rho_i y_i^T z
+ * |      z <- z + s_i (alpha_i - beta)
+ * |    return -z
+ * <<< Two-loop recursion for L-BFGS <<<
+ *
+ *     for the default preconditioner, it use `gamma I`, where
+ *       - gamma = y^T s / y^T y,
+ *       - s y is the last avaialble history
+ */
 #pragma once
 #include "mathprim/blas/blas.hpp"
 #include "mathprim/optim/basic_optim.hpp"
@@ -8,28 +28,12 @@
 
 namespace mathprim::optim {
 
-/** Two-loop recursion for L-BFGS.
- * q <- grad_k
- * for i = k-1, k-2, ..., k-m
- *   rho_i <- 1 / (s_i^T y_i)
- *   alpha_i <- rho_i s_i^T q
- *   q <- q - alpha_i y_i
- * z <- H_0 q ==> Preconditioner of L-BFGS
- * for i = k-m, k-m+1, ..., k-1
- *   beta <- rho_i y_i^T z
- *   z <- z + s_i (alpha_i - beta)
- * return -z
- * 
- * for the default preconditioner, it use `gamma I`, where
- *   - gamma = y^T s / y^T y, 
- *   - s y is the last avaialble history
- */
-
 template <typename Derived, typename Scalar, typename Device>
 struct l_bfgs_preconditioner {
   using vector_type = contiguous_vector_view<Scalar, Device>;
   using const_vector = contiguous_vector_view<const Scalar, Device>;
   l_bfgs_preconditioner() = default;
+  MATHPRIM_INTERNAL_MOVE(l_bfgs_preconditioner, default);
 
   void apply(vector_type z, const_vector q, const_vector s, const_vector y) {
     static_cast<Derived*>(this)->apply_impl(z, q, s, y);
@@ -42,6 +46,8 @@ struct l_bfgs_preconditioner_identity
   using base = l_bfgs_preconditioner<l_bfgs_preconditioner_identity<Scalar, Device, Blas>, Scalar, Device>;
   using vector_type = typename base::vector_type;
   using const_vector = typename base::const_vector;
+  l_bfgs_preconditioner_identity() = default;
+  MATHPRIM_INTERNAL_MOVE(l_bfgs_preconditioner_identity, default);
 
   void apply_impl(vector_type z, const_vector q, const_vector /* s */, const_vector /* y */) {
     blas_.copy(z, q);  // z <- q
@@ -56,6 +62,9 @@ struct l_bfgs_preconditioner_default
   using base = l_bfgs_preconditioner<l_bfgs_preconditioner_default<Scalar, Device, Blas>, Scalar, Device>;
   using vector_type = typename base::vector_type;
   using const_vector = typename base::const_vector;
+
+  l_bfgs_preconditioner_default() = default;
+  MATHPRIM_INTERNAL_MOVE(l_bfgs_preconditioner_default, default);
 
   void apply_impl(vector_type z, const_vector q, const_vector s, const_vector y) {
     blas::basic_blas<Blas, Scalar, Device>& bl = blas_;
@@ -92,8 +101,8 @@ public:
   using stopping_criteria_type = typename base::stopping_criteria_type;
   using result_type = typename base::result_type;
 
-
   l_bfgs_optimizer() = default;
+  MATHPRIM_INTERNAL_MOVE(l_bfgs_optimizer, default);
 
 private:
   template <typename ProblemDerived, typename Callback>
@@ -109,20 +118,20 @@ private:
     Scalar& last_change = result.last_change_;
     Scalar& grad_norm = result.grad_norm_;
     index_t& iteration = result.iterations_;
+    bool &converged = result.converged_;
 
 
     // 1. prepare all the buffers.
     setup_buffers(grads.numel());
-
     value = problem.eval_value_and_gradients();
     grad_norm = bl.norm(grads);
-    if (grad_norm < criteria.tol_grad_) {
+    converged = grad_norm < criteria.tol_grad_;
+    if (converged) {
       // lucky path.
       return result;
     }
 
     // 3. main loop.
-    bool converged = false;
     auto q = q_.view();
     auto z = z_.view();
     auto sn = s_new_.view();
@@ -148,8 +157,6 @@ private:
 
       // Launch linesearcher.
       auto [ls_result, ls_step_size] = ls.search(problem, z, learning_rate_);
-
-      // Update the state:
 
       // s_new <- x_k+1 - x_k = -alpha z.
       bl.copy(sn, z);
@@ -183,14 +190,6 @@ private:
     }
     return result;
   }
-
-  contiguous_matrix_buffer<Scalar, Device> s_, y_; // rotating buffer for histories
-  contiguous_vector_buffer<Scalar, Device> q_, z_;
-  contiguous_vector_buffer<Scalar, Device> s_new_, y_new_;
-  index_t memory_start_{0};  // the latest history index
-  index_t memory_avail_{0};  // the available history count
-  std::vector<Scalar> rho_, alpha_, beta_;
-  Blas blas_;
 
   void two_loop_step_in(){
     // operates on q
@@ -250,10 +249,19 @@ private:
     beta_.resize(memory_size_, 0);
   }
 
+  //// history buffers ////
+  contiguous_matrix_buffer<Scalar, Device> s_, y_;                  // rotating buffer for histories
+  std::vector<Scalar> rho_, alpha_, beta_;                          // histories
+  index_t memory_start_{0};                                         // latest history index
+  index_t memory_avail_{0};                                         // available history count
+  //// working buffers ////
+  contiguous_vector_buffer<Scalar, Device> q_, z_, s_new_, y_new_;
+  Blas blas_;
+
 public:  // Hyper parameters.
-  Preconditioner preconditioner_;
-  Linesearcher linesearcher_;
-  Scalar learning_rate_{1.0};
-  int memory_size_{10};  // Number of previous steps to store in memory
+  Preconditioner preconditioner_;  ///< Preconditioner for L-BFGS, default is scaled identity.
+  Linesearcher linesearcher_;      ///< Linesearcher for L-BFGS, for better convergency, consider wolfe.
+  Scalar learning_rate_{1.0};      ///< learning rate of L-BFGS, due to linesearch, 1.0 is a good start.
+  index_t memory_size_{10};        ///< Number of previous steps to store in memory, i.e. m in L-BFGS.
 };
 }  // namespace mathprim::optim

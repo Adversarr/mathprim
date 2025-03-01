@@ -91,6 +91,7 @@ private:
     Scalar& last_change = result.last_change_;
     Scalar& grad_norm = result.grad_norm_;
     index_t& iteration = result.iterations_;
+    bool& converged = result.converged_;
     // Initialize the momentum buffer.
     first_mom_ = make_buffer<Scalar, Device>(gradients_view.shape());
     second_mom_ = make_buffer<Scalar, Device>(gradients_view.shape());
@@ -103,6 +104,10 @@ private:
     last_change = std::numeric_limits<Scalar>::infinity();
     grad_norm = bl.norm(gradients_view);
     iteration = 0;
+    converged = grad_norm < criteria.tol_grad_;
+    if (converged) {
+      return result;
+    }
 
     // If value/|grad| is nan, fast return.
     MATHPRIM_INTERNAL_CHECK_THROW(std::isfinite(value), std::runtime_error, "Initial value is not finite.");

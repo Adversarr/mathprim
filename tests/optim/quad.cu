@@ -27,7 +27,7 @@ int main() {
   adamw.learning_rate_ = 1e-1;
   adamw.beta1_ = 0.9;
   adamw.beta2_ = 0.95;
-  adamw.criteria().max_iterations = 1000;
+  adamw.criteria().max_iterations_ = 1000;
   problem.setup();
   adamw.optimize(problem, [](auto& result) {
     std::cout << result << std::endl;

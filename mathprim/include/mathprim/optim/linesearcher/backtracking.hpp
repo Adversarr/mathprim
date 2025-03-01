@@ -11,7 +11,7 @@ bool satisfies_armijo(Scalar f0,               // original energy
 ) {
   return f_step <= f0 + step_size * armijo_threshold;
 }
-}
+}  // namespace internal
 
 template <typename Scalar, typename Device, typename Blas>
 class backtracking_linesearcher
@@ -26,6 +26,8 @@ public:
   using result_type = typename base::result_type;
 
   backtracking_linesearcher() = default;
+  MATHPRIM_INTERNAL_MOVE(backtracking_linesearcher, default);
+  MATHPRIM_INTERNAL_COPY(backtracking_linesearcher, delete);
 
 private:
   template <typename ProblemDerived, typename Callback>
@@ -36,13 +38,14 @@ private:
     result_type result;
     auto& iterations = result.iterations_;
     auto min_abs_step = step_size * this->min_rel_step_;
-    bool satisfied = false;
+    bool &converged = result.converged_;
+
     for (; iterations < criteria.max_iterations_ && min_abs_step < step_size; ++iterations) {
       // Step 1: Compute the new value.
       base::step(step_size, problem, blas_);
       Scalar new_value = problem.eval_value();
       if (internal::satisfies_armijo(old_value, new_value, step_size, armijo_threshold_)) {
-        satisfied = true;
+        converged = true;
         break;
       }
 
@@ -51,7 +54,7 @@ private:
       step_size *= step_shrink_factor_;
     }
 
-    if (!satisfied) {
+    if (!converged) {
       fprintf(stderr, "Warning: backtrack break due to step too small.\n");
     }
     return result;

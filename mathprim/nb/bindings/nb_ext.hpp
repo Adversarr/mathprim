@@ -48,7 +48,7 @@ std::array<size_t, seq::ndim> make_nb_shape_impl(const seq& shape, mp::index_seq
 }
 template <typename seq>
 std::array<size_t, seq::ndim> make_nb_shape(const seq& shape) {
-  return make_nb_shape_impl(shape, mp::make_index_seq<seq::ndim>{});
+  return make_nb_shape_impl(shape, mathprim::internal::make_index_seq<seq::ndim>{});
 }
 
 // convert device.

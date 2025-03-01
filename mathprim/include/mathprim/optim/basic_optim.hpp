@@ -8,6 +8,12 @@
 
 namespace mathprim::optim {
 
+/**
+ * @brief Descriptor of a parameter item in any optimization problem.
+ * 
+ * @tparam Scalar 
+ * @tparam Device 
+ */
 template <typename Scalar, typename Device>
 class parameter_item {
 public:
@@ -22,15 +28,40 @@ public:
   parameter_item& operator=(const parameter_item&) = default;
   parameter_item& operator=(parameter_item&&) noexcept = default;
 
-  parameter_item(view_type value, view_type gradient, std::string name = "") :
-      value_(value), gradient_(gradient), name_(name) {}
+  /**
+   * @brief Construct a new parameter item object
+   * 
+   * @param value view to the value of the parameter
+   * @param gradient 
+   * @param name optional, name of the parameter
+   */
+  parameter_item(view_type value, view_type gradient, std::string name = {}) :
+      value_(value), gradient_(gradient), name_(name) {
+    MATHPRIM_INTERNAL_CHECK_VALID_VIEW(value);
+    MATHPRIM_INTERNAL_CHECK_VALID_VIEW(gradient);
+  }
 
-  parameter_item(view_type value, std::string name = "") :  // NOLINT(google-explicit-constructor)
-      value_(value), name_(name) {}
+  /**
+   * @brief Construct a new parameter item object
+   * 
+   * @param value view to the value of the parameter
+   * @param name optional, name of the parameter
+   */
+  parameter_item(view_type value, std::string name = {}) :  // NOLINT(google-explicit-constructor)
+      value_(value), name_(name) {
+    MATHPRIM_INTERNAL_CHECK_VALID_VIEW(value);
+  }
 
+  /// @brief Get the value of the parameter
   const view_type& value() const noexcept { return value_; }
+
+  /// @brief Get the gradient of the parameter
   const view_type& gradient() const noexcept { return gradient_; }
+
+  /// @brief Get the name of the parameter
   const std::string& name() const noexcept { return name_; }
+
+  /// @brief Get the offset of the parameter in fused_gradients.
   index_t offset() const noexcept { return offset_; }
 
   template <typename Derived, typename Scalar2, typename Device2>
@@ -43,12 +74,22 @@ private:
   view_type value_;
   view_type gradient_;
   index_t offset_{};
-  // name of the data item (optional)
   std::string name_;
 };
 
-template <typename Derived, typename Scalar, typename Device>
+/**
+ * @brief Base class for all optimization problems.
+ * 
+ * @tparam Derived 
+ * @tparam Scalar 
+ * @tparam Device 
+ */
+template <typename Derived,  // The actual problem class
+          typename Scalar, typename Device>
 class basic_problem {
+  // Note: the child class have to implements these problems.
+  // void eval_gradients_impl() {}
+  // void eval_value_impl() {}
 public:
   using view_type = contiguous_view<Scalar, dshape<1>, Device>;
   using const_view = contiguous_view<const Scalar, dshape<1>, Device>;
@@ -56,10 +97,10 @@ public:
   using parameter = parameter_item<Scalar, Device>;
   using parameter_container = std::vector<parameter>;
 
+  // Generally, you cannot have a copy constructor for a optimization problem.
   basic_problem() = default;
-  basic_problem(basic_problem&&) noexcept = default;
-  basic_problem& operator=(basic_problem&&) noexcept = default;
-  basic_problem(const basic_problem&) = default;
+  MATHPRIM_INTERNAL_MOVE(basic_problem, default);
+  MATHPRIM_INTERNAL_COPY(basic_problem, delete);
 
   Derived& derived() noexcept { return static_cast<Derived&>(*this); }
   const Derived& derived() const noexcept { return static_cast<const Derived&>(*this); }
@@ -105,15 +146,16 @@ public:
   }
 
 protected:
+  /// @brief be called after the parent class setup(optional for child class)
   void on_setup() {}
 
-
+  /// @brief (during optimization) accumulate the loss
   void accumulate_loss(Scalar item) noexcept { loss_ += item; }
 
-  // Reset the gradients of the parameters
+  /// @brief Reset the gradients of the parameters
   void zero_gradients() { fused_gradients_.fill_bytes(0); }
 
-  // creates the fused gradients buffer, and set the gradients of the parameters
+  /// @brief creates the fused gradients buffer, and set the gradients of the parameters
   void prepare_fused_gradients() noexcept {
     index_t total_size = 0;
     for (const auto& param : parameters_) {
@@ -130,18 +172,17 @@ protected:
     }
   }
 
+  /// @brief Register a parameter to the problem
   index_t register_parameter(view_type value, std::string name = "") noexcept {
     parameters_.emplace_back(value, name);
     return static_cast<index_t>(parameters_.size() - 1);
   }
 
+  /// @brief Register a parameter to the problem
   void eval_value_and_gradients_impl() {
     derived().eval_value_impl();
     derived().eval_gradients_impl();
   }
-
-  // void eval_gradients_impl() {}
-  // void eval_value_impl() {}
 private:
   buffer_type fused_gradients_;  // fused gradients
   Scalar loss_{};
@@ -154,6 +195,11 @@ struct optim_result {
   Scalar last_change_{std::numeric_limits<Scalar>::quiet_NaN()};
   Scalar grad_norm_{std::numeric_limits<Scalar>::quiet_NaN()};
   int iterations_{0};
+  bool converged_{false};
+
+  optim_result() = default;
+  MATHPRIM_INTERNAL_COPY(optim_result, default);
+  MATHPRIM_INTERNAL_MOVE(optim_result, default);
 };
 
 template <typename Scalar>
@@ -168,13 +214,12 @@ class basic_optimizer {
 public:
   using view_type = contiguous_view<Scalar, dshape<1>, Device>;
   using const_view = contiguous_view<const Scalar, dshape<1>, Device>;
-
-  basic_optimizer() = default;
-  basic_optimizer(basic_optimizer&&) noexcept = default;
-  basic_optimizer& operator=(basic_optimizer&&) noexcept = default;
-  basic_optimizer(const basic_optimizer&) = default;
   using stopping_criteria_type = stopping_criteria<Scalar>;
   using result_type = optim_result<Scalar>;
+
+  basic_optimizer() = default;
+  MATHPRIM_INTERNAL_MOVE(basic_optimizer, default);
+  MATHPRIM_INTERNAL_COPY(basic_optimizer, delete);
 
   struct do_nothing_cb {
     inline void operator()(const result_type& ) {}
@@ -205,10 +250,17 @@ public:
   using const_view = typename base::const_view;
   using result_type = typename base::result_type;
   basic_linesearcher() = default;
+  MATHPRIM_INTERNAL_MOVE(basic_linesearcher, default);
+  MATHPRIM_INTERNAL_COPY(basic_linesearcher, delete);
 
   /**
    * @brief Search a step size along the search direction.
    * 
+   * Note: most algorithms does not provide the search direction, e.g.
+   *   - gradient descent    => gradient
+   *   - newton/quasi-newton => H^-1 grad
+   * Therefore, we enforce the user to provide the search direction as the negative direction.
+   *
    * @tparam ProblemDerived 
    * @tparam base::do_nothing_cb 
    * @param problem 
@@ -231,14 +283,16 @@ public:
     restore_state(problem, true);
     return {result, step_size_};
   }
-
 protected:
   template <typename ProblemDerived, typename Callback>
   result_type optimize_impl(basic_problem<ProblemDerived, Scalar, Device>& problem, Callback&& callback) {
     return static_cast<Derived&>(*this).template optimize_impl<ProblemDerived, Callback>(
-        problem, std::forward<Callback>(callback));
-  }
+      problem, std::forward<Callback>(callback));
+    }
 
+  ///////////// These methods are for optimizer developers. //////////////
+
+  /// @brief Backup the current state of the problem.
   template <typename ProblemDerived>
   void backup_state(basic_problem<ProblemDerived, Scalar, Device>& problem) {
     index_t total_params = problem.fused_gradients().numel();
@@ -258,6 +312,7 @@ protected:
     copy(backuped_gradients_.view(), problem.fused_gradients());
   }
 
+  /// @brief Restore the state of the problem.
   template <typename ProblemDerived>
   void restore_state(basic_problem<ProblemDerived, Scalar, Device>& problem, bool with_grad = false) {
     problem.for_each_parameter([this](auto& param) {
@@ -271,6 +326,7 @@ protected:
     }
   }
 
+  /// @brief Perform a step: x' <- x - step_size * neg_search_dir
   template <typename ProblemDerived, typename BlasDerived>
   void step(Scalar step_size, basic_problem<ProblemDerived, Scalar, Device>& problem,
             blas::basic_blas<BlasDerived, Scalar, Device>& bl) {
@@ -283,11 +339,16 @@ protected:
     });
   }
 
-  const_view neg_search_dir_;
-  Scalar min_rel_step_{1e-5}; // relative to input step_size.
-  Scalar max_rel_step_{1e+2}; // relative to input step_size.
+  const_view neg_search_dir_; ///< negative search direction
+
+  // Minimum and maximum step size relative to the input step size.
+  Scalar min_rel_step_{1e-5};
+  Scalar max_rel_step_{1e+2};
+
+  // current step size
   Scalar step_size_{1};
 
+  // backuped buffers.
   contiguous_vector_buffer<Scalar, Device> backuped_parameters_;
   contiguous_vector_buffer<Scalar, Device> backuped_gradients_;
 };
@@ -314,7 +375,7 @@ private:
 template <typename Scalar>
 std::ostream& operator<<(std::ostream& os, const optim_result<Scalar>& result) {
   os << "Iter[" << result.iterations_ << "]: loss=" << result.value_ << ", |g|=" << result.grad_norm_
-      << ", delt=" << result.last_change_;
+     << ", delt=" << result.last_change_ << ", converged=" << result.converged_;
   return os;
 }
 

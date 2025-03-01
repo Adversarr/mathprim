@@ -1,3 +1,3 @@
 find_package(Eigen3 REQUIRED)
 
-add_executable(eigen_cuda main.cu)
+mathprim_add_example(eigen_cuda main.cu)

@@ -168,6 +168,64 @@ void work_cuda(benchmark::State &state) {
   }
 }
 
+
+void work_cuda_no_prec(benchmark::State &state) {
+  int dsize = state.range(0);
+  sparse::laplace_operator<float, 2> lap(make_shape(dsize, dsize));
+  auto h_mat_buf = lap.matrix<mathprim::sparse::sparse_format::csr>();
+  auto d_mat_buf = h_mat_buf.to<device::cuda>();
+  auto mat = d_mat_buf.const_view();
+  auto rows = mat.rows();
+  auto nnz = mat.nnz();
+
+  auto h_csr_values = make_buffer<float>(nnz);
+  auto h_csr_col_idx = make_buffer<index_t>(nnz);
+  auto h_csr_row_ptr = make_buffer<index_t>(rows + 1);
+  auto values = h_csr_values.view();
+  auto col_idx = h_csr_col_idx.view();
+  auto row_ptr = h_csr_row_ptr.view();
+
+  auto d_csr_values = make_cuda_buffer<float>(nnz);
+  auto d_csr_col_idx = make_cuda_buffer<index_t>(nnz);
+  auto d_csr_row_ptr = make_cuda_buffer<index_t>(rows + 1);
+
+  copy(d_csr_values.view(), values);
+  copy(d_csr_col_idx.view(), col_idx);
+  copy(d_csr_row_ptr.view(), row_ptr);
+
+  using linear_op = sparse::iterative::sparse_matrix<sparse::blas::cusparse<float, sparse::sparse_format::csr>>;
+  using blas_t = blas::cublas<float>;
+  sparse::iterative::cg<float, device::cuda, linear_op, blas::cublas<float>> cg{linear_op{mat}, blas_t{}};
+
+  auto d_b = make_cuda_buffer<float>(rows);
+  auto d_x = make_cuda_buffer<float>(rows);
+  auto parfor = par::cuda();
+  for (auto _ : state) {
+    state.PauseTiming();
+    parfor.run(make_shape(rows), [d_xv = d_x.view()] __device__(index_t i) {
+      d_xv[i] = 1.0f;
+    });
+    // b = A * x
+    cg.linear_operator().apply(1.0f, d_x.view(), 0.0f, d_b.view());
+
+    parfor.run(make_shape(rows), [d_xv = d_x.view(), d_bv = d_b.view()] __device__(index_t i) {
+      d_xv[i] = (i % 100 - 50) / 100.0f;
+    });
+    parfor.sync();
+    state.ResumeTiming();
+    auto result = cg.apply(d_b.view(), d_x.view(),
+                           {
+                             .max_iterations_ = dsize * 4,
+                             .norm_tol_ = 1e-6f,
+                           });
+    parfor.sync();
+    state.SetLabel(std::to_string(result.iterations_));
+    if (result.norm_ > 1e-6f) {
+      state.SkipWithError("CG did not converge");
+    }
+  }
+}
+
 void work_cuda_ilu0(benchmark::State &state) {
   int dsize = state.range(0);
   sparse::laplace_operator<float, 2> lap(make_shape(dsize, dsize));
@@ -365,13 +423,14 @@ void work_cuda_ai(benchmark::State &state) {
 // BENCHMARK_TEMPLATE(work, blas::cpu_eigen<float>)->Range(1 << 10, 1 << 16);
 // BENCHMARK(work_chol)->Range(1 << 10, 1 << 16);
 #ifdef NDEBUG
-#define LARGE_RANGE 1 << 10
+#define LARGE_RANGE 1 << 9
 #else
 #define LARGE_RANGE 1 << 5
 #endif
 // BENCHMARK_TEMPLATE(work_ic, blas::cpu_eigen<float>)->Range(1 << 4, LARGE_RANGE)->Unit(benchmark::kMillisecond);
 // BENCHMARK_TEMPLATE(work, blas::cpu_eigen<float>)->Range(1 << 4, LARGE_RANGE)->Unit(benchmark::kMillisecond);
 BENCHMARK(work_cuda)->Range(1 << 4, LARGE_RANGE)->Unit(benchmark::kMillisecond);
+BENCHMARK(work_cuda_no_prec)->Range(1 << 4, LARGE_RANGE)->Unit(benchmark::kMillisecond);
 BENCHMARK(work_cuda_ilu0)->Range(1 << 4, LARGE_RANGE)->Unit(benchmark::kMillisecond);
 BENCHMARK(work_cuda_ic)->Range(1 << 4, LARGE_RANGE)->Unit(benchmark::kMillisecond);
 BENCHMARK(work_cuda_ai)->Range(1 << 4, LARGE_RANGE)->Unit(benchmark::kMillisecond);

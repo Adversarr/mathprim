@@ -19,9 +19,9 @@ int main() {
     gd.momentum_ = 0.5;
     gd.nesterov_ = true;
 
-    gd.optimize(problem, [](auto& result) {
+    std::cout << gd.optimize(problem, [](auto& result) {
       std::cout << result << std::endl;
-    });
+    }) << std::endl;
   }
 
   {
@@ -31,9 +31,9 @@ int main() {
     adamw.beta2_ = 0.95;
     adamw.criteria().max_iterations_ = 1000;
     problem.setup();
-    adamw.optimize(problem, [](auto& result) {
+    std::cout << adamw.optimize(problem, [](auto& result) {
       std::cout << result << std::endl;
-    });
+    }) << std::endl;
   }
 
   {
@@ -43,9 +43,9 @@ int main() {
     gd.linesearcher().stopping_criteria_.max_iterations_ = 10;
     gd.learning_rate_ = 0.5;
 
-    gd.optimize(problem, [](auto& result) {
+    std::cout << gd.optimize(problem, [](auto& result) {
       std::cout << result << std::endl;
-    });
+    }) << std::endl;
   }
 
   {
@@ -54,9 +54,9 @@ int main() {
     l_bfgs.criteria().max_iterations_ = 1000;
     l_bfgs.memory_size_ = 10;
     l_bfgs.stopping_criteria_.max_iterations_ = 100;
-    l_bfgs.optimize(problem, [](auto& result) {
+    std::cout << l_bfgs.optimize(problem, [](auto& result) {
       std::cout << result << std::endl;
-    });
+    }) << std::endl;
   }
 
 
@@ -68,9 +68,9 @@ int main() {
     l_bfgs.criteria().max_iterations_ = 1000;
     l_bfgs.memory_size_ = 5;
     l_bfgs.stopping_criteria_.max_iterations_ = 100;
-    l_bfgs.optimize(problem, [](auto& result) {
+    std::cout << l_bfgs.optimize(problem, [](auto& result) {
       std::cout << result << std::endl;
-    });
+    }) << std::endl;
   }
 
   return 0;

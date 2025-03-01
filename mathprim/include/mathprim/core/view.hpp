@@ -56,9 +56,9 @@ using transpose_t = typename transpose<I, J, Seq>::type;
 template <index_t I, index_t J, typename Pack>
 using transpose_impl_t = god::to_pack<internal::transpose_t<I, J, typename Pack::seq>>;
 
-template <index_t i, index_t J, typename Pack, index_t... Idx>
-constexpr MATHPRIM_PRIMFUNC transpose_impl_t<i, J, Pack> transpose_impl(const Pack &src, index_seq<Idx...>) {
-  return transpose_impl_t<i, J, Pack>{src.template get<(Idx == i ? J : (Idx == J ? i : Idx))>()...};
+template <index_t I, index_t J, typename Pack, index_t... Idx>
+constexpr MATHPRIM_PRIMFUNC transpose_impl_t<I, J, Pack> transpose_impl(const Pack &src, index_seq<Idx...>) {
+  return transpose_impl_t<I, J, Pack>{src.template get<(Idx == I ? J : (Idx == J ? I : Idx))>()...};
 }
 
 // Extend a pack
@@ -106,6 +106,7 @@ template <typename Scalar, typename Sshape, typename Sstride, typename Dev>
 class basic_view {
 public:
   static constexpr index_t ndim = Sshape::ndim;
+  static_assert(ndim == Sstride::ndim, "The shape and stride must have the same dimension.");
   static constexpr bool is_const = std::is_const_v<Scalar>;
   using shape_at_compile_time = Sshape;
   using stride_at_compile_time = Sstride;
@@ -141,9 +142,10 @@ public:
   // Allow to move construct
   basic_view(basic_view &&) noexcept = default;
 
-  template <typename Scalar2, typename sshape2, typename sstride2,
+  // Allow to copy construct from other view if viable.
+  template <typename Scalar2, typename Sshape2, typename Sstride2,
             typename = std::enable_if_t<std::is_same_v<std::decay_t<Scalar2>, std::decay_t<Scalar>>>>
-  MATHPRIM_PRIMFUNC basic_view(const basic_view<Scalar2, sshape2, sstride2, Dev> &other) :  // NOLINT: implicit convert
+  MATHPRIM_PRIMFUNC basic_view(const basic_view<Scalar2, Sshape2, Sstride2, Dev> &other) :  // NOLINT: implicit convert
       basic_view(other.data(), internal::safe_cast<Sshape>(other.shape()),
                  internal::safe_cast<Sstride>(other.stride())) {}
 
@@ -152,7 +154,7 @@ public:
   basic_view &operator=(basic_view &&) noexcept = default;
 
   ///////////////////////////////////////////////////////////////////////////////
-  /// Meta data
+  /// Meta data: most API follows torch's design.
   ///////////////////////////////////////////////////////////////////////////////
   // Return the number of element in view
   MATHPRIM_PRIMFUNC index_t numel() const noexcept {
@@ -220,7 +222,8 @@ public:
   ///////////////////////////////////////////////////////////////////////////////
   /// Data accessing.
   ///////////////////////////////////////////////////////////////////////////////
-  // direct indexing.
+
+  /// @brief for 1d view, return the ref to Scalar, otherwise return a new view.
   MATHPRIM_PRIMFUNC indexing_type operator[](const index_t &i) const noexcept {
     MATHPRIM_ASSERT(data_ != nullptr);
     MATHPRIM_ASSERT(i >= 0 && i < shape(0));
@@ -236,7 +239,7 @@ public:
     }
   }
 
-  // subscripting.
+  /// @brief Returns a ref to Scalar.
   MATHPRIM_PRIMFUNC reference operator()(const index_array<ndim> &index) const noexcept {
     MATHPRIM_ASSERT(data_ != nullptr);
     MATHPRIM_ASSERT(is_in_bound(shape_, index));
@@ -248,6 +251,7 @@ public:
     }
   }
 
+  /// @brief Returns a ref to Scalar.
   template <typename... Args,
             typename = std::enable_if_t<(std::is_integral_v<std::decay_t<Args>> && ...) && sizeof...(Args) == ndim>>
   MATHPRIM_PRIMFUNC reference operator()(Args &&...args) const noexcept {
@@ -317,6 +321,12 @@ public:
     return flatten();
   }
 
+  /**
+   * @brief Returns a subview
+   * 
+   * @param anchor  starting point of new view
+   * @param shape   new view's shape
+   */
   template <typename Sshape2>
   MATHPRIM_PRIMFUNC basic_view<Scalar, Sshape2, Sstride, Dev> sub(const index_array<ndim> &anchor,
                                                                   const Sshape2 &shape) const noexcept {
@@ -324,15 +334,17 @@ public:
     const index_t offset = sub2ind(stride_, anchor);
     return basic_view<Scalar, Sshape2, Sstride, Dev>{data_ + offset, shape, stride_};
   }
-
+  /// @brief Returns a subview: [anchor, shape)
   MATHPRIM_PRIMFUNC basic_view<Scalar, dshape<ndim>, Sstride, Dev> sub(const index_array<ndim> &anchor) const noexcept {
     return sub(anchor, dshape<ndim>{shape_.to_array() - anchor});
   }
 
-  // TODO: disable when ndim > 1.
-  template <typename IntegerStart, typename IntegerEnd>
+  /// @brief Returns a subview: [start, end) for 1D buffers.
+  template <typename IntegerStart, typename IntegerEnd,
+            typename = std::enable_if_t<std::is_integral_v<IntegerStart> && std::is_integral_v<IntegerEnd>>>
   MATHPRIM_PRIMFUNC basic_view<Scalar, dshape<1>, Sstride, Dev> sub(IntegerStart start, IntegerEnd end) const noexcept {
     MATHPRIM_ASSERT(start >= 0 && end <= shape(0) && start <= end);
+    // It is safe, if ndim > 1, the following constructor cannot compile.
     return {data_ + start * stride(0), dshape<1>{end - start}, stride_};
   }
 
@@ -356,6 +368,11 @@ private:
   Sstride stride_;
   Scalar *data_;
 };
+
+#ifndef MATHPRIM_INTERNAL_CHECK_VALID_VIEW
+#  define MATHPRIM_INTERNAL_CHECK_VALID_VIEW(view) \
+    MATHPRIM_INTERNAL_CHECK_THROW((view).valid(), std::runtime_error, "View must be valid.")
+#endif
 
 template <typename Scalar, typename Sshape, typename Sstride, typename Dev, index_t BatchDim>
 struct basic_view_iterator {
@@ -523,6 +540,8 @@ template <typename T1, typename Sshape1, typename Sstride1, typename Dev1, typen
           typename Sstride2, typename Dev2>
 void copy(const basic_view<T1, Sshape1, Sstride1, Dev1> &dst, const basic_view<T2, Sshape2, Sstride2, Dev2> &src,
           bool enforce_same_shape = true) {
+  MATHPRIM_INTERNAL_CHECK_VALID_VIEW(dst);
+  MATHPRIM_INTERNAL_CHECK_VALID_VIEW(src);
   if (enforce_same_shape) {
     MATHPRIM_INTERNAL_CHECK_THROW(src.shape() == dst.shape(), std::runtime_error,
                                   "The source and destination view must have the same shape.");
