@@ -1,5 +1,4 @@
 #pragma once
-#include "mathprim/blas/blas.hpp"
 #include "mathprim/optim/basic_optim.hpp"
 namespace mathprim::optim {
 

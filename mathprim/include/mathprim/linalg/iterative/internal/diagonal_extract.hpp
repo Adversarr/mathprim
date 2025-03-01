@@ -17,9 +17,6 @@ struct diagonal_extract<Scalar, device::cpu, Compression> {
 
   static buffer_type extract(const sparse::basic_sparse_view<const Scalar, device::cpu, Compression>& mat) {
     auto diag = make_buffer<Scalar, device::cpu>(make_shape(mat.rows()));
-    auto row_ptr = mat.outer_ptrs();
-    auto col_idx = mat.inner_indices();
-    auto values = mat.values();
     auto dv = diag.view();
     diag.fill_bytes(0);
     visit(mat, par::seq(), [&](index_t i, index_t j, Scalar val) {

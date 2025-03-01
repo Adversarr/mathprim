@@ -102,7 +102,7 @@ static void work_ic(benchmark::State &state) {
   // par::seq().run(make_shape(rows), [xv = x.view()](index_t i) { std::cout << xv[i] << std::endl; });
 }
 
-template <typename blas_impl>
+template <typename BlasImpl>
 static void work2(benchmark::State &state) {
   int dsize = state.range(0);
   sparse::laplace_operator<float, 2> lap(make_shape(dsize, dsize));
@@ -113,7 +113,7 @@ static void work2(benchmark::State &state) {
   using linear_op = sparse::iterative::sparse_matrix<sparse::blas::naive<float, sparse::sparse_format::csr>>;
   using preconditioner = sparse::iterative::eigen_ichol<float>;
 
-  sparse::iterative::cg<float, device::cpu, linear_op, blas_impl, preconditioner> cg{linear_op{mat}, blas_impl{},
+  sparse::iterative::cg<float, device::cpu, linear_op, BlasImpl, preconditioner> cg{linear_op{mat}, BlasImpl{},
                                                                                     preconditioner{}};
   cg.preconditioner().compute(mat);
 
@@ -237,8 +237,6 @@ void work_eigen_wrapped(benchmark::State &state) {
 
   auto b = make_buffer<float>(rows);
   auto x = make_buffer<float>(rows);
-  auto bv = eigen_support::map(b.view());
-  auto xv = eigen_support::map(x.view());
 
   // GT = ones.
   for (auto _ : state) {

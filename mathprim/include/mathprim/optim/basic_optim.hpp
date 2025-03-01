@@ -251,7 +251,6 @@ protected:
 
     problem.for_each_parameter([this](auto& param) {
       auto& value = param.value();
-      auto& gradient = param.gradient();
       auto offset = param.offset();
       auto size = value.size();
       copy(backuped_parameters_.view().sub(offset, offset + size), value);
@@ -263,7 +262,6 @@ protected:
   void restore_state(basic_problem<ProblemDerived, Scalar, Device>& problem, bool with_grad = false) {
     problem.for_each_parameter([this](auto& param) {
       auto& value = param.value();
-      auto& gradient = param.gradient();
       auto offset = param.offset();
       auto size = value.size();
       copy(value, backuped_parameters_.view().sub(offset, offset + size));
@@ -278,7 +276,6 @@ protected:
             blas::basic_blas<BlasDerived, Scalar, Device>& bl) {
     problem.for_each_parameter([&](auto& param) {
       auto& value = param.value();
-      auto& gradient = param.gradient();
       auto offset = param.offset();
       auto size = value.size();
       auto neg_dir = neg_search_dir_.sub(offset, offset + size);

@@ -103,10 +103,10 @@ public:
   }
 
 private:
-  contiguous_buffer<Scalar, shape_t<keep_dim>, Device> q_;  // temporary buffer
-  contiguous_buffer<Scalar, shape_t<keep_dim>, Device> d_;  // search direction
   blas_type blas_;
   preconditioner_type preconditioner_;
+  contiguous_buffer<Scalar, shape_t<keep_dim>, Device> q_;  // temporary buffer
+  contiguous_buffer<Scalar, shape_t<keep_dim>, Device> d_;  // search direction
 };
 
 }  // namespace mathprim::sparse::iterative
