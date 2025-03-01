@@ -1,16 +1,44 @@
-# mathprim: a light-weight TensorView and their algorithms (ex. experimental!)
-Backends:
-1. CPU: aligned allocated memory
-2. GPU: CUDA
+# mathprim: a light-weight Tensor(View) library
 
-Algorithms:
-1. BLAS (partial)
+mathprim, or math's primitives, is a **glue-like** library for optimized numeric algorithms.
+
+Current Backends:
+1. CPU
+2. CUDA
+
+Features:
+
+0. Key features:
+    1. zero cost abstraction
+    2. Eigen support, with `Map` class,
+1. BLAS: Optimized for speed.
     1. CPU: handmade, Eigen, cblas
     2. GPU: cuBLAS
 2. Parallism:
     1. CPU: openmp, sequential
-    2. GPU: cuda, thrust
-3. python bindings
+    2. GPU: cuda
+3. Sparse matrices: (mainly on spd)
+    1. CSR, CSC matrix spmv support.
+    2. cusparse spmv support.
+    3. direct: cholmod.
+    4. iterative solver: cg/pcg
+    5. preconditioners:
+        1. diagonal: CPU/CUDA
+        2. ic, ilu: for both CPU(Eigen's implementation), and CUDA(cuSPARSE).
+        3. FSAI0: (crafted)
+4. Fully customizable optimizers:
+    1. GD/SGD/GD, with momentum(or nesterov momentum)
+    2. AdamW
+    3. l_bfgs: customizable...
+        1. linesearcher (default to backtracking)
+        2. preconditoner (default to scaled identity)
+
+Future works:
+
+1. torch bindings: especially for spd sparse matrices.
+2. tiny nn libraries, ref. tiny-cuda-nn.
+3. view's inplace operations, faster gemms on cpu/cuda
+4. cuda: graph capture, multiple streams, ...
 
 ## Recipies
 
