@@ -165,7 +165,8 @@ using matrix_map_t = Eigen::Map<matrix_t<T, cols, rows>, Eigen::Unaligned, Eigen
 
 /// Determine a proper type for contiguous mapped matrix
 template <typename T, int rows, int cols, typename dev>
-using matrix_cmap_t = Eigen::Map<matrix_t<T, cols, rows>, alignment_v<T, dev, rows, cols>, Eigen::Stride<0, 0>>;
+using matrix_cmap_t = Eigen::Map<matrix_t<T, cols, rows>>;
+// using matrix_cmap_t = Eigen::Map<matrix_t<T, cols, rows>, alignment_v<T, dev, rows, cols>, Eigen::Stride<0, 0>>;
 
 template <typename EigenMatrix>
 using from_eigen_shape_t = std::conditional_t<
@@ -183,8 +184,8 @@ template <typename T, int rows, typename dev>
 using vector_map_t = Eigen::Map<vector_t<T, rows>, Eigen::Unaligned, Eigen::InnerStride<dynamic>>;
 
 /// Determine a proper type for contiguous mapped vector
-template <typename T, int rows, typename dev>
-using vector_cmap_t = Eigen::Map<vector_t<T, rows>, alignment_v<T, dev, rows, 1>, Eigen::Stride<0, 0>>;
+template <typename T, int rows, typename dev> using vector_cmap_t = Eigen::Map<vector_t<T, rows>>;
+// using vector_cmap_t = Eigen::Map<vector_t<T, rows>, alignment_v<T, dev, rows, 1>, Eigen::Stride<0, 0>>;
 
 /**
  * @brief Create a contiguous map to matrix from a buffer view.
