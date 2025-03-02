@@ -106,7 +106,7 @@ public:
 
 private:
   template <typename ProblemDerived, typename Callback>
-  result_type optimize_impl(basic_problem<ProblemDerived, Scalar, Device>& problem, Callback&& callback) {
+  MATHPRIM_NOINLINE result_type optimize_impl(basic_problem<ProblemDerived, Scalar, Device>& problem, Callback&& callback) {
     blas::basic_blas<Blas, Scalar, Device>& bl = blas_;
     l_bfgs_preconditioner<Preconditioner, Scalar, Device>& prec = preconditioner_;
     basic_linesearcher<Linesearcher, Scalar, Device>& ls = linesearcher_;
@@ -191,7 +191,7 @@ private:
     return result;
   }
 
-  void two_loop_step_in(){
+  MATHPRIM_NOINLINE void two_loop_step_in(){
     // operates on q
     auto q = q_.view();
     auto s = s_.const_view(), y = y_.const_view();
@@ -204,7 +204,7 @@ private:
     }
   }
 
-  void two_loop_step_out() {
+  MATHPRIM_NOINLINE void two_loop_step_out() {
     // operates on z
     auto z = z_.view();
     auto s = s_.const_view(), y = y_.const_view();
@@ -218,7 +218,7 @@ private:
     }
   }
 
-  void push_memory() {
+  MATHPRIM_NOINLINE void push_memory() {
     index_t targ;
     if (memory_avail_ < memory_size_) {
       MATHPRIM_ASSERT(memory_start_ == 0 && "Internal logic error.");

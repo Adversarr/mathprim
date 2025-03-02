@@ -1,5 +1,14 @@
-find_package(GTest REQUIRED)
-enable_testing()
+macro(mathprim_add_benchmark name)
+  add_executable(BM_${name} ${name}.cpp)
+  target_link_libraries(BM_${name} PRIVATE benchmark::benchmark mathprim)
+  target_compile_options(BM_${name} PRIVATE -march=native)
+endmacro(mathprim_add_benchmark)
+
+macro(mathprim_add_benchmark_cu name)
+  add_executable(BM_cu_${name} ${name}.cu)
+  target_link_libraries(BM_cu_${name} PRIVATE benchmark::benchmark mathprim)
+  target_compile_options(BM_cu_${name} PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=-march=native>)
+endmacro()
 
 macro(mathprim_add_example EXAMPLE_NAME SOURCE_FILES)
   add_executable(${EXAMPLE_NAME} ${SOURCE_FILES})
@@ -13,6 +22,11 @@ macro(mathprim_add_testing EXAMPLE_NAME SOURCE_FILES)
   target_compile_options(${EXAMPLE_NAME} PRIVATE -march=native)
   add_test(NAME ${EXAMPLE_NAME} COMMAND ${EXAMPLE_NAME})
 endmacro(mathprim_add_testing)
+
+find_package(benchmark REQUIRED)
+find_package(GTest REQUIRED)
+enable_testing()
+
 
 add_subdirectory(benchmark)
 add_subdirectory(cg_solver)

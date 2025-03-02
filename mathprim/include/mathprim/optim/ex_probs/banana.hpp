@@ -23,6 +23,8 @@ public:
 
   banana_problem(banana_problem&&) noexcept = default;
 
+  index_t eval_cnt() const { return cnt_; }
+
 protected:
   void eval_value_and_gradients_impl() {
     auto x = eigen_support::cmap(x_.view());
@@ -38,6 +40,7 @@ protected:
       grad(i) += 4 * difficulty_ * nonlinear * x(i) - 2 * linear;
       grad(i + 1) += -2 * difficulty_ * nonlinear;
     }
+    cnt_ += 1;
   }
 
   void eval_value_impl() { eval_value_and_gradients_impl(); }
@@ -45,7 +48,9 @@ protected:
   void on_setup() {
     // start from zero?
     x_.fill_bytes(0);
+    cnt_ = 0;
   }
+  index_t cnt_{0};
   buffer_type x_;
   Scalar difficulty_;
 };
