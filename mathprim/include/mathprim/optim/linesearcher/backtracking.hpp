@@ -43,7 +43,7 @@ private:
     for (; iterations < criteria.max_iterations_ && min_abs_step < step_size; ++iterations) {
       // Step 1: Compute the new value.
       base::step(step_size, problem, blas_);
-      Scalar new_value = problem.eval_value();
+      Scalar new_value = problem.eval_value_and_gradients(); // Although gradients is not necessary here.
       if (internal::satisfies_armijo(old_value, new_value, step_size, armijo_threshold_)) {
         converged = true;
         break;

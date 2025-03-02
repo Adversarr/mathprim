@@ -255,19 +255,20 @@ public:
 
   /**
    * @brief Search a step size along the search direction.
-   * 
+   *
    * Note: most algorithms does not provide the search direction, e.g.
    *   - gradient descent    => gradient
    *   - newton/quasi-newton => H^-1 grad
    * Therefore, we enforce the user to provide the search direction as the negative direction.
+   * Note: linesearcher should exit at the optimal point.
    *
-   * @tparam ProblemDerived 
-   * @tparam base::do_nothing_cb 
-   * @param problem 
-   * @param neg_search_dir 
-   * @param init_step 
-   * @param callback 
-   * @return std::pair<result_type, Scalar> 
+   * @tparam ProblemDerived
+   * @tparam base::do_nothing_cb
+   * @param problem
+   * @param neg_search_dir
+   * @param init_step
+   * @param callback
+   * @return std::pair<result_type, Scalar>
    */
   template <typename ProblemDerived, typename LinesearchCallback = typename base::do_nothing_cb>
   std::pair<result_type, Scalar> search(basic_problem<ProblemDerived, Scalar, Device>& problem,
@@ -280,7 +281,8 @@ public:
     auto result = base::template optimize<ProblemDerived, LinesearchCallback>(
         problem, std::forward<LinesearchCallback>(callback));
 
-    restore_state(problem, true);
+    // Note: linesearcher should exit at the optimal point.
+    // restore_state(problem, true);
     return {result, step_size_};
   }
 protected:
@@ -353,10 +355,10 @@ protected:
   contiguous_vector_buffer<Scalar, Device> backuped_gradients_;
 };
 
-template <typename Scalar, typename Device>
-class no_linesearcher : public basic_linesearcher<no_linesearcher<Scalar, Device>, Scalar, Device> {
+template <typename Scalar, typename Device, typename Blas>
+class no_linesearcher : public basic_linesearcher<no_linesearcher<Scalar, Device, Blas>, Scalar, Device> {
 public:
-  using base = basic_linesearcher<no_linesearcher<Scalar, Device>, Scalar, Device>;
+  using base = basic_linesearcher<no_linesearcher<Scalar, Device, Blas>, Scalar, Device>;
   friend base;
 
   using stopping_criteria_type = typename base::stopping_criteria_type;
@@ -368,8 +370,11 @@ public:
 private:
   template <typename ProblemDerived, typename Callback>
   result_type optimize_impl(basic_problem<ProblemDerived, Scalar, Device>& problem, Callback&& /* callback */) {
+    // No linesearcher, just perform a step.
+    base::step(base::step_size_, problem, blas_);
     return {problem.current_value(), 0};
   }
+  Blas blas_;
 };
 
 template <typename Scalar>

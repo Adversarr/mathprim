@@ -158,19 +158,11 @@ private:
       // Launch linesearcher.
       auto [ls_result, ls_step_size] = ls.search(problem, z, learning_rate_);
 
-      // s_new <- x_k+1 - x_k = -alpha z.
+      // // s_new <- x_k+1 - x_k = -alpha z.
       bl.copy(sn, z);
       bl.scal(-ls_step_size, sn);
-      // update parameters.
-      problem.for_each_parameter([this, &sn, &bl, alpha = ls_step_size](auto& item) {
-        auto& value = item.value();
-        const index_t offset = item.offset();
-        const index_t size = value.size();
-        auto delta = sn.sub(offset, offset + size);
-        bl.axpy(1, delta, value);
-      });
 
-      Scalar new_value = problem.eval_value_and_gradients();
+      Scalar new_value = problem.current_value();
       last_change = value - new_value;
       value = new_value;
       grad_norm = bl.norm(grads);
@@ -247,6 +239,8 @@ private:
     rho_.resize(memory_size_, 0);
     alpha_.resize(memory_size_, 0);
     beta_.resize(memory_size_, 0);
+
+    memory_start_ = memory_avail_ = 0;
   }
 
   //// history buffers ////

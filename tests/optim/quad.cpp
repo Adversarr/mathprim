@@ -40,7 +40,7 @@ int main() {
     using bt = optim::backtracking_linesearcher<double, device::cpu, blas::cpu_eigen<double>>;
     optim::gradient_descent_optimizer<double, device::cpu, blas::cpu_eigen<double>, bt> gd;
     problem.setup();
-    gd.linesearcher().stopping_criteria_.max_iterations_ = 10;
+    gd.linesearcher().stopping_criteria_.max_iterations_ = 100;
     gd.learning_rate_ = 0.5;
 
     std::cout << gd.optimize(problem, [](auto& result) {

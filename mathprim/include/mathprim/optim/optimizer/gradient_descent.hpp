@@ -16,7 +16,7 @@ namespace mathprim::optim {
  * @tparam Blas
  */
 template <typename Scalar, typename Device, typename Blas,
-          typename Linesearch = no_linesearcher<Scalar, Device>>  // Implementation of the optimizer
+          typename Linesearch = no_linesearcher<Scalar, Device, Blas>>  // Implementation of the optimizer
 class gradient_descent_optimizer
     : public basic_optimizer<gradient_descent_optimizer<Scalar, Device, Blas, Linesearch>, Scalar, Device> {
 public:
@@ -24,7 +24,7 @@ public:
   friend base;
   using stopping_criteria_type = typename base::stopping_criteria_type;
   using result_type = typename base::result_type;
-  static constexpr bool no_linesearcher_v = std::is_same_v<no_linesearcher<Scalar, Device>, Linesearch>;
+  static constexpr bool no_linesearcher_v = std::is_same_v<no_linesearcher<Scalar, Device, Blas>, Linesearch>;
 
   gradient_descent_optimizer() = default;
 
@@ -73,10 +73,8 @@ private:
     MATHPRIM_INTERNAL_CHECK_THROW(std::isfinite(grad_norm), std::runtime_error, "Initial gradient norm is not finite.");
 
     auto mom_view = momentum_buffer_.view();
-    for (; (iteration < criteria.max_iterations_) && (grad_norm >= criteria.tol_grad_);
-         ++iteration) {
+    for (; (iteration < criteria.max_iterations_) && !converged; ++iteration) {
       callback(result);
-      Scalar alpha;
       if constexpr (no_linesearcher_v) {
         // Momentum.
         if (momentum_value != 0) {
@@ -97,26 +95,23 @@ private:
             copy(gradients_view, mom_view);
           }
         }
-
-        alpha = learning_rate_;
+        problem.for_each_parameter([&bl, alpha = learning_rate_](auto& param) {
+          auto& value = param.value();
+          auto& gradient = param.gradient();
+          bl.axpy(-alpha, gradient, value);
+        });
+        problem.eval_value_and_gradients();
       } else {
         auto [ls_result, ls_step_size] = ls.template search<ProblemDerived>(problem, gradients_view, learning_rate_);
-        alpha = ls_step_size;
+        // The linesearcher will update the parameters & gradients.
       }
 
-      problem.for_each_parameter([&bl, alpha] (auto& param) {
-        auto& value = param.value();
-        auto& gradient = param.gradient();
-        bl.axpy(-alpha, gradient, value);
-      });
-
-      Scalar new_value = problem.eval_value_and_gradients();  // Update the gradients.
-      last_change = value - new_value;                        // minimize => change > 0
+      Scalar new_value = problem.current_value();  // Update the gradients.
+      last_change = value - new_value;             // minimize => change > 0
       value = new_value;
       grad_norm = bl.norm(gradients_view);
-      if (last_change < criteria.tol_change_ && last_change >= 0) {
-        break;
-      }
+      converged = grad_norm < criteria.tol_grad_;
+      converged |= (last_change < criteria.tol_change_ && last_change >= 0);
     }
     return result;
   }

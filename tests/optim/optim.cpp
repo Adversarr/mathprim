@@ -75,19 +75,18 @@ void ours(benchmark::State& state) {
   optim::ex_probs::banana_problem<double, device::cpu> problem(n, 100);
   problem.setup();
 
+  optim::l_bfgs_optimizer<double, device::cpu, blas::cpu_eigen<double>> l_bfgs;
   for (auto _ : state) {
-    optim::l_bfgs_optimizer<double, device::cpu, blas::cpu_eigen<double>> l_bfgs;
     problem.setup();
-    l_bfgs.criteria().max_iterations_ = 1000;
+    l_bfgs.criteria().max_iterations_ = 5000;
     l_bfgs.criteria().tol_grad_ = 1e-5;
-    l_bfgs.memory_size_ = 5;
-    l_bfgs.stopping_criteria_.max_iterations_ = 1000;
+    l_bfgs.memory_size_ = 6;
     auto info = l_bfgs.optimize(problem);
     state.SetLabel(std::to_string(info.iterations_) + ":" + std::to_string(problem.eval_cnt()));
   }
 }
 
-std::vector<int64_t> sizes = {2, 4, 8, 16, 32, 64, 128};
+std::vector<int64_t> sizes = {128, 256};
 
 BENCHMARK(ours)->ArgsProduct({sizes})->Unit(benchmark::kMillisecond);
 BENCHMARK_TEMPLATE(lbfgspp, LineSearchBacktracking)->ArgsProduct({sizes})->Unit(benchmark::kMillisecond);
