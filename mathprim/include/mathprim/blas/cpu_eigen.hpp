@@ -193,6 +193,21 @@ protected:
       }
     }
   }
+
+
+  template <typename SshapeX, typename SstrideX,
+            typename SshapeY, typename SstrideY>
+  void axpby_impl(Scalar alpha, const_type<SshapeX, SstrideX> x, Scalar beta, view_type<SshapeY, SstrideY> y) {
+    if (x.is_contiguous() && y.is_contiguous()) {
+      auto x_map = eigen_support::cmap(x);
+      auto y_map = eigen_support::cmap(y);
+      y_map = alpha * x_map + beta * y_map;
+    } else {
+      auto x_map = eigen_support::amap(x);
+      auto y_map = eigen_support::amap(y);
+      y_map = alpha * x_map + beta * y_map;
+    }
+  }
 };
 
 }  // namespace blas

@@ -253,6 +253,9 @@ public:
   MATHPRIM_INTERNAL_MOVE(basic_linesearcher, default);
   MATHPRIM_INTERNAL_COPY(basic_linesearcher, delete);
 
+  view_type backuped() noexcept { return backuped_parameters_.view(); }
+  const_view backuped() const noexcept { return backuped_parameters_.const_view(); }
+
   /**
    * @brief Search a step size along the search direction.
    *

@@ -158,9 +158,8 @@ private:
       // Launch linesearcher.
       auto [ls_result, ls_step_size] = ls.search(problem, z, learning_rate_);
 
-      // // s_new <- x_k+1 - x_k = -alpha z.
-      bl.copy(sn, z);
-      bl.scal(-ls_step_size, sn);
+      // s_new <- x_k+1 - x_k = -alpha z.
+      bl.axpby(-ls_step_size, z, 0, sn);
 
       Scalar new_value = problem.current_value();
       last_change = value - new_value;
@@ -171,8 +170,7 @@ private:
         break;
       }
 
-      bl.scal(-1, yn);        // y_new <- -grad_k
-      bl.axpy(1, grads, yn);  // y_new <- grad_k+1 - grad_k
+      bl.axpby(1, grads, -1, yn); // y_new <- grad_k+1 - grad_k
       push_memory();
     }
 

@@ -437,6 +437,15 @@ protected:
                     "Unsupported type");
     }
   }
+
+
+
+  template <typename SshapeX, typename SstrideX, typename SshapeY, typename SstrideY>
+  void axpby_impl(Scalar alpha, const_type<SshapeX, SstrideX> x, Scalar beta, view_type<SshapeY, SstrideY> y) {
+    // No native support
+    scal_impl(beta, y);
+    axpy_impl(alpha, x, y);
+  }
 };
 
 } // namespace blas

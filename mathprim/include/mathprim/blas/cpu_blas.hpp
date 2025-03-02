@@ -334,6 +334,19 @@ protected:
     }
 #endif
   }
+
+  template <typename SshapeX, typename SstrideX,
+            typename SshapeY, typename SstrideY>
+  void axpby_impl(const Scalar& alpha, const const_type<SshapeX, SstrideX>& x, const Scalar& beta, const view_type<SshapeY, SstrideY>& y) {
+    CBLAS_INT total = x.shape(0);
+    if constexpr (std::is_same_v<Scalar, float>) {
+      cblas_saxpby(total, alpha, x.data(), x.stride(-1), beta, y.data(), y.stride(-1));
+    } else if constexpr (std::is_same_v<Scalar, double>) {
+      cblas_daxpby(total, alpha, x.data(), x.stride(-1), beta, y.data(), y.stride(-1));
+    } else {
+      static_assert(::mathprim::internal::always_false_v<Scalar>, "Unsupported type for BLAS axpby.");
+    }
+  }
 };
 
 }  // namespace mathprim::blas

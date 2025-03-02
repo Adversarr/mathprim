@@ -31,12 +31,15 @@ void check_mv_shapes(const shape_t<arow, acol> &a, const shape_t<xrow> &x, const
 template <typename Scalar, index_t... sshape_values, index_t... sstride_values>
 constexpr bool is_capable_vector(const shape_t<sshape_values...> &shape,
                                  const stride_t<sstride_values...> &stride) noexcept {
-  // Only the last stride can vary.
-  const index_t last_stride = stride.template get<-1>();
-  const index_t last_stride_elem = last_stride;
-  const auto default_stride = make_default_stride<Scalar>(shape).to_array();
-
-  return last_stride_elem * default_stride == stride.to_array();
+  if constexpr (sizeof...(sshape_values) == 1) {
+    return true;
+  } else {
+    // Only the last stride can vary.
+    const index_t last_stride = stride.template get<-1>();
+    const index_t last_stride_elem = last_stride;
+    const auto default_stride = make_default_stride<Scalar>(shape).to_array();
+    return last_stride_elem * default_stride == stride.to_array();
+  }
 }
 
 template <typename Scalar, index_t srows, index_t scols, index_t lda, index_t elem>
@@ -331,6 +334,24 @@ struct basic_blas {
                                   "Incompatible views for BLAS gemm. (C)");
 
     static_cast<Derived *>(this)->gemm_batch_strided_impl(alpha, A.as_const(), B.as_const(), beta, C);
+  }
+
+
+
+  ///////////////////////////////////////////////////////////////////////////////
+  /// BLAS extensions.
+  ///////////////////////////////////////////////////////////////////////////////
+  template <typename ScalarX, typename SshapeX, typename SstrideX,  // x
+            typename SshapeY, typename SstrideY,  // y
+            typename = enable_if_same_scalar_t<ScalarX, Scalar>>
+  MATHPRIM_NOINLINE void axpby(const Scalar &alpha, const generic_type<ScalarX, SshapeX, SstrideX> &x, const Scalar &beta, const view_type<SshapeY, SstrideY>& y) {
+    MATHPRIM_INTERNAL_CHECK_THROW(internal::is_capable_vector(x), std::runtime_error,
+                                  "Incompatible views for BLAS axpby. (x)");
+    MATHPRIM_INTERNAL_CHECK_THROW(internal::is_capable_vector(y), std::runtime_error,
+                                  "Incompatible views for BLAS axpby. (y)");
+    MATHPRIM_INTERNAL_CHECK_THROW(x.shape() == y.shape(), shape_error, "blas::axpby: x.shape() != y.shape()");
+
+    static_cast<Derived *>(this)->axpby_impl(alpha, x.as_const().flatten(), beta, y.flatten());
   }
 };
 

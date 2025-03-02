@@ -227,6 +227,18 @@ protected:
       gemm_impl(alpha, A[i], B[i], beta, C[i]);
     }
   }
+
+
+
+  template <typename SshapeX, typename SstrideX,
+            typename SshapeY, typename SstrideY>
+  void axpby_impl(Scalar alpha, const_type<SshapeX, SstrideX> x, Scalar beta, view_type<SshapeY, SstrideY> y) {
+    auto total = x.numel();
+    MATHPRIM_PRAGMA_UNROLL_HOST
+    for (index_t i = 0; i < total; ++i) {
+      y[i] = alpha * x[i] + beta * y[i];
+    }
+  }
 };
 
 }  // namespace blas

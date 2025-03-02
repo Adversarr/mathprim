@@ -1,10 +1,13 @@
 #include <benchmark/benchmark.h>
-#include "mathprim/optim/ex_probs/banana.hpp"
+
+#include <mathprim/blas/cpu_blas.hpp>
+
+#include "LBFGS.h"
 #include "mathprim/blas/cpu_eigen.hpp"
+#include "mathprim/optim/ex_probs/banana.hpp"
 #include "mathprim/optim/optimizer/adamw.hpp"
 #include "mathprim/optim/optimizer/gradient_descent.hpp"
 #include "mathprim/optim/optimizer/l_bfgs.hpp"
-#include "LBFGS.h"
 
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
