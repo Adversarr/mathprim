@@ -247,7 +247,7 @@ template <typename Derived, typename Scalar, typename Device, typename InShape, 
           typename Par>
 basic_ctx<Scalar, Device, Blas, Par, InShape, OutShape> make_ctx(
     basic_module<Derived, Scalar, Device, InShape, OutShape>& module, Blas&& b = {}, Par&& p = {}) {
-  return basic_ctx<Scalar, Device, std::remove_cvref_t<Blas>, std::remove_cvref_t<Par>, InShape, OutShape>{};
+  return basic_ctx<Scalar, Device, Blas, Par, InShape, OutShape>{};
 }
 
 }  // namespace mathprim::dnn

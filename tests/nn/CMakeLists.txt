@@ -1,3 +1,6 @@
 mathprim_add_testing(nn_linear linear.cpp)
 mathprim_add_example(nn_pca pca.cpp)
 mathprim_add_example(nn_inr inr.cpp)
+if(MATHPRIM_BUILD_TESTS_CUDA)
+  mathprim_add_example(cu_nn_inr inr.cu)
+endif()
