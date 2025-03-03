@@ -27,7 +27,7 @@ struct basic_ctx {
   blas::basic_blas<Blas, Scalar, Device>& blas() noexcept { return blas_; }
   par::parfor<ParImpl>& parallel() noexcept { return par_; }
 
-  parameter_t push(parameter_value_view values, const std::string& name = {}) {
+  parameter_t push(parameter_value_view values, const std::string& name) {
     const auto size = values.numel();
     MATHPRIM_INTERNAL_CHECK_THROW(curr_offset_ + size <= total_weights_, std::runtime_error,
                                   "The total number of weights is not equal to the requested size.");
@@ -37,7 +37,12 @@ struct basic_ctx {
       full_name += prefix;
       full_name.push_back('.');
     }
-    full_name += name;
+    if (name.empty()) {
+      // Handle the case where name is empty
+      full_name += "???";
+    } else {
+      full_name += name;
+    }
     curr_offset_ += size;
     return weights_info_.emplace_back(values, subgrad, full_name);
   }
@@ -149,10 +154,6 @@ public:
   using ctx_t = basic_ctx<Scalar, Device, Blas, ParImpl, InShape, OutShape>;
 
   // Fused buffer for weights and gradients
-  using weights_buffer = contiguous_vector_buffer<Scalar, Device>;
-  using weights_view = contiguous_view<Scalar, InShape, Device>;
-  using const_weights_view = contiguous_view<const Scalar, InShape, Device>;
-  using weights_with_grads = std::pair<weights_view, weights_view>;
   using compile_return_t = std::pair<const_out_batch, out_batch>;
 
   basic_module() = default;
@@ -203,12 +204,6 @@ public:
   void backward(ctx_t<Blas, ParImpl>& c, in_batch dl_dx) {
     MATHPRIM_ASSERT(has_compiled_);
     derived().backward_impl(c, dl_dx);
-  }
-
-  template <typename Blas, typename ParImpl>
-  void accumulates_gradient(ctx_t<Blas, ParImpl>& c, const_out_batch dl_dy) {
-    MATHPRIM_ASSERT(has_compiled_);
-    c.blas().axpy(1.0, dl_dy, curr_dl_dy_);
   }
 
   // // Notes: Future work

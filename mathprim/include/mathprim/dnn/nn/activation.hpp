@@ -27,6 +27,19 @@ struct sigmoid_activation {
   }
 };
 
+template <typename Scalar>
+struct tanh_activation {
+  static MATHPRIM_PRIMFUNC Scalar fwd(Scalar x) noexcept { 
+    Scalar emx = std::exp(-x);
+    Scalar epx = std::exp(x);
+    return (epx - emx) / (epx + emx);
+  }
+  static MATHPRIM_PRIMFUNC Scalar bwd(Scalar x, Scalar dl_dy) noexcept { 
+    Scalar y = fwd(x);
+    return (1 - y * y) * dl_dy;
+  }
+};
+
 
 template <typename Scalar, typename Device, typename InShape, template <typename> typename Activation>
 class activation;

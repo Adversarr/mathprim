@@ -126,14 +126,12 @@ private:
       }
 
       // m_t <- beta1 * m_{t-1} + (1 - beta1) * g_t
-      bl.scal(beta1_, m);
-      bl.axpy(1 - beta1_, gradients_view, m);
+      bl.axpby(1 - beta1_, gradients_view, beta1_, m);
 
       // v_t <- beta2 * v_{t-1} + (1 - beta2) * g_t^2
       // first dot inplace square gradients to get g_t^2
       internal::momentum_modification<Scalar, Device>::inplace_sqr(gradients_view);
-      bl.scal(beta2_, v);
-      bl.axpy(1 - beta2_, gradients_view, v);
+      bl.axpby(1 - beta2_, gradients_view, beta2_, v);
 
       // ?: Use double precision in this part to avoid numerical instability.
       auto bias_correction1 = static_cast<Scalar>(1 - std::pow(static_cast<Scalar>(beta1_), iteration + 1));

@@ -20,7 +20,7 @@ using mlp_t = dnn::sequential<linear, act, linear, act, linear, act, linear>;
 using ctx_t = dnn::basic_ctx<float, device::cuda, blas::cublas<float>, par::cuda, dshape<1>, dshape<1>>;
 
 template <typename Ctx, typename Mat> void init(Ctx &ctx, Mat m) {
-  ctx.parallel().run(m.shape(), [mat = m, tp = time(nullptr)] __device__ (auto ij) {
+  ctx.parallel().run(m.shape(), [mat = m, tp = rand()] __device__ (auto ij) {
     auto [i, j] = ij;
     auto idx = i * mat.shape(1) + j;
     // mat(i, j)
@@ -99,7 +99,7 @@ int main () {
   optimizer.learning_rate_ = 1e-3;
   optimizer.beta1_ = 0.9;
   optimizer.beta2_ = 0.95;
-  optimizer.weight_decay_ = 1e-2;
+  optimizer.weight_decay_ = 1e-4;
   auto start_time = std::chrono::high_resolution_clock::now();
   auto res = optimizer.optimize(o, [&](auto res) {
     if (res.iterations_ % 100 == 0) {
@@ -131,10 +131,10 @@ int main () {
   ctx.forward(inr);
 
   auto err = make_cuda_buffer<float>(width, width);
-  ctx.parallel().run(make_shape(width, width), [out = ctx.output(), gt = gt.view(), err = err.view(), width]__device__(auto ij) {
+  ctx.parallel().run(make_shape(width, width), [out = ctx.output(), gt = gt.view(), err = err.view(), width, in = ctx.input()]__device__(auto ij) {
     auto [i, j] = ij;
     auto idx = i * gt.shape(1) + j;
-    gt(ij) = sin(i * .5f / width - 0.5f) * sin(j * .5f / width - 0.5f);
+    gt(ij) = sin(in(idx, 0)) * sin(in(idx, 1));
     err(ij) = out(ij) - gt(ij);
   });
 

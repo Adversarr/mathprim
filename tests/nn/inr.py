@@ -71,6 +71,25 @@ def main():
     print(f"Time: {elapsed_time * 1000:.2f}ms")
     print(f"{batch_size * max_iterations} samples in {elapsed_time * 1000:.2f}ms")
     print(f"=> {(batch_size * max_iterations) / elapsed_time:.2f} samples per second")
+    width = 40
+    # Create input tensor
+    i_indices = torch.arange(width).float()
+    j_indices = torch.arange(width).float()
+    i_grid, j_grid = torch.meshgrid(i_indices, j_indices)
+    in_tensor = torch.stack([i_grid * 0.5 / width - 0.5, j_grid * 0.5 / width - 0.5], dim=-1).view(-1, 2)
+
+    # Forward pass
+    out_tensor = model(in_tensor).view(width, width)
+
+    # Ground truth calculation
+    gt_tensor = torch.sin(i_grid * 0.5 / width - 0.5) * torch.sin(j_grid * 0.5 / width - 0.5)
+
+    # Error calculation
+    err_tensor = out_tensor - gt_tensor
+
+    # RMSE calculation
+    rmse = torch.norm(err_tensor) / width
+    print(f"RMSE: {rmse.item()}")
 
 if __name__ == "__main__":
     main()

@@ -3,10 +3,58 @@
 #include "mathprim/core/defines.hpp"
 #include "mathprim/core/dim.hpp"
 #include "mathprim/core/view.hpp"
+#include "mathprim/supports/eigen_dense.hpp"
 #include "mathprim/dnn/basic_module.hpp"
 
 namespace mathprim::dnn {
+namespace internal {
+template <typename Device>
+struct add_bias;
 
+template <>
+struct add_bias<device::cpu> {
+  template <typename Ctx, typename Bias, typename Out>
+  static void fwd(Ctx& c, Bias b, Out out) {
+    c.parallel().run(make_shape(out.shape(0)), [&, bm = eigen_support::cmap(b)](index_t bi) {
+      auto batch = eigen_support::cmap(out[bi]);
+      batch += bm;
+    });
+  }
+
+  template <typename Ctx, typename DlDb, typename DlDy>
+  static void bwd(Ctx& c, DlDy dl_dy, DlDb dL_db) {
+    c.parallel().run(make_shape(dl_dy.shape(0)), [&, dldb = eigen_support::cmap(dL_db)](index_t bi) mutable {
+      auto batch = eigen_support::cmap(dl_dy[bi]);
+      dldb += batch;
+    });
+  }
+};
+
+#ifdef __CUDACC__
+
+template <>
+struct add_bias<device::cuda> {
+  template <typename Ctx, typename Bias, typename Out>
+  static void fwd(Ctx& c, Bias b, Out out) {
+    auto [bs, k] = out.shape();
+    c.parallel().run(make_shape(bs), make_shape(k), [b, out] __device__(index_t i, index_t j) {
+      out(i, j) += b[j];
+    });
+  }
+
+  template <typename Ctx, typename DlDb, typename DlDy>
+  static void bwd(Ctx& c, DlDy dl_dy, DlDb dl_db) {
+    auto [bs, k] = dl_dy.shape();
+    c.parallel().run(make_shape(bs), make_shape(k), [dl_dy, dl_db] __device__(index_t i, index_t j) {
+      auto out = dl_dy(i, j);
+      atomicAdd(&dl_db[j], out);
+    });
+  }
+};
+
+#endif
+
+}
 /**
  * @brief It computes Y <- X * W.T + b
  * 
@@ -76,7 +124,10 @@ public:
     auto y = y_.view();
     auto& bl = c.blas();
     bl.gemm(1.0, x, w_t, 0.0, y);
-    // TODO: add bias.
+    if (has_bias_) {
+      auto b = b_.const_view();
+      internal::add_bias<Device>::fwd(c, b, y);
+    }
     return y;
   }
 
@@ -94,7 +145,9 @@ public:
     if (dl_dx) {
       bl.gemm(1.0, dl_dy, w, 1.0, dl_dx);
     }
-    // TODO: bias.
+    if (has_bias_) {
+      internal::add_bias<Device>::bwd(c, dl_dy, dL_db_);
+    }
   }
 
   ///////////////////////////////////////////////////////////////////////////////

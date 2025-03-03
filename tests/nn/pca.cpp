@@ -78,6 +78,8 @@ int main () {
   ctx_t ctx;
   auto mat0 = eigen_support::cmap(pca.get<0>().mat()).setRandom(); // 3, 4
   auto mat1 = eigen_support::cmap(pca.get<1>().mat()).setRandom(); // 4, 3
+  auto b0 = eigen_support::cmap(pca.get<0>().bias()).setRandom(); // 4
+  auto b1 = eigen_support::cmap(pca.get<1>().bias()).setRandom(); // 3
   ctx.compile(pca, 4); // batchsize=4
   opt o(ctx, pca);
   o.setup();
@@ -87,13 +89,15 @@ int main () {
   optimizer.learning_rate_ = 1e-4;
   optimizer.beta1_ = 0.9;
   optimizer.beta2_ = 0.95;
-  optimizer.weight_decay_ = D > 2 ? 1e-2 : 0;
+  optimizer.weight_decay_ = D > 2 ? 1e-1 : 0;
   std::cout << optimizer.optimize(o, [&](auto res) {
     if (res.iterations_ % 100 == 0) {
       std::cout << res << std::endl;
     }
   }) << std::endl;
   std::cout << mat0 * mat1 << std::endl;
+  std::cout << b0.transpose() << std::endl;
+  std::cout << b1.transpose() << std::endl;
   std::cout << projection_matrix() << std::endl;
   return 0;
 }
