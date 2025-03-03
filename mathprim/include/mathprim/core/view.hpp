@@ -349,6 +349,22 @@ public:
   }
 
   /**
+   * @brief Reshape the view to target shape.
+   * 
+   */
+  template <typename Sshape2>
+  MATHPRIM_PRIMFUNC basic_view<Scalar, Sshape2, default_stride_t<Sshape2>, Dev> reshape(const Sshape2 &shape) const {
+    MATHPRIM_ASSERT(shape.numel() == numel() && "The new shape must have the same number of elements.");
+    return {data_, shape, make_default_stride<Scalar>(shape)};
+  }
+
+  template <typename... Integers, typename = std::enable_if_t<(std::is_integral_v<Integers> && ...)>>
+  MATHPRIM_PRIMFUNC basic_view<Scalar, dshape<sizeof...(Integers)>, default_stride_t<dshape<sizeof...(Integers)>>, Dev>
+  reshape(Integers... dims) const {
+    return reshape(dshape<sizeof...(Integers)>{static_cast<index_t>(dims)...});
+  }
+
+  /**
    * @brief Construct a const view with same data.
    *
    * @return MATHPRIM_PRIMFUNC

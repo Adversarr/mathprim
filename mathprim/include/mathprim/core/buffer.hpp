@@ -22,7 +22,25 @@ template <typename SshapeFrom, typename SstrideFrom, typename SshapeTo, typename
 static constexpr bool is_buffer_castable_v
     = is_castable_v<SshapeFrom, SshapeTo> && is_castable_v<SstrideFrom, SstrideTo>;
 
+template <typename ViewT>
+struct to_buffer {};
+template <typename Scalar, typename Sshape, typename Sstride, typename Dev>
+struct to_buffer<basic_view<Scalar, Sshape, Sstride, Dev>> {
+  using type = basic_buffer<Scalar, Sshape, Sstride, Dev>;
+};
+template <typename ViewT>
+struct to_view {};
+template <typename Scalar, typename Sshape, typename Sstride, typename Dev>
+struct to_view<basic_buffer<Scalar, Sshape, Sstride, Dev>> {
+  using type = basic_view<Scalar, Sshape, Sstride, Dev>;
+};
+
 }  // namespace internal
+
+template <typename ViewT>
+using to_buffer_t = typename internal::to_buffer<ViewT>::type;
+template <typename BufferT>
+using to_view_t = typename internal::to_view<BufferT>::type;
 
 template <typename Scalar, typename Sshape, typename Sstride, typename Dev>
 class basic_buffer {

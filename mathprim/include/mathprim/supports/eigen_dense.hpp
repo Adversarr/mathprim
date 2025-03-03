@@ -312,7 +312,7 @@ MATHPRIM_PRIMFUNC Eigen::Ref<vector_t<Scalar, to_eigen_v<s_rows>>, alignment_v<S
   return {view.data(), rows, Eigen::InnerStride<Eigen::Dynamic>(inner)};
 }
 
-std::string to_string(Eigen::ComputationInfo info) {
+inline std::string to_string(Eigen::ComputationInfo info) {
   switch (info) {
     case Eigen::Success:
       return "Success";

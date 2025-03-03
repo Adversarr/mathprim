@@ -164,6 +164,14 @@ struct parse_int_impl<Head, Tail...> {
 template <char... Args>
 constexpr index_t parse_int = parse_int_impl<Args...>::value;
 
+
+// batched
+template <index_t... svalues, index_t... seq>
+MATHPRIM_PRIMFUNC shape_t<keep_dim, svalues...> batched_shape_impl(index_t batch_size, const shape_t<svalues...> &shape,
+                                                                   const index_seq<seq...> & /* seq */) noexcept {
+  return shape_t<keep_dim, svalues...>{batch_size, shape.template get<seq>()...};
+}
+
 }  // namespace internal
 
 template <typename... Args>
@@ -294,5 +302,10 @@ MATHPRIM_MAKE_SHAPE_MAT(4, 4);
 
 #undef MATHPRIM_MAKE_SHAPE_MAT
 #undef MATHPRIM_MAKE_SHAPE_VEC
+
+template <index_t... Svalues>
+MATHPRIM_PRIMFUNC shape_t<keep_dim, Svalues...> batched_shape(index_t batch_size, const index_pack<Svalues...> &shape) noexcept {
+  return internal::batched_shape_impl(batch_size, shape, make_index_seq<sizeof...(Svalues)>{});
+}
 
 }  // namespace mathprim
