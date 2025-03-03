@@ -58,10 +58,12 @@ struct opt : public optim::basic_problem<opt, float, device::cuda> {
       [dl_dy = ctx_.output_gradient(),
        y = ctx_.output(),
        x = ctx_.input()] __device__ (index_t bi) {
-      dl_dy(bi, 0) = y(bi, 0) - sin(x(bi, 0)) * sin(x(bi, 1));
+      float batch_size = y.shape(0);
+      dl_dy(bi, 0) = (y(bi, 0) - sin(x(bi, 0)) * sin(x(bi, 1))) / batch_size;
     });
 
-    accumulate_loss(0.5 * ctx_.blas().norm(ctx_.output_gradient()));
+    float rmse = ctx_.blas().norm(ctx_.output_gradient());
+    accumulate_loss(0.5 * rmse * rmse / ctx_.input().shape(0));
     ctx_.backward(inr_);
     copy(fused_gradients(), ctx_.params_gradient());
   }
@@ -86,13 +88,14 @@ int main () {
   init(ctx, inr.get<4>().mat());
   init(ctx, inr.get<6>().mat());
 
-  index_t batch_size = 1 << 14;
+  index_t batch_size = 1 << 10;
   ctx.compile(inr, batch_size); // batchsize=128
   opt o(ctx, inr);
   o.setup();
 
   optim::adamw_optimizer<float, device::cuda, blas::cublas<float>> optimizer;
   optimizer.stopping_criteria_.max_iterations_ = 10000;
+  optimizer.stopping_criteria_.tol_grad_ = 0; // never stop;
   optimizer.learning_rate_ = 1e-3;
   optimizer.beta1_ = 0.9;
   optimizer.beta2_ = 0.95;
@@ -115,5 +118,27 @@ int main () {
   std::cout << "=> " << (batch_size * res.iterations_) / (ms_time / 1000.0)
             << " samples per second" << std::endl;
 
+  // Testings.
+  index_t width = 40;
+  ctx.compile(inr, width * width);
+  auto gt = make_cuda_buffer<float>(width, width);
+  ctx.parallel().run(make_shape(width, width), [in = ctx.input(), width]__device__(auto ij) {
+    auto [i, j] = ij;
+    auto idx = i * width + j;
+    in(idx, 0) = i * 0.5f / width - 0.5f;
+    in(idx, 1) = j * 0.5f / width - 0.5f;
+  });
+  ctx.forward(inr);
+
+  auto err = make_cuda_buffer<float>(width, width);
+  ctx.parallel().run(make_shape(width, width), [out = ctx.output(), gt = gt.view(), err = err.view(), width]__device__(auto ij) {
+    auto [i, j] = ij;
+    auto idx = i * gt.shape(1) + j;
+    gt(ij) = sin(i * .5f / width - 0.5f) * sin(j * .5f / width - 0.5f);
+    err(ij) = out(ij) - gt(ij);
+  });
+
+  auto rmse = ctx.blas().norm(err.view()) / width;
+  std::cout << "RMSE: " << rmse << std::endl;
   return 0;
 }
