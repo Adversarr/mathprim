@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 #include "mathprim/dnn/nn/linear.hpp"
+#include "mathprim/dnn/nn/activation.hpp"
 #include "mathprim/dnn/nn/sequential.hpp"
 #include "mathprim/blas/cpu_blas.hpp"
 #include "mathprim/parallel/parallel.hpp"
@@ -181,4 +182,44 @@ GTEST_TEST(linear, seq) {
   EXPECT_TRUE(w1.shape() == make_shape(4, 3));
   EXPECT_TRUE(w2.shape() == make_shape(5, 4));
   EXPECT_TRUE(w3.shape() == make_shape(2, 5));
+}
+
+GTEST_TEST(act, act) {
+  dnn::activation<float, device::cpu, dshape<1>, dnn::relu_activation> act(make_shape(4));
+  dnn::basic_ctx<float, device::cpu, blas::cpu_blas<float>, par::seq, dshape<1>, dshape<1>> ctx;
+  ctx.compile(act, B);
+  ctx.zero_grad(act);
+
+  auto x = ctx.input();
+  auto xm = eigen_support::cmap(x).setRandom();
+
+  auto y = ctx.forward(act);
+  auto y_true = (xm.array().max(0)).matrix().eval();
+  
+  for (index_t b = 0; b < B; ++b) {
+    for (index_t i = 0; i < 4; ++i) {
+      EXPECT_NEAR(y(b, i), y_true(i, b), 1e-4);
+    }
+  }
+
+  auto dl_dy = ctx.output_gradient();
+  ctx.parallel().run(dl_dy.shape(), [dl_dy] (auto idx) {
+    dl_dy(idx) = idx[0] + idx[1];
+  });
+
+  auto dldx = make_buffer<float>(x.shape());
+  ctx.backward(act, dldx.view());
+
+  auto dldx_true = xm.eval();
+  for (index_t b = 0; b < B; ++b) {
+    for (index_t i = 0; i < 4; ++i) {
+      dldx_true(i, b) = (xm(i, b) >= 0 ? 1 : 0) * dl_dy(b, i);
+    }
+  }
+
+  for (index_t b = 0; b < B; ++b) {
+    for (index_t i = 0; i < 4; ++i) {
+      EXPECT_NEAR(dldx.view()(b, i), dldx_true(i, b), 1e-4);
+    }
+  }
 }

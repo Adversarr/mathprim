@@ -29,6 +29,8 @@ struct basic_ctx {
 
   parameter_t push(parameter_value_view values, const std::string& name = {}) {
     const auto size = values.numel();
+    MATHPRIM_INTERNAL_CHECK_THROW(curr_offset_ + size <= total_weights_, std::runtime_error,
+                                  "The total number of weights is not equal to the requested size.");
     auto subgrad = dL_dW_.view().sub(curr_offset_, curr_offset_ + size);
     std::string full_name;
     for (const auto& prefix : naming_prefixes_) {
@@ -66,7 +68,7 @@ struct basic_ctx {
 
   template <typename ModuleDerived>
   void zero_grad(basic_module<ModuleDerived, Scalar, Device, InShape, OutShape>& module) {
-    dL_dW_.fill_bytes(0);
+    if (dL_dW_) dL_dW_.fill_bytes(0);
     module.zero_grad(*this);
   }
 
@@ -97,7 +99,9 @@ private:
   // Information for each weight
   void reset(index_t total_weights) {
     total_weights_ = total_weights;
-    dL_dW_ = make_buffer<Scalar, Device>(total_weights);
+    if (total_weights > 0) {
+      dL_dW_ = make_buffer<Scalar, Device>(total_weights);
+    }
     curr_offset_ = 0;
   }
 
@@ -169,7 +173,7 @@ public:
   ///        After this, the module is ready to compute.
   template <typename Blas, typename ParImpl>
   compile_return_t compile(ctx_t<Blas, ParImpl>& c, index_t batch_size) {
-    current_batch_size_ = batch_size;
+    curr_batch_size_ = batch_size;
     // returns the view of output Y and dL/dY
     std::tie(curr_y_, curr_dl_dy_) = derived().compile_impl(c);
     has_compiled_ = true;
@@ -177,7 +181,7 @@ public:
     return {curr_y_, curr_dl_dy_};
   }
 
-  index_t current_batch_size() const noexcept { return current_batch_size_; }
+  index_t current_batch_size() const noexcept { return curr_batch_size_; }
 
   template <typename Blas, typename ParImpl>
   void zero_grad(ctx_t<Blas, ParImpl>& c) {
@@ -221,20 +225,19 @@ public:
   InShape input_shape() const noexcept { return derived().input_shape_impl(); }
   OutShape output_shape() const noexcept { return derived().output_shape_impl(); }
   index_t total_weights() noexcept {
-    if (total_weights_ == 0) {
+    if (total_weights_ < 0) {
       total_weights_ = derived().total_weights_impl();
     }
-    MATHPRIM_ASSERT(total_weights_ > 0);
     return total_weights_;
   }
 
 protected:
   // Total number of parameters
-  index_t total_weights_{0};
+  index_t total_weights_{keep_dim};
 
   // Input & Output data. must be valid during forward and backward.
   bool has_compiled_{false};
-  index_t current_batch_size_{0};
+  index_t curr_batch_size_{0};
   const_in_batch curr_x_;
   const_out_batch curr_y_;
   out_batch curr_dl_dy_;

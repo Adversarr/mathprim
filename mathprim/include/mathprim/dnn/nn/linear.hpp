@@ -46,7 +46,7 @@ public:
   template <typename Blas, typename ParImpl>
   compile_return_t compile_impl(ctx_t<Blas, ParImpl>& c) {
     prepare_parameters();
-    const index_t b = base::current_batch_size_;
+    const index_t b = base::curr_batch_size_;
     y_ = make_buffer<Scalar, Device>(b, out_features_);
     dl_dy_ = make_buffer<Scalar, Device>(b, out_features_);
 
@@ -58,6 +58,11 @@ public:
     }
 
     return {y_.const_view(), dl_dy_.view()};
+  }
+
+  template <typename Blas, typename ParImpl>
+  void zero_grad_impl(ctx_t<Blas, ParImpl>& /* c */) {
+    dl_dy_.fill_bytes(0);
   }
 
   ///////////////////////////////////////////////////////////////////////////////
@@ -90,11 +95,6 @@ public:
       bl.gemm(1.0, dl_dy, w, 1.0, dl_dx);
     }
     // TODO: bias.
-  }
-
-  template <typename Blas, typename ParImpl>
-  void zero_grad_impl(ctx_t<Blas, ParImpl>& /* c */) {
-    dl_dy_.fill_bytes(0);
   }
 
   ///////////////////////////////////////////////////////////////////////////////

@@ -136,7 +136,7 @@ struct optim_result {
 
 template <typename Scalar>
 struct stopping_criteria {
-  Scalar tol_change_{1e-6};  // |f[x] - f[x_prev]| < tol_change => stop
+  Scalar tol_change_{0};     // |f[x] - f[x_prev]| < tol_change => stop
   Scalar tol_grad_{1e-3};    // |g| < tol_grad => stop
   int max_iterations_{100};  // maximum number of iterations
 };
