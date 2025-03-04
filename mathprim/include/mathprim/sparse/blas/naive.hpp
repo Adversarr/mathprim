@@ -5,7 +5,7 @@
 
 namespace mathprim::sparse {
 namespace blas {
-template <typename Scalar, sparse_format sparse_compression, typename Backend = par::seq>
+template <typename Scalar, sparse_format SparseCompression, typename Backend = par::seq>
 class naive;
 
 template <typename Scalar, typename Backend>
@@ -18,9 +18,35 @@ public:
   using const_vector_view = typename base::const_vector_view;
   using sparse_view = typename base::sparse_view;
   using const_sparse_view = typename base::const_sparse_view;
+  using matrix_view = typename base::matrix_view;
+  using const_matrix_view = typename base::const_matrix_view;
   using base::base;
 
 private:
+  template <typename SshapeB, typename SstrideB, typename SshapeC, typename SstrideC>
+  void spmm_impl(Scalar alpha, basic_view<Scalar, SshapeB, SstrideB, device::cpu> B, Scalar beta,
+                 basic_view<Scalar, SshapeC, SstrideC, device::cpu> C, bool transA = false) {
+    for (index_t i = 0; i < C.shape(0); ++i) {
+      for (index_t j = 0; j < C.shape(1); ++j) {
+        C(i, j) *= beta;
+      }
+    }
+
+    if (transA) {
+      visit(this->mat_, par::seq{}, [&](index_t i, index_t k, Scalar value) {
+        for (index_t j = 0; j < C.shape(1); ++j) {
+          C(k, j) += alpha * value * B(i, j);
+        }
+      });
+    } else {
+      visit(this->mat_, par::seq{}, [&](index_t i, index_t k, Scalar value) {
+        for (index_t j = 0; j < C.shape(1); ++j) {
+          C(i, j) += alpha * value * B(k, j);
+        }
+      });
+    }
+  }
+
   // y = alpha * A * x + beta * y.
   void gemv_impl(Scalar alpha, const_vector_view x, Scalar beta, vector_view y, bool transpose) {
     if (transpose) {  // Computes A.T @ x
@@ -55,6 +81,30 @@ public:
   using base::base;
 
 private:
+  template <typename SshapeB, typename SstrideB, typename SshapeC, typename SstrideC>
+  void spmm_impl(Scalar alpha, basic_view<Scalar, SshapeB, SstrideB, device::cpu> B, Scalar beta,
+                 basic_view<Scalar, SshapeC, SstrideC, device::cpu> C, bool transA = false) {
+    for (index_t i = 0; i < C.shape(0); ++i) {
+      for (index_t j = 0; j < C.shape(1); ++j) {
+        C(i, j) *= beta;
+      }
+    }
+
+    if (transA) {
+      visit(this->mat_, par::seq{}, [&](index_t i, index_t k, Scalar value) {
+        for (index_t j = 0; j < C.shape(1); ++j) {
+          C(k, j) += alpha * value * B(i, j);
+        }
+      });
+    } else {
+      visit(this->mat_, par::seq{}, [&](index_t i, index_t k, Scalar value) {
+        for (index_t j = 0; j < C.shape(1); ++j) {
+          C(i, j) += alpha * value * B(k, j);
+        }
+      });
+    }
+  }
+
   // y = alpha * A * x + beta * y.
   void gemv_impl(Scalar alpha, const_vector_view x, Scalar beta, vector_view y, bool transpose) {
     if (transpose) {  // Computes A.T @ x
@@ -124,6 +174,7 @@ void naive<Scalar, sparse_format::csr, Backend>::gemv_trans(Scalar alpha, const_
     }
   }
 }
+
 
 ///////////////////////////////////////////////////////////////////////////////
 /// Implementation for CSC format.

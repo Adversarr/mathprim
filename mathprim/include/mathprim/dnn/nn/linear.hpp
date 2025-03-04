@@ -83,18 +83,15 @@ public:
   using weight_matrix_view = contiguous_matrix_view<Scalar, Device>;
   using bias_view = contiguous_vector_view<Scalar, Device>;
 
-  linear() = default;
-  MATHPRIM_INTERNAL_MOVE(linear, default);
-
+  linear(linear &&) = default;
   linear(index_t in_features, index_t out_features, bool has_bias = true) :
       in_features_(in_features), out_features_(out_features), has_bias_(has_bias) {
-    prepare_parameters();
+    base::reset_parameters();
   }
 
   template <typename Blas, typename ParImpl>
   compile_return_t compile_impl(ctx_t<Blas, ParImpl>& c) {
-    prepare_parameters();
-    const index_t b = base::curr_batch_size_;
+    const index_t b = base::input().shape(0);
     y_ = make_buffer<Scalar, Device>(b, out_features_);
     dl_dy_ = make_buffer<Scalar, Device>(b, out_features_);
 
@@ -104,7 +101,6 @@ public:
       auto dldb_info = c.push(b_.view(), "b");
       dL_db_ = dldb_info.gradient();
     }
-
     return {y_.const_view(), dl_dy_.view()};
   }
 
@@ -113,13 +109,29 @@ public:
     dl_dy_.fill_bytes(0);
   }
 
+  /// Initializes the weights and biases to kaiming uniform
+  void reset_parameters_impl() {
+    ensure_parameters();
+    auto h_w = make_buffer<Scalar, device::cpu>(out_features_, in_features_);
+    auto stdv = std::sqrt(2.0 / in_features_);
+    eigen_support::cmap(h_w.view()).setRandom() *= stdv;
+    copy(W_.view(), h_w.view());
+
+    if (has_bias_) {
+      Scalar bound = 1.0 / std::sqrt(in_features_);
+      auto h_b = make_buffer<Scalar, device::cpu>(out_features_);
+      eigen_support::cmap(h_b.view()).setRandom() *= bound;
+      copy(b_.view(), h_b.view());
+    }
+  }
+
   ///////////////////////////////////////////////////////////////////////////////
   /// Computes
   ///////////////////////////////////////////////////////////////////////////////
   template <typename Blas, typename ParImpl>
-  out_batch forward_impl(ctx_t<Blas,ParImpl>& c) {
+  out_batch forward_impl(ctx_t<Blas, ParImpl>& c) {
     // x: [B, in], y: [B, out]
-    const auto& x = base::curr_x_;
+    const auto& x = base::input();
     auto w_t = W_.view().transpose();
     auto y = y_.view();
     auto& bl = c.blas();
@@ -132,7 +144,7 @@ public:
   }
 
   template <typename Blas, typename ParImpl>
-  void backward_impl(ctx_t<Blas, ParImpl>& c, in_batch dl_dx) {
+  void backward_impl(ctx_t<Blas, ParImpl>& c, bool compute_dldx) {
     // dl_dw: [in, out], dl_dx: [B, in]
     // dLdW=(dLdY)T⋅XdWdL​=(dYdL​)T⋅X
     // dLdX=dLdY⋅WdXdL​=dYdL​⋅W
@@ -142,8 +154,8 @@ public:
     auto dl_dy_t = dl_dy.transpose();
     auto& bl = c.blas();
     bl.gemm(1.0, dl_dy_t, x, 1.0, dL_dW_);
-    if (dl_dx) {
-      bl.gemm(1.0, dl_dy, w, 1.0, dl_dx);
+    if (compute_dldx) {
+      bl.gemm(1.0, dl_dy, w, 1.0, base::curr_dl_dx_);
     }
     if (has_bias_) {
       internal::add_bias<Device>::bwd(c, dl_dy, dL_db_);
@@ -171,7 +183,7 @@ public:
   bias_view bias() { return b_.view(); }
 
 private:
-  void prepare_parameters() {
+  void ensure_parameters() {
     MATHPRIM_INTERNAL_CHECK_THROW((in_features_ > 0 && out_features_ > 0), std::invalid_argument,
                                   "Invalid input/output features for linear layer.");
     if (!W_) {

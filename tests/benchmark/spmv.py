@@ -53,9 +53,15 @@ def spmv(mat, vec):
     # sync threads
     torch.cuda.synchronize()
 
+
 def work(name, fn, *args):
     t = Timer(lambda: fn(*args))
     avg_time = t.timeit(number=cnt) / cnt * 1000
     print(f"{name} takes {avg_time:.6f} ms.")
 
+for i in range(10):
+    spmv(matrix, torch.randn(n * n))
+    spmv(matrix, torch.randn(n * n, 32))
+
 work("spmv", spmv, matrix, torch.randn(n * n))
+work("spmm", spmv, matrix, torch.randn(n * n, 32))

@@ -39,8 +39,8 @@ void init_x(ctx_t &ctx, contiguous_matrix_view<float, device::cuda> x) {
 
   ctx.parallel().run(make_shape(width, width), [x, width] __device__(auto ij) {
     auto [i, j] = ij;
-    x(i * width + j, 0) = i * 1.f / width - 0.5f;
-    x(i * width + j, 1) = j * 1.f / width - 0.5f;
+    x(i * width + j, 0) = (i * 2.f / width - 1.f) * M_PI;
+    x(i * width + j, 1) = (j * 2.f / width - 1.f) * M_PI;
   });
 }
 
@@ -150,8 +150,8 @@ int main () {
   ctx.parallel().run(make_shape(width, width), [in = ctx.input(), gt = gt.view(), width]__device__(auto ij) {
     auto [i, j] = ij;
     auto idx = i * width + j;
-    in(idx, 0) = i * 1.f / width - 0.5f;
-    in(idx, 1) = j * 1.f / width - 0.5f;
+    in(idx, 0) = (i * 2.f / width - 1.f) * M_PI;
+    in(idx, 1) = (j * 2.f / width - 1.f) * M_PI;
 
     gt(i, j) = sin(in(idx, 0)) * sin(in(idx, 1));
   });

@@ -251,6 +251,8 @@ public:
   static constexpr sparse_format compression = SparseCompression;
   using vector_view = contiguous_view<Scalar, shape_t<keep_dim>, Device>;
   using const_vector_view = contiguous_view<const Scalar, shape_t<keep_dim>, Device>;
+  using matrix_view = contiguous_matrix_view<Scalar, Device>;
+  using const_matrix_view = contiguous_matrix_view<const Scalar, Device>;
   using sparse_view = basic_sparse_view<Scalar, Device, SparseCompression>;
   using const_sparse_view = basic_sparse_view<const Scalar, Device, SparseCompression>;
   explicit sparse_blas_base(const_sparse_view matrix_view) : mat_(matrix_view) {}
@@ -264,6 +266,13 @@ public:
   void gemv(Scalar alpha, const_vector_view x, Scalar beta, vector_view y, bool transpose = false) {
     check_gemv_shape(x, y, transpose);
     static_cast<Derived*>(this)->gemv_impl(alpha, x, beta, y, transpose);
+  }
+
+  template <typename SshapeB, typename SstrideB, typename SshapeC, typename SstrideC>
+  void spmm(Scalar alpha, basic_view<const Scalar, SshapeB, SstrideB, Device> B, Scalar beta,
+            basic_view<Scalar, SshapeC, SstrideC, Device> C, bool transA = false) {
+    // check_spmm_shape(B, C, transA);
+    static_cast<Derived*>(this)->spmm_impl(alpha, B, beta, C, transA);
   }
 
   // // <x, y>_A = x^T * A * y.

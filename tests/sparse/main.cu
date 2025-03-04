@@ -70,7 +70,7 @@ int main() {
       sparse::sparse_property::general);
   par::cuda cu;
   sparse::visit(sparse_view, cu, []__device__(auto i, auto j, auto v) {
-    printf("A[%d][%d] = %.2f\n", i, j, v);
+    printf("A[%d, %d] = %.2f\n", i, j, v);
   });
 
   auto api =
@@ -88,6 +88,18 @@ int main() {
   for (int i = 0; i < rows; ++i) {
     printf("y[%d] = %.2f\n", i, h_y[i]);
   }
+
+  api.spmm(1.0, x.reshape(cols, 1).as_const(), 0.0, y.reshape(rows, 1));
+  // 拷贝结果回主机
+  CHECK_CUDA(
+      cudaMemcpy(h_y, d_y, rows * sizeof(float), cudaMemcpyDeviceToHost));
+
+  // 打印结果
+  printf("Result y = A*x:\n");
+  for (int i = 0; i < rows; ++i) {
+    printf("y[%d] = %.2f\n", i, h_y[i]);
+  }
+
   // 预期输出:
   // y[0] = 1*1 + 2*1 = 3.00
   // y[1] = 3*1 + 4*1 = 7.00

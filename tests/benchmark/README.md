@@ -44,12 +44,18 @@ work_cuda_ai/1024             669 ms
 On the same problem, and matrix. Torch's default sparse csr [implementation](spmv.py).
 
 ```
-spmv takes 0.185872 ms. # n=512
-spmv takes 0.422523 ms. # n=1024
+### 512
+spmv takes 0.119803 ms.
+spmm takes 0.835651 ms.
+### 1024
+spmv takes 0.362839 ms.
+spmm takes 3.750413 ms.
 ```
 
 mathprim's:
 ```
-work_cuda/512       0.073 ms        0.072 ms
-work_cuda/1024      0.237 ms        0.237 ms
+work_cuda/512            0.070 ms        0.070 ms
+work_cuda/1024           0.233 ms        0.233 ms
+work_cuda_spmm/512       0.512 ms        0.510 ms
+work_cuda_spmm/1024       2.02 ms         2.01 ms
 ```

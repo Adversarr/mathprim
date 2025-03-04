@@ -14,13 +14,16 @@ class basic_module;
 
 // Responsible for managing the memory of all dL/dW and the network.
 template <typename Scalar, typename Device, typename Blas, typename ParImpl, typename InShape, typename OutShape>
-struct basic_ctx {
+class basic_ctx {
+public:
   using gradient_view = contiguous_vector_view<Scalar, Device>;
+  using const_gradient_view = contiguous_vector_view<const Scalar, Device>;
   using gradient_buffer = contiguous_vector_buffer<Scalar, Device>;
   using parameter_t = parameter_item<Scalar, Device>;
   using parameter_value_view = typename parameter_t::view_type;
   using const_out_batch = batched<contiguous_view<const Scalar, OutShape, Device>>;
   using out_batch = batched<contiguous_view<Scalar, OutShape, Device>>;
+  using const_in_batch = batched<contiguous_view<const Scalar, InShape, Device>>;
   using in_batch = batched<contiguous_view<Scalar, InShape, Device>>;
 
   /// @brief Get the blas in use.
@@ -59,41 +62,41 @@ struct basic_ctx {
   template <typename ModuleDerived>
   void compile(basic_module<ModuleDerived, Scalar, Device, InShape, OutShape>& module, index_t batch_size) {
     reset(module.total_weights());
-    module.compile(*this, batch_size);
+    auto binput = batched_shape(batch_size, module.input_shape());
+    x_ = make_buffer<Scalar, Device>(binput);
+    dl_dx_ = make_buffer<Scalar, Device>(binput);
+
+    std::tie(y_, dl_dy_) = module.compile(*this, x_.const_view(), dl_dx_.view());
     MATHPRIM_INTERNAL_CHECK_THROW(curr_offset_ == total_weights_, std::runtime_error,
                                   "The total number of weights is not equal to the requested size.");
     MATHPRIM_INTERNAL_CHECK_THROW(naming_prefixes_.empty(), std::runtime_error, "Prefix stack is not empty.");
-
-    using batch_shape_t = typename in_batch::shape_at_compile_time;
-    batch_shape_t shape = batched_shape(batch_size, module.input_shape());
-    x_ = make_buffer<Scalar, Device>(shape);
-    y_ = module.output();
-    dl_dy_ = module.output_gradient();
   }
 
   template <typename ModuleDerived>
   void zero_grad(basic_module<ModuleDerived, Scalar, Device, InShape, OutShape>& module) {
     if (dL_dW_) dL_dW_.fill_bytes(0);
+    dl_dx_.fill_bytes(0);
     module.zero_grad(*this);
   }
 
   template <typename ModuleDerived>
   auto forward(basic_module<ModuleDerived, Scalar, Device, InShape, OutShape>& module) {
-    return module.forward(*this, x_.const_view());
+    return module.forward(*this);
   }
 
   template <typename ModuleDerived>
-  void backward(basic_module<ModuleDerived, Scalar, Device, InShape, OutShape>& module, in_batch dl_dx = {}) {
-    module.backward(*this, dl_dx);
+  void backward(basic_module<ModuleDerived, Scalar, Device, InShape, OutShape>& module, bool compute_dldx = false) {
+    module.backward(*this, compute_dldx);
   }
 
   in_batch input() noexcept { return x_.view(); }
-  in_batch input() const noexcept { return x_.const_view(); }
+  const_in_batch input() const noexcept { return x_.const_view(); }
+  const_in_batch input_gradient() const noexcept { return dl_dx_.const_view(); }
+
   const_out_batch output() const noexcept { return y_; }
   out_batch output_gradient() const noexcept { return dl_dy_; }
 
-  gradient_view params_gradient() noexcept { return dL_dW_.view(); }
-  gradient_view params_gradient() const noexcept { return dL_dW_.const_view(); }
+  const_gradient_view params_gradient() const noexcept { return dL_dW_.const_view(); }
 
   template <typename Fn>
   void for_each_parameter(Fn&& fn) {
@@ -118,10 +121,11 @@ private:
 
   std::vector<std::string> naming_prefixes_;
 
-  to_buffer_t<in_batch> x_; // always stores the current input
-  const_out_batch y_;       // always stores the current output
-  out_batch dl_dy_;         // always stores the current dL/dY
-
+  // Models Y <- Fwd(x) and dL/dX, dL/dW <- Bwd(dL/dY)
+  to_buffer_t<in_batch> x_;     // input
+  to_buffer_t<in_batch> dl_dx_;  // dL/dX
+  const_out_batch y_;           // output
+  out_batch dl_dy_;             // dL/dY
   contiguous_vector_buffer<Scalar, Device> dL_dW_;
   std::vector<parameter_t> weights_info_;
 };
@@ -159,51 +163,49 @@ public:
   basic_module() = default;
   MATHPRIM_INTERNAL_MOVE(basic_module, default);
 
+  /// Returns the reference to implementation.
   Derived& derived() noexcept { return *static_cast<Derived*>(this); }
   const Derived& derived() const noexcept { return *static_cast<const Derived*>(this); }
 
-  /// @brief Get view to outputs.
+  /// Get view to inputs.
+  const_in_batch input() const noexcept { return curr_x_; }
+  in_batch input_gradient() noexcept { return curr_dl_dx_; }
+  /// Get view to outputs.
   const_out_batch output() const noexcept { return curr_y_; }
-
-  out_batch output_gradient() const noexcept {
-    MATHPRIM_ASSERT(has_compiled_);
-    return curr_dl_dy_;
-  }
+  /// Get view to outputs' gradient.
+  const out_batch& output_gradient() const noexcept { return curr_dl_dy_; }
 
   /// @brief Ensure all the buffers for inputs and outputs are prepared.
   ///        After this, the module is ready to compute.
   template <typename Blas, typename ParImpl>
-  compile_return_t compile(ctx_t<Blas, ParImpl>& c, index_t batch_size) {
-    curr_batch_size_ = batch_size;
+  compile_return_t compile(ctx_t<Blas, ParImpl>& c, const_in_batch batched_x, in_batch batched_dldx) {
     // returns the view of output Y and dL/dY
-    std::tie(curr_y_, curr_dl_dy_) = derived().compile_impl(c);
-    has_compiled_ = true;
+    curr_x_ = batched_x;
+    curr_dl_dx_ = batched_dldx;
 
+    std::tie(curr_y_, curr_dl_dy_) = derived().compile_impl(c);
     return {curr_y_, curr_dl_dy_};
   }
 
-  index_t current_batch_size() const noexcept { return curr_batch_size_; }
-
   template <typename Blas, typename ParImpl>
   void zero_grad(ctx_t<Blas, ParImpl>& c) {
-    MATHPRIM_ASSERT(has_compiled_);
+    MATHPRIM_ASSERT(curr_dl_dy_ && "The module is not compiled yet.");
     zeros(curr_dl_dy_);
     derived().zero_grad_impl(c);
   }
 
+  void reset_parameters() { derived().reset_parameters_impl(); }
+
   // (W, X) -> Y
   template <typename Blas, typename ParImpl>
-  out_batch forward(ctx_t<Blas, ParImpl>& c, const_in_batch batched_x) {
-    MATHPRIM_ASSERT(has_compiled_);
-    curr_x_ = batched_x;
+  out_batch forward(ctx_t<Blas, ParImpl>& c) {
     return derived().forward_impl(c);
   }
 
   // dL/dY -> dL/dW(must), dL/dX(if set)
   template <typename Blas, typename ParImpl>
-  void backward(ctx_t<Blas, ParImpl>& c, in_batch dl_dx) {
-    MATHPRIM_ASSERT(has_compiled_);
-    derived().backward_impl(c, dl_dx);
+  void backward(ctx_t<Blas, ParImpl>& c, bool compute_dldx = false) {
+    derived().backward_impl(c, compute_dldx);
   }
 
   // // Notes: Future work
@@ -231,8 +233,7 @@ protected:
   index_t total_weights_{keep_dim};
 
   // Input & Output data. must be valid during forward and backward.
-  bool has_compiled_{false};
-  index_t curr_batch_size_{0};
+  in_batch curr_dl_dx_;
   const_in_batch curr_x_;
   const_out_batch curr_y_;
   out_batch curr_dl_dy_;

@@ -22,18 +22,18 @@ GTEST_TEST(nn, linear) {
     W(i, j) = i + j;
   });
 
-  auto buf_x = make_buffer<float>(B, 3);
   auto buf_y = make_buffer<float>(B, 2);
 
-  auto x = buf_x.view();
+  auto x = ctx.input();
+  eigen_support::cmap(x).setRandom();
   auto y_true = buf_y.view();
-  lin.forward(ctx, x);
+  ctx.forward(lin);
   ctx.blas().gemm(1.0, x, lin.mat().transpose(), 0.0, y_true);
 
   auto y = lin.output();
   for (index_t b = 0; b < B; ++b) {
     for (index_t j = 0; j < 2; ++j) {
-      EXPECT_FLOAT_EQ(y(b, j), y_true(b, j));
+      EXPECT_NEAR(y(b, j), y_true(b, j), 1e-4);
     }
   }
 
@@ -48,7 +48,7 @@ GTEST_TEST(nn, linear) {
   auto buf_dL_dW_true = make_buffer<float>(2, 3);
   auto dL_dW_true = buf_dL_dW_true.view();
   
-  lin.backward(ctx, {});
+  lin.backward(ctx);
   // x: [b, in], dl_dy: [b, out], dL_dW: [in, out]
   ctx.blas().gemm(1.0, dl_dy.transpose(), x, 0.0, dL_dW_true);
   for (index_t i = 0; i < 2; ++i) {
@@ -69,7 +69,7 @@ GTEST_TEST(nn, linear) {
     auto [i, j] = ij;
     dl_dy(i, j) = i + j;
   });
-  lin.backward(ctx, {});
+  lin.backward(ctx);
   for (index_t i = 0; i < 2; ++i) {
     for (index_t j = 0; j < 3; ++j) {
       EXPECT_FLOAT_EQ(dL_dW(i, j), dL_dW_true(i, j));
@@ -94,11 +94,10 @@ GTEST_TEST(nn, linear_two) {
   ctx.compile(seq, B);
   ctx.zero_grad(seq);
 
-  auto buf_x = make_buffer<float>(B, 3);
-  auto x = eigen_support::cmap(buf_x.view()); // (3, B)
+  auto x = eigen_support::cmap(ctx.input()); // (3, B)
   x.setRandom();
 
-  auto y = seq.forward(ctx, buf_x.view());
+  auto y = ctx.forward(seq);
 
   auto y_true = (W2t.transpose() * (W1t.transpose() * x)).eval();
 
@@ -118,9 +117,9 @@ GTEST_TEST(nn, linear_two) {
   auto z = eigen_support::cmap(seq.intermediate());               // (4, B)
   auto dl_dz = eigen_support::cmap(seq.intermediate_gradient());  // (4, B)
   auto dl_dx_buf = make_buffer<float>(B, 3);
-  auto dl_dx = dl_dx_buf.view();
-  seq.backward(ctx, dl_dx);
-
+  auto dl_dx = ctx.input_gradient();
+  ctx.backward(seq, true);
+  
   auto dL_dW2_true = (z * dl_dy.transpose()).eval(); // (4, 2)
   auto dl_dz_true = (W2t * dl_dy).eval(); // (4, B)
   auto dL_dW1_true = (x * dl_dz.transpose()).eval(); // (3, 4)
@@ -149,7 +148,7 @@ GTEST_TEST(nn, linear_two) {
   for (auto [i, j]: seq.output_gradient().shape()) {
     seq.output_gradient()(i, j) = i + j;
   }
-  seq.backward(ctx, dl_dx);
+  seq.backward(ctx, true);
   for (index_t i = 0; i < 4; ++i) {
     for (index_t j = 0; j < 2; ++j) {
       EXPECT_NEAR(dL_dW2(i, j), dL_dW2_true(i, j), 1e-4);
@@ -207,8 +206,8 @@ GTEST_TEST(act, act) {
     dl_dy(idx) = idx[0] + idx[1];
   });
 
-  auto dldx = make_buffer<float>(x.shape());
-  ctx.backward(act, dldx.view());
+  ctx.backward(act, true);
+  auto dldx = ctx.input_gradient();
 
   auto dldx_true = xm.eval();
   for (index_t b = 0; b < B; ++b) {
@@ -219,7 +218,7 @@ GTEST_TEST(act, act) {
 
   for (index_t b = 0; b < B; ++b) {
     for (index_t i = 0; i < 4; ++i) {
-      EXPECT_NEAR(dldx.view()(b, i), dldx_true(i, b), 1e-4);
+      EXPECT_NEAR(dldx(b, i), dldx_true(i, b), 1e-4);
     }
   }
 }

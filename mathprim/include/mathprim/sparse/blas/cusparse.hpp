@@ -68,6 +68,31 @@ inline cusparseHandle_t get_cusparse_handle() {
   return singletons::cusparse_context::get();
 }
 
+inline bool ensure_dn_mat(cusparseDnMatDescr_t& desc, index_t m, index_t n, index_t ld, void* values,
+                          cudaDataType_t data_type, bool row_major = true) {
+  bool has_change = false;
+  cusparseOrder_t order = row_major ? CUSPARSE_ORDER_ROW : CUSPARSE_ORDER_COL;
+  if (!desc) {
+    MATHPRIM_CHECK_CUSPARSE(cusparseCreateDnMat(&desc, m, n, ld, values, data_type, order));
+    has_change = true;
+  } else {
+    // previous values
+    int64_t rows, cols, lda;
+    cudaDataType_t type;
+    cusparseOrder_t prev_order;
+    void* prev_values;
+    MATHPRIM_CHECK_CUSPARSE(cusparseDnMatGet(desc, &rows, &cols, &lda, &prev_values, &type, &prev_order));
+    if (rows != static_cast<index_t>(m) || cols != static_cast<index_t>(n) || lda != ld || type != data_type
+        || order != prev_order) {
+      MATHPRIM_CHECK_CUSPARSE(cusparseDestroyDnMat(desc));
+      MATHPRIM_CHECK_CUSPARSE(cusparseCreateDnMat(&desc, m, n, ld, values, data_type, order));
+      has_change = true;
+    }
+  }
+  MATHPRIM_CHECK_CUSPARSE(cusparseDnMatSetValues(desc, values));
+  return has_change;  ///< SpMM_preprocess is needed if true.
+}
+
 }  // namespace internal
 
 template <typename Scalar, sparse_format Compression>
@@ -105,6 +130,10 @@ public:
   }
 
 private:
+  template <typename SshapeB, typename SstrideB, typename SshapeC, typename SstrideC>
+  void spmm_impl(Scalar alpha, basic_view<const Scalar, SshapeB, SstrideB, device::cuda> B, Scalar beta,
+                 basic_view<Scalar, SshapeC, SstrideC, device::cuda> C, bool transA);
+
   // y = alpha * A * x + beta * y.
   void gemv_impl(Scalar alpha, const_vector_view x, Scalar beta, vector_view y, bool transpose) {
     if constexpr (Compression == sparse_format::csr) {
@@ -141,13 +170,21 @@ private:
   void gemv_no_trans(Scalar alpha, const_vector_view x, Scalar beta, vector_view y);
   void gemv_trans(Scalar alpha, const_vector_view x, Scalar beta, vector_view y);
 
+  void prepare_spmm(index_t m, index_t n, index_t k, bool transA, bool transB, bool transC);
+
+  // spmv descriptors
   cusparseSpMatDescr_t mat_desc_{nullptr};
   cusparseDnVecDescr_t x_desc_{nullptr};
   cusparseDnVecDescr_t y_desc_{nullptr};
 
+  // spmm descriptors
+  cusparseDnMatDescr_t b_desc_{nullptr};
+  cusparseDnMatDescr_t c_desc_{nullptr};
+
   using temp_buffer = contiguous_buffer<char, shape_t<keep_dim>, device::cuda>;
   std::unique_ptr<temp_buffer> no_transpose_buffer_;
   std::unique_ptr<temp_buffer> transpose_buffer_;
+  std::unique_ptr<temp_buffer> spmm_buffer_;
 };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -257,6 +294,51 @@ void cusparse<Scalar, Compression>::gemv_trans(Scalar alpha, const_vector_view x
   // Perform the SpMV operation
   MATHPRIM_CHECK_CUSPARSE(
       cusparseSpMV(handle, op, &alpha, mat_desc, x_desc, &beta, y_desc, data_type(), alg, transpose_buffer_->data()));
+}
+
+template <typename Scalar, sparse_format Compression>
+template <typename SshapeB, typename SstrideB, typename SshapeC, typename SstrideC>
+void cusparse<Scalar, Compression>::spmm_impl(Scalar alpha, basic_view<const Scalar, SshapeB, SstrideB, device::cuda> B,
+                                              Scalar beta, basic_view<Scalar, SshapeC, SstrideC, device::cuda> C,
+                                              bool transA) {
+  // Set up the cuSPARSE handle
+  cusparseHandle_t handle = internal::get_cusparse_handle();
+  const bool trans_b = B.stride(1) != 1, trans_c = C.stride(1) != 1;
+
+  const index_t row_b = trans_b ? B.shape(1) : B.shape(0);
+  const index_t col_b = trans_b ? B.shape(0) : B.shape(1);
+  const index_t row_c = trans_c ? C.shape(1) : C.shape(0);
+  const index_t col_c = trans_c ? C.shape(0) : C.shape(1);
+  const index_t ldb = trans_b ? B.stride(1) : B.stride(0);
+  const index_t ldc = trans_c ? C.stride(1) : C.stride(0);
+  auto data_b = B.data();
+  auto data_c = C.data();
+
+  cusparseOperation_t op_a = transA ? CUSPARSE_OPERATION_TRANSPOSE : CUSPARSE_OPERATION_NON_TRANSPOSE;
+  cusparseOperation_t op_b = trans_b ? CUSPARSE_OPERATION_TRANSPOSE : CUSPARSE_OPERATION_NON_TRANSPOSE;
+  const void* p_alpha = &alpha;
+  const void* p_beta = &beta;
+  const cudaDataType compute_type = data_type();
+
+  bool has_change = internal::ensure_dn_mat(b_desc_, row_b, col_b, ldb, const_cast<Scalar*>(data_b), compute_type);
+  if (trans_c) {  // TODO: check.
+    has_change |= internal::ensure_dn_mat(c_desc_, col_c, row_c, ldc, const_cast<Scalar*>(data_c), compute_type, false);
+  } else {
+    has_change |= internal::ensure_dn_mat(c_desc_, row_c, col_c, ldc, const_cast<Scalar*>(data_c), compute_type);
+  }
+
+  if (has_change) {
+    size_t buffer_size = 0;
+    MATHPRIM_CHECK_CUSPARSE(cusparseSpMM_bufferSize(handle, op_a, op_b, &alpha, mat_desc_, b_desc_, &beta, c_desc_,
+                                                    compute_type, CUSPARSE_SPMM_ALG_DEFAULT, &buffer_size));
+    spmm_buffer_ = std::make_unique<temp_buffer>(make_cuda_buffer<char>(buffer_size));
+    void* ext_buffer = spmm_buffer_->data();
+    MATHPRIM_CHECK_CUSPARSE(cusparseSpMM_preprocess(handle, op_a, op_b, p_alpha, mat_desc_, b_desc_, p_beta, c_desc_,
+                                                    compute_type, CUSPARSE_SPMM_ALG_DEFAULT, ext_buffer));
+  }
+
+  MATHPRIM_CHECK_CUSPARSE(cusparseSpMM(handle, op_a, op_b, p_alpha, mat_desc_, b_desc_, p_beta, c_desc_, compute_type,
+                                       CUSPARSE_SPMM_ALG_DEFAULT, spmm_buffer_->data()));
 }
 
 }  // namespace blas

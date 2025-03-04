@@ -49,22 +49,26 @@ public:
 
   template <typename Blas, typename ParImpl>
   compile_return_t compile_impl(ctx_t<Blas, ParImpl>& c) {
-    {  // Front
-      c.push_prefix(std::to_string(Idx));
-      // Intermediate buffer
-      front_.compile(c, base::current_batch_size());
-      c.pop_prefix();
-    }
+    // Front
+    c.push_prefix(std::to_string(Idx));
+    // Intermediate buffer
+    auto [z, dldz] = front_.compile(c, base::curr_x_, base::curr_dl_dx_);
+    c.pop_prefix();
 
     compile_return_t out;
     if constexpr (IsLast) {  // Back is not a tree, responsible to push a prefix.
       c.push_prefix(std::to_string(Idx + 1));
-      out = back_.compile(c, base::current_batch_size());
+      out = back_.compile(c, z, dldz);
       c.pop_prefix();
     } else {
-      out = back_.compile(c, base::current_batch_size());
+      out = back_.compile(c, z, dldz);
     }
     return out;
+  }
+
+  void reset_parameters_impl() {
+    front_.reset_parameters();
+    back_.reset_parameters();
   }
 
   ///////////////////////////////////////////////////////////////////////////////
@@ -72,16 +76,14 @@ public:
   ///////////////////////////////////////////////////////////////////////////////
   template <typename Blas, typename ParImpl>
   out_batch forward_impl(ctx_t<Blas, ParImpl>& c) {
-    const auto& x = base::curr_x_;
-    auto z = front_.forward(c, x);
-    return back_.forward(c, z);
+    front_.forward(c);
+    return back_.forward(c);
   }
 
   template <typename Blas, typename ParImpl>
-  void backward_impl(ctx_t<Blas, ParImpl>& c, in_batch dl_dx) {
-    auto dl_dz = intermediate_gradient();
-    back_.backward(c, dl_dz);  // computes dL/dZ
-    front_.backward(c, dl_dx);
+  void backward_impl(ctx_t<Blas, ParImpl>& c, bool compute_dldx) {
+    back_.backward(c, true);  // computes dL/dZ is necessary for front_
+    front_.backward(c, compute_dldx);
   }
 
   template <typename Blas, typename ParImpl>
@@ -161,79 +163,7 @@ struct last_out_shape<Front, Rest...> {
 };
 }  // namespace internal
 
-// template <typename Front, typename Next, typename... Rest>
-// class sequential
-//     : public basic_module<sequential<Front, Next, Rest...>, typename Front::scalar_t, typename Front::device_t,
-//                           typename Front::in_shape, typename internal::last_out_shape<Next, Rest...>::type> {
-// public:
-//   using base = basic_module<sequential<Front, Next, Rest...>, typename Front::scalar_t, typename Front::device_t,
-//                             typename Front::in_shape, typename internal::last_out_shape<Next, Rest...>::type>;
-//   friend base;
-//   using in_shape = typename base::in_shape;
-//   using out_shape = typename base::out_shape;
-
-//   using in_batch = typename base::in_batch;
-//   using out_batch = typename base::out_batch;
-//   using const_in_batch = typename base::const_in_batch;
-//   using const_out_batch = typename base::const_out_batch;
-//   using compile_return_t = typename base::compile_return_t;
-
-//   using intermediate_batch = typename Front::out_batch;
-//   using const_intermediate_batch = typename Front::const_out_batch;
-
-//   template <typename Blas, typename ParImpl>
-//   using ctx = typename base::template ctx<Blas>;
-//   using device_t = typename base::device_t;
-//   using scalar_t = typename base::scalar_t;
-
-//   using intermediate_shape = typename Front::out_shape;
-//   using intermediate_view = contiguous_view<scalar_t, intermediate_shape, device_t>;
-//   using intermediate_buffer = to_buffer_t<intermediate_view>;
-//   using impl_type = typename internal::sequential_builder<sizeof...(Rest) + 2>::template type<Front, Next, Rest...>;
-
-//   template <typename... Args>
-//   explicit sequential(Args&&... args) : impl_(std::forward<Args>(args)...) {}
-
-//   template <typename Blas, typename ParImpl>
-//   compile_return_t compile_impl(ctx<Blas>& c) { return impl_.compile(c); }
-
-//   ///////////////////////////////////////////////////////////////////////////////
-//   /// Comptues
-//   ///////////////////////////////////////////////////////////////////////////////
-//   template <typename Blas, typename ParImpl>
-//   out_batch forward_impl(ctx<Blas>& c) { return impl_.forward(c); }
-
-//   template <typename Blas, typename ParImpl>
-//   void backward_impl(ctx<Blas>& c, in_batch dl_dx) { impl_.backward(c, dl_dx); }
-
-//   template <typename Blas, typename ParImpl>
-//   void zero_grad_impl(ctx<Blas>& c) { impl_.zero_grad(c); }
-
-//   ///////////////////////////////////////////////////////////////////////////////
-//   /// Meta data
-//   ///////////////////////////////////////////////////////////////////////////////
-//   index_t total_weights_impl() { return impl_.total_weights(); }
-//   in_shape input_shape_impl() const noexcept { return impl_.input_shape(); }
-//   out_shape out_shape_impl() const noexcept { return impl_.out_shape(); }
-
-//   ///////////////////////////////////////////////////////////////////////////////
-//   /// Accessors
-//   ///////////////////////////////////////////////////////////////////////////////
-//   const_intermediate_batch intermediate() const noexcept { return impl_.intermediate(); }
-//   intermediate_batch intermediate_gradient() const noexcept { return impl_.intermediate_gradient(); }
-
-//   Front& front() noexcept { return impl_.front(); }
-//   const Front& front() const noexcept { return impl_.front(); }
-//   Next& next() noexcept { return impl_.back(); }
-//   const Next& next() const noexcept { return impl_.back(); }
-
-// private:
-//   impl_type impl_;
-// };
-
 template <typename Front, typename Next, typename... Rest>
 using sequential = typename internal::sequential_builder<sizeof...(Rest) + 2>::template type<Front, Next, Rest...>;
-
-
 
 }  // namespace mathprim::dnn

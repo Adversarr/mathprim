@@ -62,7 +62,6 @@ public:
   using out_shape = typename base::out_shape;
   using out_buffer = to_buffer_t<out_batch>;
 
-  activation() = default;
   explicit activation(InShape in_shape) : in_shape_(in_shape) {}
 
   MATHPRIM_INTERNAL_MOVE(activation, default);
@@ -70,10 +69,12 @@ public:
   template <typename Blas, typename ParImpl>
   compile_return_t compile_impl(ctx_t<Blas, ParImpl>& /* c */) {
     MATHPRIM_ASSERT(in_shape_.numel() > 0);
-    out_ = make_buffer<Scalar>(batched_shape(base::curr_batch_size_, in_shape_));
+    out_ = make_buffer<Scalar>(base::input().shape());
     out_grad_ = make_buffer<Scalar>(out_.shape());
     return {out_.view(), out_grad_.view()};
   }
+
+  void reset_parameters_impl() {}
 
   ///////////////////////////////////////////////////////////////////////////////
   /// Computes
@@ -95,12 +96,13 @@ public:
   }
 
   template <typename Blas, typename ParImpl>
-  void backward_impl(ctx_t<Blas, ParImpl>& c, in_batch dl_dx) {
-    if (!dl_dx) {
+  void backward_impl(ctx_t<Blas, ParImpl>& c, bool compute_dldx) {
+    if (!compute_dldx) {
       return;
     }
     auto x = base::curr_x_;
     auto dl_dy = base::curr_dl_dy_;
+    auto dl_dx = base::curr_dl_dx_;
     c.parallel().run(dl_dx.shape(), [x, dl_dx, dl_dy](auto i) {
       dl_dx(i) += Activation<Scalar>::bwd(x(i), dl_dy(i));
     });
@@ -148,10 +150,11 @@ public:
   template <typename Blas, typename ParImpl>
   compile_return_t compile_impl(ctx_t<Blas, ParImpl>& /* c */) {
     MATHPRIM_ASSERT(in_shape_.numel() > 0);
-    out_ = make_buffer<Scalar, device::cuda>(batched_shape(base::curr_batch_size_, in_shape_));
+    out_ = make_buffer<Scalar, device::cuda>(base::input().shape());
     out_grad_ = make_buffer<Scalar, device::cuda>(out_.shape());
     return {out_.view(), out_grad_.view()};
   }
+  void reset_parameters_impl() {}
 
   ///////////////////////////////////////////////////////////////////////////////
   /// Computes
@@ -173,12 +176,13 @@ public:
   }
 
   template <typename Blas, typename ParImpl>
-  void backward_impl(ctx_t<Blas, ParImpl>& c, in_batch dl_dx) {
-    if (!dl_dx) {
+  void backward_impl(ctx_t<Blas, ParImpl>& c, bool compute_dldx) {
+    if (!compute_dldx) {
       return;
     }
     auto x = base::curr_x_;
     auto dl_dy = base::curr_dl_dy_;
+    auto dl_dx = base::curr_dl_dx_;
     c.parallel().run(dl_dx.shape(), [x, dl_dx, dl_dy] __device__(auto i) {
       dl_dx(i) += Activation<Scalar>::bwd(x(i), dl_dy(i));
     });

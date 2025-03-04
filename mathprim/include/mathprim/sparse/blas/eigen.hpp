@@ -18,6 +18,30 @@ public:
   friend base;
 
 protected:
+  // C <- alpha op(A) B + beta C => C.T <- beta C.T + alpha B.T op(A).T
+  template <typename SshapeB, typename SstrideB, typename SshapeC, typename SstrideC>
+  void spmm_impl(Scalar alpha, basic_view<Scalar, SshapeB, SstrideB, device::cpu> B, Scalar beta,
+                 basic_view<Scalar, SshapeC, SstrideC, device::cpu> C, bool transA = false) {
+    auto mat = eigen_support::map(this->mat_);
+    if (B.is_contiguous() && C.is_contiguous()) {
+      auto b_map = eigen_support::cmap(B).transpose();
+      auto c_map = eigen_support::cmap(C).transpose();
+      if (transA) {
+        c_map = alpha * mat.transpose() * B + beta * c_map;
+      } else {
+        c_map = alpha * mat * B + beta * c_map;
+      }
+    } else {
+      auto b_map = eigen_support::map(B).transpose();
+      auto c_map = eigen_support::map(C).transpose();
+      if (transA) {
+        c_map = alpha * mat.transpose() * B + beta * c_map;
+      } else {
+        c_map = alpha * mat * B + beta * c_map;
+      }
+    }
+  }
+
   // y = alpha * A * x + beta * y.
   void gemv_impl(Scalar alpha, const_vector_view x, Scalar beta, vector_view y, bool transpose) {
     bool transpose_actual = false;
