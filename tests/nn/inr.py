@@ -1,3 +1,4 @@
+import math
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -30,7 +31,7 @@ def main():
     torch.set_default_device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'CPU'}")
     input_dim = 2
-    hidden_dim = 64
+    hidden_dim = 32
     output_dim = 1
     batch_size = 1 << 10
     max_iterations = 10000
@@ -38,6 +39,11 @@ def main():
     beta1 = 0.9
     beta2 = 0.95
     weight_decay = 1e-2
+    
+    def mg(width):
+        x = torch.linspace(-.5, .5, width)
+        x, y = torch.meshgrid(x, x)
+        return torch.stack([x, y], dim=-1).view(-1, 2)
 
     model = MLP(input_dim, hidden_dim, output_dim)
     model.apply(init_weights)
@@ -45,12 +51,13 @@ def main():
     optimizer = optim.AdamW(model.parameters(), lr=learning_rate, betas=(beta1, beta2), weight_decay=weight_decay)
 
     start_time = time.time()
+    x = mg(int(math.sqrt(batch_size)))
 
     for iteration in range(max_iterations):
         optimizer.zero_grad()
 
         # Generate random input data
-        x = torch.rand(batch_size, input_dim) * 4 - 2  # Uniform distribution between -2 and 2
+        # x = torch.rand(batch_size, input_dim) * 4 - 2  # Uniform distribution between -2 and 2
         # Compute target output
         y_target = torch.sin(x[:, 0]) * torch.sin(x[:, 1])
 
