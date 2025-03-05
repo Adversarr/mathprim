@@ -88,8 +88,8 @@ inline bool ensure_dn_mat(cusparseDnMatDescr_t& desc, index_t m, index_t n, inde
       MATHPRIM_CHECK_CUSPARSE(cusparseCreateDnMat(&desc, m, n, ld, values, data_type, order));
       has_change = true;
     }
+    MATHPRIM_CHECK_CUSPARSE(cusparseDnMatSetValues(desc, values));
   }
-  MATHPRIM_CHECK_CUSPARSE(cusparseDnMatSetValues(desc, values));
   return has_change;  ///< SpMM_preprocess is needed if true.
 }
 
@@ -219,6 +219,11 @@ cusparse<Scalar, Compression>::~cusparse() {
     MATHPRIM_CHECK_CUSPARSE(cusparseDestroyDnVec(x_desc_));
   if (y_desc_)
     MATHPRIM_CHECK_CUSPARSE(cusparseDestroyDnVec(y_desc_));
+
+  if (b_desc_)
+    MATHPRIM_CHECK_CUSPARSE(cusparseDestroyDnMat(b_desc_));
+  if (c_desc_)
+    MATHPRIM_CHECK_CUSPARSE(cusparseDestroyDnMat(c_desc_));
 }
 
 template <typename Scalar, sparse_format Compression>

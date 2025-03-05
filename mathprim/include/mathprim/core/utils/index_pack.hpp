@@ -415,7 +415,7 @@ struct router<svalue, false> {
 template <index_t svalue>
 struct router<svalue, true> {
   static MATHPRIM_PRIMFUNC index_t assign(index_t dvalue) noexcept {
-    MATHPRIM_ASSERT(dvalue > 0);
+    MATHPRIM_ASSERT(dvalue >= 0);
     return dvalue;
   }
 };

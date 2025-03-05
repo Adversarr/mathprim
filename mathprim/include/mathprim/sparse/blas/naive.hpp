@@ -24,7 +24,7 @@ public:
 
 private:
   template <typename SshapeB, typename SstrideB, typename SshapeC, typename SstrideC>
-  void spmm_impl(Scalar alpha, basic_view<Scalar, SshapeB, SstrideB, device::cpu> B, Scalar beta,
+  void spmm_impl(Scalar alpha, basic_view<const Scalar, SshapeB, SstrideB, device::cpu> B, Scalar beta,
                  basic_view<Scalar, SshapeC, SstrideC, device::cpu> C, bool transA = false) {
     for (index_t i = 0; i < C.shape(0); ++i) {
       for (index_t j = 0; j < C.shape(1); ++j) {

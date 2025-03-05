@@ -84,6 +84,8 @@ private:
   template <typename ProblemDerived, typename Callback>
   result_type optimize_impl(basic_problem<ProblemDerived, Scalar, Device>& problem, Callback&& callback) {
     blas::basic_blas<Blas, Scalar, Device>& bl = blas_;
+    MATHPRIM_INTERNAL_CHECK_THROW(beta1_ >= 0 && beta1_ < 1, std::invalid_argument, "beta1 must be in [0, 1)");
+    MATHPRIM_INTERNAL_CHECK_THROW(beta2_ >= 0 && beta2_ < 1, std::invalid_argument, "beta2 must be in [0, 1)");
     auto criteria = base::criteria();
     auto gradients_view = problem.fused_gradients();
     result_type result;
@@ -115,6 +117,10 @@ private:
 
     auto m = first_mom_.view(), v = second_mom_.view();
     auto m_hat = first_mom_corr_.view(), v_hat = second_mom_corr_.view();
+
+
+    Scalar pow_of_beta1 = 1;
+    Scalar pow_of_beta2 = 1;
     for (; (iteration < criteria.max_iterations_) && (grad_norm >= criteria.tol_grad_); ++iteration) {
       callback(result);
       // theta_t <- theta_{t-1} - gamma lambda theta_{t-1}
@@ -134,10 +140,14 @@ private:
       bl.axpby(1 - beta2_, gradients_view, beta2_, v);
 
       // ?: Use double precision in this part to avoid numerical instability.
-      auto bias_correction1 = static_cast<Scalar>(1 - std::pow(static_cast<Scalar>(beta1_), iteration + 1));
-      auto bias_correction2 = static_cast<Scalar>(1 - std::pow(static_cast<Scalar>(beta2_), iteration + 1));
       bl.copy(m_hat, m);
       bl.copy(v_hat, v);
+      // auto bias_correction1 = static_cast<Scalar>(1 - std::pow(static_cast<Scalar>(beta1_), iteration + 1));
+      // auto bias_correction2 = static_cast<Scalar>(1 - std::pow(static_cast<Scalar>(beta2_), iteration + 1));
+      pow_of_beta1 *= beta1_;
+      pow_of_beta2 *= beta2_;
+      auto bias_correction1 = 1 - pow_of_beta1;
+      auto bias_correction2 = 1 - pow_of_beta2;
       bl.scal(1 / bias_correction1, m_hat);  // m_hat <- m_t / (1 - beta1^t)
       bl.scal(1 / bias_correction2, v_hat);  // v_hat <- v_t / (1 - beta2^t)
 

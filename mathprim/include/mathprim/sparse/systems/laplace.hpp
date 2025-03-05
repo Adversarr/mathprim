@@ -74,7 +74,8 @@ basic_sparse_matrix<Scalar, device::cpu, SparseCompression> laplace_operator<Sca
   }
 
   const index_t total = dims_.numel();
-  auto coo = make_from_triplets<Scalar>(entries.begin(), entries.end(), total, total);
+  auto coo = make_from_triplets<Scalar>(entries.begin(), entries.end(), total, total, sparse_property::symmetric);
+
   if constexpr (SparseCompression == sparse_format::coo) {
     return coo;
   } else {

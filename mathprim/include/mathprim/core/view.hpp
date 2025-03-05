@@ -63,9 +63,9 @@ constexpr MATHPRIM_PRIMFUNC transpose_impl_t<I, J, Pack> transpose_impl(const Pa
 
 // Extend a pack
 template <typename ViewType>
-struct field_impl;
+struct batched_impl;
 template <typename T, typename Sshape, typename Sstride, typename Device>
-struct field_impl<basic_view<T, Sshape, Sstride, Device>> {
+struct batched_impl<basic_view<T, Sshape, Sstride, Device>> {
   using new_shape = god::to_pack<god::prepend_t<keep_dim, typename Sshape::seq>>;
   static constexpr index_t old_stride_first = god::car_v<typename Sstride::seq>;
   static constexpr index_t old_shape_first = god::car_v<typename Sshape::seq>;
@@ -76,7 +76,9 @@ struct field_impl<basic_view<T, Sshape, Sstride, Device>> {
 };
 
 template <typename ViewType>
-using batched = typename field_impl<ViewType>::type;
+using batched = typename batched_impl<ViewType>::type;
+template <typename ViewType>
+using batched_shape = typename batched_impl<ViewType>::new_shape;
 
 ///////////////////////////////////////////////////////////////////////////////
 /// Operations on packs.

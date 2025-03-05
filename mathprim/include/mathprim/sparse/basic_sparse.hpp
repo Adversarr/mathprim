@@ -268,11 +268,24 @@ public:
     static_cast<Derived*>(this)->gemv_impl(alpha, x, beta, y, transpose);
   }
 
-  template <typename SshapeB, typename SstrideB, typename SshapeC, typename SstrideC>
-  void spmm(Scalar alpha, basic_view<const Scalar, SshapeB, SstrideB, Device> B, Scalar beta,
+  // C <- alpha op(A) op(B) + beta C
+  template <typename ScalarB, typename SshapeB, typename SstrideB, typename SshapeC, typename SstrideC,
+            typename = std::enable_if_t<std::is_same_v<std::remove_const_t<ScalarB>, Scalar>>>
+  void spmm(Scalar alpha, basic_view<ScalarB, SshapeB, SstrideB, Device> B, Scalar beta,
             basic_view<Scalar, SshapeC, SstrideC, Device> C, bool transA = false) {
     // check_spmm_shape(B, C, transA);
-    static_cast<Derived*>(this)->spmm_impl(alpha, B, beta, C, transA);
+    auto [opb_row, opb_col] = B.shape();
+    auto [rc, cc] = C.shape();
+    index_t op_a_rows = transA ? mat_.cols() : mat_.rows(), op_a_cols = transA ? mat_.rows() : mat_.cols();
+    if (opb_row != op_a_cols) {
+      throw std::runtime_error("The number of rows of B is not equal to the number of cols of A.");
+    } else if (opb_col != cc) {
+      throw std::runtime_error("The number of cols of B is not equal to the number of cols of C.");
+    } else if (rc != op_a_rows) {
+      throw std::runtime_error("The number of rows of C is not equal to the number of rows of A.");
+    }
+
+    static_cast<Derived*>(this)->spmm_impl(alpha, B.as_const(), beta, C, transA);
   }
 
   // // <x, y>_A = x^T * A * y.

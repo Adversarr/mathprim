@@ -219,6 +219,17 @@ MATHPRIM_PRIMFUNC matrix_view_t<Eigen::Matrix<Scalar, Rows, Cols, Options, MaxRo
   }
 }
 
+template <typename dev = device::cpu, typename Scalar, int Rows, int Cols, int Options, int MaxRows, int MaxCols>
+MATHPRIM_PRIMFUNC matrix_view_t<Eigen::Matrix<Scalar, Rows, Cols, Options, MaxRows, MaxCols>, false, dev> view(
+    Eigen::Matrix<Scalar, Rows, Cols, Options, MaxRows, MaxCols> &mat) noexcept {
+  using ret = matrix_view_t<Eigen::Matrix<Scalar, Rows, Cols, Options, MaxRows, MaxCols>, false, dev>;
+  if constexpr (Cols == 1) {
+    return ret{mat.data(), typename ret::shape_at_compile_time{mat.size()}};
+  } else {
+    return ret{mat.data(), typename ret::shape_at_compile_time{mat.cols(), mat.rows()}};
+  }
+}
+
 /**
  * @brief Create a map to matrix from a buffer view.
  */

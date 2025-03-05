@@ -6,9 +6,11 @@
 #include <mathprim/sparse/systems/laplace.hpp>
 
 #include "mathprim/parallel/openmp.hpp"
+#include "mathprim/sparse/blas/eigen.hpp"
 #include "mathprim/sparse/cvt.hpp"
 #include "mathprim/supports/eigen_sparse.hpp"
 #include "mathprim/supports/io/matrix_market.hpp"
+#include "mathprim/supports/stringify.hpp"
 
 using namespace mathprim;
 GTEST_TEST(csr, gemv) {
@@ -281,6 +283,38 @@ GTEST_TEST(coo, io) {
       EXPECT_EQ(row[i], matrix_entry[i].row_);
       EXPECT_EQ(col[i], matrix_entry[i].col_);
       EXPECT_FLOAT_EQ(values[i], matrix_entry[i].value_);
+    }
+  }
+}
+
+GTEST_TEST(csr, spmm) {
+  std::vector<sparse::sparse_entry<float>> matrix_entry;
+  matrix_entry.push_back({0, 0, 1.0f});
+  matrix_entry.push_back({0, 1, 2.0f});
+  matrix_entry.push_back({1, 1, 3.0f});
+  matrix_entry.push_back({1, 2, 4.0f});
+  matrix_entry.push_back({2, 2, 5.0f});
+
+  auto coo = sparse::make_from_triplets<float>(matrix_entry.begin(), matrix_entry.end(), 3, 3);
+  auto csr = sparse::format_convert<float, sparse::sparse_format::csr, device::cpu>().from_coo(coo.const_view());
+
+  auto eigen_csr = eigen_support::map(csr.const_view());
+
+  auto x = Eigen::MatrixXf(4, 3);
+  x.setRandom();
+  auto y = Eigen::MatrixXf(4, 3);
+  y.setZero();
+  
+  auto xv = eigen_support::view(x); // 3,4
+  auto yv = eigen_support::view(y); // 3,4
+  // mat: 3,3
+  sparse::blas::eigen<float, sparse::sparse_format::csr> blas(csr.const_view());
+  blas.spmm(1.0f, xv, 0.0f, yv);
+  auto y_true = (eigen_csr * x.transpose()).transpose().eval();
+
+  for (int i = 0; i < y.rows(); ++i) {
+    for (int j = 0; j < y.cols(); ++j) {
+      EXPECT_FLOAT_EQ(y(i, j), y_true(i, j));
     }
   }
 }

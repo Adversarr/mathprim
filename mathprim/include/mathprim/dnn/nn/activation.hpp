@@ -1,6 +1,7 @@
 #pragma once
 #include <cmath>
 
+#include "mathprim/core/utils/index_pack.hpp"
 #include "mathprim/dnn/basic_module.hpp"
 namespace mathprim::dnn {
 

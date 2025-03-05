@@ -175,8 +175,9 @@ auto make_from_coos(const basic_sparse_matrix<Scalar, device::cpu, sparse_format
 }
 
 template <typename Scalar, typename Iter>
-basic_sparse_matrix<Scalar, device::cpu, sparse_format::coo> make_from_triplets(Iter begin, Iter end, index_t rows,
-                                                                                index_t cols) {
+basic_sparse_matrix<Scalar, device::cpu, sparse_format::coo>  //
+make_from_triplets(Iter begin, Iter end,                      //
+                   index_t rows, index_t cols, sparse_property property = sparse_property::general) {
   using coo_matrix = basic_sparse_matrix<Scalar, device::cpu, sparse_format::coo>;
   std::vector<sparse_entry<Scalar>> merged(begin, end);
 
@@ -199,7 +200,7 @@ basic_sparse_matrix<Scalar, device::cpu, sparse_format::coo> make_from_triplets(
 
   // create the COO matrix
   auto nnz = static_cast<index_t>(std::distance(merged.begin(), it_out) + 1);
-  coo_matrix result(rows, cols, nnz, sparse_property::general);
+  coo_matrix result(rows, cols, nnz, property);
   auto outer_ptrs = result.outer_ptrs().view();
   auto inner_indices = result.inner_indices().view();
   auto values = result.values().view();
