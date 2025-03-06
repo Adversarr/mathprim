@@ -430,9 +430,9 @@ void work_cuda_ai(benchmark::State &state) {
 // BENCHMARK_TEMPLATE(work_ic, blas::cpu_eigen<float>)->Range(1 << 4, LARGE_RANGE)->Unit(benchmark::kMillisecond);
 // BENCHMARK_TEMPLATE(work, blas::cpu_eigen<float>)->Range(1 << 4, LARGE_RANGE)->Unit(benchmark::kMillisecond);
 BENCHMARK(work_cuda)->Range(1 << 4, LARGE_RANGE)->Unit(benchmark::kMillisecond);
-BENCHMARK(work_cuda_no_prec)->Range(1 << 4, LARGE_RANGE)->Unit(benchmark::kMillisecond);
-BENCHMARK(work_cuda_ilu0)->Range(1 << 4, LARGE_RANGE)->Unit(benchmark::kMillisecond);
-BENCHMARK(work_cuda_ic)->Range(1 << 4, LARGE_RANGE)->Unit(benchmark::kMillisecond);
+// BENCHMARK(work_cuda_no_prec)->Range(1 << 4, LARGE_RANGE)->Unit(benchmark::kMillisecond);
+// BENCHMARK(work_cuda_ilu0)->Range(1 << 4, LARGE_RANGE)->Unit(benchmark::kMillisecond);
+// BENCHMARK(work_cuda_ic)->Range(1 << 4, LARGE_RANGE)->Unit(benchmark::kMillisecond);
 BENCHMARK(work_cuda_ai)->Range(1 << 4, LARGE_RANGE)->Unit(benchmark::kMillisecond);
 
 BENCHMARK_MAIN();
