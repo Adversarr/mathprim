@@ -92,7 +92,7 @@ struct launcher<index_pack<Sgrids...>, index_pack<Sblocks...>, true> {
 
   launcher() = default;
   explicit launcher(cudaStream_t stream) : stream_{stream} {}
-  cudaStream_t stream_;
+  cudaStream_t stream_{nullptr};
 };
 
 template <index_t... Sgrids, index_t... Sblocks>
@@ -125,14 +125,14 @@ struct launcher<index_pack<Sgrids...>, index_pack<Sblocks...>, false> {
 
   launcher() = default;
   explicit launcher(cudaStream_t stream) : stream_{stream} {}
-  cudaStream_t stream_;
+  cudaStream_t stream_{nullptr};
 };
 
 } // namespace internal
 
 class cuda : public parfor<cuda> {
 public:
-  cuda() : stream_{0} {}
+  cuda() = default;
   explicit cuda(cudaStream_t stream) : stream_{stream} {}
 
   /**
@@ -274,7 +274,7 @@ public:
   }
 
 private:
-  cudaStream_t stream_; ///< CUDA stream: default stream
+  cudaStream_t stream_{nullptr}; ///< CUDA stream: default stream
 };
 
 } // namespace par
