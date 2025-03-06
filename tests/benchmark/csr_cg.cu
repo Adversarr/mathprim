@@ -5,7 +5,7 @@
 #include <mathprim/core/buffer.hpp>
 #include <mathprim/linalg/iterative/solver/cg.hpp>
 #include <mathprim/linalg/iterative/precond/diagonal.hpp>
-#include <mathprim/linalg/iterative/precond/ilu.hpp>
+#include <mathprim/linalg/iterative/precond/ilu_cusparse.hpp>
 #include <mathprim/linalg/iterative/precond/approx_inv.hpp>
 #include <mathprim/parallel/openmp.hpp>
 #include <mathprim/sparse/blas/eigen.hpp>
@@ -14,7 +14,7 @@
 #include "mathprim/blas/cpu_eigen.hpp"
 #include "mathprim/blas/cublas.cuh"
 #include "mathprim/linalg/iterative/precond/eigen_support.hpp"
-#include "mathprim/linalg/iterative/precond/ic.hpp"
+#include "mathprim/linalg/iterative/precond/ic_cusparse.hpp"
 #include "mathprim/parallel/cuda.cuh"
 #include "mathprim/sparse/blas/cusparse.hpp"
 #include "mathprim/sparse/systems/laplace.hpp"

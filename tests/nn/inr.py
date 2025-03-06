@@ -31,10 +31,10 @@ def main():
     torch.set_default_device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'CPU'}")
     input_dim = 2
-    hidden_dim = 32
+    hidden_dim = 64
     output_dim = 1
-    batch_size = 1 << 10
-    max_iterations = 10000
+    batch_size = 1 << 12
+    max_iterations = 1000
     learning_rate = 1e-3
     beta1 = 0.9
     beta2 = 0.95

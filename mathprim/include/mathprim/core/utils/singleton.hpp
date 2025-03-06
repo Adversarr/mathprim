@@ -36,7 +36,7 @@ public:
    * @return Handle
    */
   static void init_external(Handle handle, bool responsibility = false) noexcept {
-    return instance(std::move(handle), responsibility).handle_;
+    instance(std::move(handle), responsibility);
   }
 
   // Although public, you should not rely on this function.
@@ -46,7 +46,7 @@ public:
   }
 
 private:
-  MATHPRIM_NOINLINE explicit basic_singleton(Handle handle, bool responsibility) {
+  explicit MATHPRIM_NOINLINE basic_singleton(Handle handle, bool responsibility) {
     if (static_cast<bool>(handle)) /* external handle is valid */ {
       handle_ = std::move(handle);
       responsibility_ = responsibility;
@@ -58,7 +58,7 @@ private:
 
   MATHPRIM_NOINLINE ~basic_singleton() noexcept {
     static_cast<Derived*>(this)->destroy_impl(handle_);
-    handle_ = Handle{};  // set zero
+    handle_ = Handle{};  // reset handle to default state
   }
 
   Handle handle_{};              ///< The global handle: default to zero-init

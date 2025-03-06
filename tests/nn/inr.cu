@@ -98,7 +98,7 @@ int main () {
     act(make_shape(W)),
     linear(W, 1)};
   ctx_t ctx;
-  index_t batch_size = 1 << 10;
+  index_t batch_size = 1 << 18;
   ctx.compile(inr, batch_size); // batchsize=128
 
   init(ctx, inr.get<0>().mat());
@@ -119,7 +119,7 @@ int main () {
   o.setup();
 
   optim::adamw_optimizer<float, device::cuda, blas::cublas<float>> optimizer;
-  optimizer.stopping_criteria_.max_iterations_ = 10000;
+  optimizer.stopping_criteria_.max_iterations_ = 1000;
   optimizer.stopping_criteria_.tol_grad_ = 0; // never stop;
   optimizer.learning_rate_ = 1e-4;
   optimizer.beta1_ = 0.9;
