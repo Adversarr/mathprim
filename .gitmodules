@@ -1,3 +1,6 @@
 [submodule "ext/nanobind"]
 	path = ext/nanobind
 	url = https://github.com/wjakob/nanobind.git
+[submodule "ext/nlohmann_json"]
+	path = ext/nlohmann_json
+	url = https://github.com/nlohmann/json.git
