@@ -1,6 +1,7 @@
 #pragma once
 #include <cublas_v2.h>
 
+#include <library_types.h>
 #include <thrust/execution_policy.h>
 #include <thrust/for_each.h>
 #include <thrust/iterator/counting_iterator.h>
@@ -334,14 +335,25 @@ protected:
     }
 
     if constexpr (std::is_same_v<T, float>) {
-      MATHPRIM_INTERNAL_CUBLAS_CHECK(cublasSgemm(
-        handle,
-        transA, transB,
-        mm, nn, kk,
-        &alpha,
-        aa, ldaa,
-        bb, ldbb,
-        &beta, cc, ldc));
+      // MATHPRIM_INTERNAL_CUBLAS_CHECK(cublasSgemm(
+      //   handle,
+      //   transA, transB,
+      //   mm, nn, kk,
+      //   &alpha,
+      //   aa, ldaa,
+      //   bb, ldbb,
+      //   &beta, cc, ldc));
+      cublasGemmAlgo_t algo = gemm_f32_compute_type_ == CUBLAS_COMPUTE_32F ? CUBLAS_GEMM_DEFAULT : CUBLAS_GEMM_DEFAULT_TENSOR_OP;
+      MATHPRIM_INTERNAL_CUBLAS_CHECK(cublasGemmEx(
+          handle,
+          transA, transB,
+          mm, nn, kk,
+          &alpha,
+          aa, CUDA_R_32F, ldaa,
+          bb, CUDA_R_32F, ldbb,
+          &beta,
+          cc, CUDA_R_32F, ldc,
+          gemm_f32_compute_type_, algo));
     } else if constexpr (std::is_same_v<T, double>) {
       MATHPRIM_INTERNAL_CUBLAS_CHECK(cublasDgemm(
         handle,
@@ -446,6 +458,10 @@ protected:
     scal_impl(beta, y);
     axpy_impl(alpha, x, y);
   }
+
+public:
+  cublasComputeType_t gemm_f32_compute_type_ = CUBLAS_COMPUTE_32F;
+  cublasComputeType_t gemm_f64_compute_type_ = CUBLAS_COMPUTE_64F;
 };
 
 } // namespace blas

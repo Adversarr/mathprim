@@ -47,6 +47,9 @@ class basic_buffer {
 public:
   using shape_at_compile_time = Sshape;
   using stride_at_compile_time = Sstride;
+  using scalar_type = Scalar;
+  using device_type = Dev;
+
   static_assert(internal::is_buffer_supported_v<Scalar>, "Unsupported buffer type.");
 
   template <typename, typename, typename, typename>
@@ -92,60 +95,36 @@ public:
     internal::swap_impl(stride_.dyn_, other.stride_.dyn_);
   }
 
-  bool valid() const noexcept {
-    return data_ != nullptr;
-  }
+  bool valid() const noexcept { return data_ != nullptr; }
 
-  explicit operator bool() const noexcept {
-    return valid();
-  }
+  explicit operator bool() const noexcept { return valid(); }
 
   // Shape of buffer.
-  const Sshape &shape() const noexcept {
-    return shape_;
-  }
+  const Sshape &shape() const noexcept { return shape_; }
 
-  index_t shape(index_t i) const noexcept {
-    return shape_.at(i);
-  }
+  index_t shape(index_t i) const noexcept { return shape_.at(i); }
 
   // Stride of buffer.
-  const Sstride &stride() const noexcept {
-    return stride_;
-  }
+  const Sstride &stride() const noexcept { return stride_; }
 
-  index_t stride(index_t i) const noexcept {
-    return stride_.at(i);
-  }
+  index_t stride(index_t i) const noexcept { return stride_.at(i); }
 
   // The valid ndim of the buffer.
-  index_t ndim() const noexcept {
-    return mathprim::ndim(shape_);
-  }
+  index_t ndim() const noexcept { return mathprim::ndim(shape_); }
 
   // The number of elements in the buffer.
-  index_t numel() const noexcept {
-    return mathprim::numel(shape_);
-  }
+  index_t numel() const noexcept { return mathprim::numel(shape_); }
 
   // The size of the buffer.
-  index_t size() const noexcept {
-    return numel();
-  }
+  index_t size() const noexcept { return numel(); }
 
   // The physical size of the buffer.
-  index_t physical_size() const noexcept {
-    return stride_.template get<0>() * shape_.template get<0>();
-  }
+  index_t physical_size() const noexcept { return stride_.template get<0>() * shape_.template get<0>(); }
 
   // Underlying data pointer.
-  Scalar *data() noexcept {
-    return data_.get();
-  }
+  Scalar *data() noexcept { return data_.get(); }
 
-  const Scalar *data() const noexcept {
-    return data_.get();
-  }
+  const Scalar *data() const noexcept { return data_.get(); }
 
   using view_type = basic_view<Scalar, Sshape, Sstride, Dev>;
   using const_view_type = basic_view<const Scalar, Sshape, Sstride, Dev>;

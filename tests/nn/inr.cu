@@ -77,27 +77,28 @@ struct opt : public optim::basic_problem<opt, float, device::cuda> {
       dl_dy(bi, 0) = (y(bi, 0) - sin(x(bi, 0)) * sin(x(bi, 1))) / batch_size;
     });
 
-    float rmse = ctx_.blas().norm(ctx_.output_gradient());
-    accumulate_loss(rmse);
+    // float rmse = ctx_.blas().norm(ctx_.output_gradient());
+    // accumulate_loss(rmse);
     ctx_.backward(inr_);
     copy(fused_gradients(), ctx_.params_gradient());
   }
 };
 
 index_t W = 64;
-
+bool has_linear = true;
 
 int main () {
   srand(3407);
   mlp_t inr{
-    linear(2, W),
+    linear(2, W, has_linear),
     act(make_shape(W)),
-    linear(W, W),
+    linear(W, W, has_linear),
     act(make_shape(W)),
-    linear(W, W),
+    linear(W, W, has_linear),
     act(make_shape(W)),
-    linear(W, 1)};
+    linear(W, 1, has_linear)};
   ctx_t ctx;
+  ctx.blas().derived().gemm_f32_compute_type_ = CUBLAS_COMPUTE_32F_FAST_16F;
   index_t batch_size = 1 << 18;
   ctx.compile(inr, batch_size); // batchsize=128
 
@@ -105,11 +106,12 @@ int main () {
   init(ctx, inr.get<2>().mat());
   init(ctx, inr.get<4>().mat());
   init(ctx, inr.get<6>().mat());
-
-  zeros(inr.get<0>().bias());
-  zeros(inr.get<2>().bias());
-  zeros(inr.get<4>().bias());
-  zeros(inr.get<6>().bias());
+  if (has_linear) {
+    zeros(inr.get<0>().bias());
+    zeros(inr.get<2>().bias());
+    zeros(inr.get<4>().bias());
+    zeros(inr.get<6>().bias());
+  }
   ctx.for_each_parameter([&ctx](auto &param){
     auto norm_val = ctx.blas().norm(param.value());
     std::cout << param.name() << " norm: " << norm_val << std::endl;
@@ -121,7 +123,7 @@ int main () {
   optim::adamw_optimizer<float, device::cuda, blas::cublas<float>> optimizer;
   optimizer.stopping_criteria_.max_iterations_ = 1000;
   optimizer.stopping_criteria_.tol_grad_ = 0; // never stop;
-  optimizer.learning_rate_ = 1e-4;
+  optimizer.learning_rate_ = 1e-3;
   optimizer.beta1_ = 0.9;
   optimizer.beta2_ = 0.99;
   optimizer.weight_decay_ = 1e-4;

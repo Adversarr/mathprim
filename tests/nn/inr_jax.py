@@ -5,6 +5,11 @@ import time
 from flax import linen as nn
 from flax.core.frozen_dict import freeze
 
+# I have tensorcores, use them
+# Enable TensorCore usage by setting these at the beginning of your code
+jax.config.update("jax_default_matmul_precision", "tensorfloat32")
+jax.config.update("jax_enable_x64", False)  # Prevents double precision
+
 class MLP(nn.Module):
     input_dim: int
     hidden_dim: int
@@ -12,13 +17,13 @@ class MLP(nn.Module):
 
     @nn.compact
     def __call__(self, x):
-        x = nn.Dense(self.hidden_dim)(x)
+        x = nn.Dense(self.hidden_dim, use_bias=False)(x)
         x = nn.sigmoid(x)
-        x = nn.Dense(self.hidden_dim)(x)
+        x = nn.Dense(self.hidden_dim, use_bias=False)(x)
         x = nn.sigmoid(x)
-        x = nn.Dense(self.hidden_dim)(x)
+        x = nn.Dense(self.hidden_dim, use_bias=False)(x)
         x = nn.sigmoid(x)
-        x = nn.Dense(self.output_dim)(x)
+        x = nn.Dense(self.output_dim, use_bias=False)(x)
         return x
 
 def init_weights(key, shape):
@@ -54,6 +59,10 @@ def main():
         params = optax.apply_updates(params, updates)
         return params, opt_state, loss
 
+    # Warm up jax and GPU
+    for _ in range(2):
+        params, opt_state, loss = train_step(params, opt_state, x_init, jnp.zeros(batch_size))
+
     start_time = time.time()
     x_batch = jax.random.uniform(key, (batch_size, input_dim), minval=-2, maxval=2)
     for iteration in range(max_iterations):
@@ -71,6 +80,10 @@ def main():
     
     # Test inference speed
     x_batch = jax.random.uniform(key, (batch_size, input_dim), minval=-2, maxval=2)
+    # Warmup Infrerence
+    for _ in range(2):
+      y_pred = model.apply(params, x_batch)
+    
     start_time = time.time()
     for _ in range(max_iterations):
       y_pred = model.apply(params, x_batch)

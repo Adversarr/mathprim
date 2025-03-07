@@ -112,6 +112,8 @@ public:
   static constexpr bool is_const = std::is_const_v<Scalar>;
   using shape_at_compile_time = Sshape;
   using stride_at_compile_time = Sstride;
+  using scalar_type = std::remove_const_t<Scalar>;
+  using device_type = Dev;
 
   using value_type = Scalar;
   using const_type = std::add_const_t<Scalar>;
