@@ -155,6 +155,8 @@ public:
     bl_ = std::make_unique<SparseBlas>(lo_.const_view());
   }
 
+  const_sparse_view ainv() const noexcept { return lo_.const_view(); }
+
 private:
   void apply_impl(vector_type y, const_vector x) {
     // z = lo.T * x.
