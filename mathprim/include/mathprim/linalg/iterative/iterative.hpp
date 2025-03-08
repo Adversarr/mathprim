@@ -96,6 +96,8 @@ public:
   using const_vector = typename base::const_vector;
 
   none_preconditioner() = default;
+  template <typename SparseMatrixT>
+  none_preconditioner(const SparseMatrixT& /* matrix */) {}
   none_preconditioner(none_preconditioner&&) = default;
 
   void apply_impl(vector_type y, const_vector x) {
