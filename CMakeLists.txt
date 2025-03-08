@@ -46,17 +46,13 @@ option(MATHPRIM_ENABLE_WARNINGS "Enable compiler warnings" ${MATHPRIM_MASTER_PRO
 option(MATHPRIM_ENABLE_BLAS "Enable BLAS" ${MATHPRIM_INTERNAL_ENABLE_BLAS})
 option(MATHPRIM_ENABLE_CHOLMOD "Enable CHOLMOD" ${MATHPRIM_INTERNAL_ENABLE_CHOLMOD})
 option(MATHPRIM_ENABLE_CUDA "Enable CUDA" ${MATHPRIM_ENABLE_CUDA_TEST})
-option(MATHPRIM_ENABLE_NANOBIND "Enable nanobind" OFF)
 option(MATHPRIM_ENABLE_MKL "Enable Intel MKL" OFF)
 option(MATHPRIM_BUILD_TESTS "Build tests" ${MATHPRIM_MASTER_PROJECT})
 option(MATHPRIM_BUILD_TESTS_CUDA "Build cuda tests" ${MATHPRIM_ENABLE_CUDA_TEST})
+option(MATHPRIM_INSTLALL "Install mathprim" OFF)
 set(MATHPRIM_REPO_ROOT ${CMAKE_CURRENT_LIST_DIR})
 
-if(MATHPRIM_BUILD_TESTS_CUDA)
-  if(NOT MATHPRIM_ENABLE_CUDA)
-    message(FATAL_ERROR "CUDA tests require CUDA to be enabled")
-  endif()
-
+if(MATHPRIM_ENABLE_CUDA)
   set(CMAKE_CUDA_STANDARD 17)
   set(CMAKE_CUDA_STANDARD_REQUIRED ON)
   set(CMAKE_CUDA_EXTENSIONS OFF)
@@ -69,10 +65,6 @@ if(MATHPRIM_BUILD_TESTS_CUDA)
   enable_language(CUDA)
 endif()
 
-if(MATHPRIM_ENABLE_NANOBIND)
-  add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/ext/nanobind)
-endif()
-
 add_subdirectory(mathprim)
 
 if(MATHPRIM_BUILD_TESTS)
@@ -80,3 +72,4 @@ if(MATHPRIM_BUILD_TESTS)
   message(STATUS "Building tests")
   add_subdirectory(tests)
 endif()
+

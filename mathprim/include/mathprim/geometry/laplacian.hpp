@@ -42,9 +42,16 @@ struct laplacian_builder<Format, Scalar, 2, 3, device::cpu> {
   using sparse_t = sparse::basic_sparse_matrix<Scalar, device::cpu, Format>;
   using vertices = typename mesh_t::vertices;
   using indices = typename mesh_t::indices;
-  static sparse_t build(const mesh_t& mesh) {
+  using vector_view = contiguous_vector_view<const Scalar, device::cpu>;
+  static sparse_t build(const mesh_t& mesh, vector_view elem_coeffs = {}) {
     using entry_t = sparse::sparse_entry<Scalar>;
     std::vector<entry_t> entries;
+    if (elem_coeffs) {
+      if (elem_coeffs.size() != mesh.indices_.shape(0)) {
+        throw std::runtime_error("elem_coeffs must have the same size as the number of elements.");
+      }
+    }
+
     const index_t n_faces = mesh.indices_.shape(0);
     const index_t n_verts = mesh.vertices_.shape(0);
     entries.reserve(n_faces * 3 + n_verts);
@@ -61,7 +68,10 @@ struct laplacian_builder<Format, Scalar, 2, 3, device::cpu> {
         auto p1 = eigen_support::cmap(mesh.vertices_[v1]);
         auto p2 = eigen_support::cmap(mesh.vertices_[v2]);
         auto p3 = eigen_support::cmap(mesh.vertices_[v3]);
-        const Scalar val = internal::cotangent2d<Scalar>(p1, p2, p3) * static_cast<Scalar>(0.5);
+        Scalar val = internal::cotangent2d<Scalar>(p1, p2, p3) * static_cast<Scalar>(0.5);
+        if (elem_coeffs) {
+          val *= elem_coeffs[i];
+        }
         // Off-diagonal entries
         entries.push_back({v1, v2, -val});
         entries.push_back({v2, v1, -val});
@@ -88,9 +98,15 @@ struct laplacian_builder<Format, Scalar, 3, 3, device::cpu> {
   using sparse_t = sparse::basic_sparse_matrix<Scalar, device::cpu, Format>;
   using vertices = typename mesh_t::vertices;
   using indices = typename mesh_t::indices;
-  static sparse_t build(const mesh_t& mesh) {
+  using vector_view = contiguous_vector_view<const Scalar, device::cpu>;
+  static sparse_t build(const mesh_t& mesh, vector_view elem_coeffs = {}) {
     using entry_t = sparse::sparse_entry<Scalar>;
     std::vector<entry_t> entries;
+    if (elem_coeffs) {
+      if (elem_coeffs.size() != mesh.indices_.shape(0)) {
+        throw std::runtime_error("elem_coeffs must have the same size as the number of elements.");
+      }
+    }
     const index_t n_faces = mesh.indices_.shape(0);
     const index_t n_verts = mesh.vertices_.shape(0);
     entries.reserve(n_faces * 3 + n_verts);
@@ -107,7 +123,10 @@ struct laplacian_builder<Format, Scalar, 3, 3, device::cpu> {
         auto p1 = eigen_support::cmap(mesh.vertices_[v1]);
         auto p2 = eigen_support::cmap(mesh.vertices_[v2]);
         auto p3 = eigen_support::cmap(mesh.vertices_[v3]);
-        const Scalar val = internal::cotangent<Scalar>(p1, p2, p3) * static_cast<Scalar>(0.5);
+        Scalar val = internal::cotangent<Scalar>(p1, p2, p3) * static_cast<Scalar>(0.5);
+        if (elem_coeffs) {
+          val *= elem_coeffs[i];
+        }
         // Off-diagonal entries
         entries.push_back({v1, v2, -val});
         entries.push_back({v2, v1, -val});
@@ -135,8 +154,9 @@ struct laplacian_builder<Format, Scalar, 3, 4, device::cpu> {
   using vertices = typename mesh_t::vertices;
   using indices = typename mesh_t::indices;
   using sparse_entry = sparse::sparse_entry<Scalar>;
+  using vector_view = contiguous_vector_view<const Scalar, device::cpu>;
 
-  static sparse_t build(const mesh_t& mesh) {
+  static sparse_t build(const mesh_t& mesh, vector_view elem_coeffs = {}) {
     using entry_t = sparse::sparse_entry<Scalar>;
     std::vector<entry_t> entries;
     const index_t n_elems = mesh.indices_.shape(0);
@@ -162,6 +182,9 @@ struct laplacian_builder<Format, Scalar, 3, 4, device::cpu> {
           }
           local(i, j) = lap * volume;
         }
+      }
+      if (elem_coeffs) {
+        local *= elem_coeffs[i];
       }
 
       // TODO: Make spsd enough.

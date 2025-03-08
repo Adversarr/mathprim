@@ -98,7 +98,6 @@ public:
       cd.swap(cq);
     }
 
-    norm /= b_norm;
     return results;
   }
 
