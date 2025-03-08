@@ -318,7 +318,7 @@ void work_cuda_ic(benchmark::State &state) {
       sparse::blas::cusparse<float, sparse::sparse_format::csr>>;
   using blas_t = blas::cublas<float>;
   using preconditioner =
-      sparse::iterative::ichol<float, device::cuda, sparse::sparse_format::csr>;
+      sparse::iterative::cusparse_ichol<float, device::cuda, sparse::sparse_format::csr>;
   sparse::iterative::cg<float, device::cuda, linear_op, blas::cublas<float>,
                        preconditioner>
       cg{linear_op{mat}, blas_t{}, preconditioner{mat}};
@@ -382,7 +382,6 @@ void work_cuda_ai(benchmark::State &state) {
       sparse::blas::cusparse<float, sparse::sparse_format::csr>>;
   using blas_t = blas::cublas<float>;
   using preconditioner = sparse::iterative::approx_inverse_preconditioner<
-      float, device::cuda, sparse::sparse_format::csr,
       sparse::blas::cusparse<float, mathprim::sparse::sparse_format::csr>>;
   sparse::iterative::cg<float, device::cuda, linear_op, blas::cublas<float>,
                        preconditioner>
@@ -430,9 +429,9 @@ void work_cuda_ai(benchmark::State &state) {
 // BENCHMARK_TEMPLATE(work_ic, blas::cpu_eigen<float>)->Range(1 << 4, LARGE_RANGE)->Unit(benchmark::kMillisecond);
 // BENCHMARK_TEMPLATE(work, blas::cpu_eigen<float>)->Range(1 << 4, LARGE_RANGE)->Unit(benchmark::kMillisecond);
 BENCHMARK(work_cuda)->Range(1 << 4, LARGE_RANGE)->Unit(benchmark::kMillisecond);
-// BENCHMARK(work_cuda_no_prec)->Range(1 << 4, LARGE_RANGE)->Unit(benchmark::kMillisecond);
-// BENCHMARK(work_cuda_ilu0)->Range(1 << 4, LARGE_RANGE)->Unit(benchmark::kMillisecond);
-// BENCHMARK(work_cuda_ic)->Range(1 << 4, LARGE_RANGE)->Unit(benchmark::kMillisecond);
+BENCHMARK(work_cuda_no_prec)->Range(1 << 4, LARGE_RANGE)->Unit(benchmark::kMillisecond);
+BENCHMARK(work_cuda_ilu0)->Range(1 << 4, LARGE_RANGE)->Unit(benchmark::kMillisecond);
+BENCHMARK(work_cuda_ic)->Range(1 << 4, LARGE_RANGE)->Unit(benchmark::kMillisecond);
 BENCHMARK(work_cuda_ai)->Range(1 << 4, LARGE_RANGE)->Unit(benchmark::kMillisecond);
 
 BENCHMARK_MAIN();

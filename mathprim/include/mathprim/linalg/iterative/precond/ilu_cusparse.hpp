@@ -30,8 +30,12 @@ public:
   using const_sparse_view = sparse::basic_sparse_view<const Scalar, device::cuda, sparse::sparse_format::csr>;
 
   ilu();
-  ilu(const const_sparse_view& view) :  // NOLINT(google-explicit-constructor)
-      matrix_(view) {}
+  ilu(const const_sparse_view& view, bool need_compute = true) :  // NOLINT(google-explicit-constructor)
+      matrix_(view) {
+    if (need_compute) {
+      compute();
+    }
+  }
 
   ilu(ilu&& other): 
     matrix_(other.matrix_),
@@ -78,9 +82,9 @@ public:
       cusparseCreateMatDescr(&descr_a_),
       std::runtime_error, "Failed to create matrix descriptor.");
     cusparseMatrixType_t mat_type = CUSPARSE_MATRIX_TYPE_GENERAL;
-    if (matrix_.property() == sparse::sparse_property::symmetric) {
-      mat_type = CUSPARSE_MATRIX_TYPE_SYMMETRIC;
-    }
+    // if (matrix_.property() == sparse::sparse_property::symmetric) {
+    //   mat_type = CUSPARSE_MATRIX_TYPE_SYMMETRIC;
+    // }
     MATHPRIM_INTERNAL_CHECK_THROW_CUSPARSE(
       cusparseSetMatType(descr_a_, mat_type),
       std::runtime_error, "Failed to set matrix type.");

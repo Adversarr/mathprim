@@ -17,23 +17,27 @@
 namespace mathprim::sparse::iterative {
 
 template <typename Scalar, typename Device, sparse::sparse_format SparseCompression>
-class ichol;
+class cusparse_ichol;
 
 template <typename Scalar>
-class ichol<Scalar, device::cuda, sparse::sparse_format::csr>
-    : public basic_preconditioner<ichol<Scalar, device::cuda, sparse::sparse_format::csr>, Scalar, device::cuda> {
+class cusparse_ichol<Scalar, device::cuda, sparse::sparse_format::csr>
+    : public basic_preconditioner<cusparse_ichol<Scalar, device::cuda, sparse::sparse_format::csr>, Scalar, device::cuda> {
 public:
-  using base = basic_preconditioner<ichol<Scalar, device::cuda, sparse::sparse_format::csr>, Scalar, device::cuda>;
+  using base = basic_preconditioner<cusparse_ichol<Scalar, device::cuda, sparse::sparse_format::csr>, Scalar, device::cuda>;
   friend base;
   using vector_type = typename base::vector_type;
   using const_vector = typename base::const_vector;
   using const_sparse_view = sparse::basic_sparse_view<const Scalar, device::cuda, sparse::sparse_format::csr>;
 
-  ichol() = default;
-  ichol(const const_sparse_view& view) :  // NOLINT(google-explicit-constructor)
-      matrix_(view) {}
+  cusparse_ichol() = default;
+  cusparse_ichol(const const_sparse_view& view, bool need_compute = true) :  // NOLINT(google-explicit-constructor)
+      matrix_(view) {
+    if (need_compute) {
+      compute();
+    }
+  }
 
-  ichol(ichol&& other) :
+  cusparse_ichol(cusparse_ichol&& other) :
       matrix_(other.matrix_),
       descr_a_(other.descr_a_),
       descr_sparse_a_(other.descr_sparse_a_),
@@ -60,7 +64,7 @@ public:
     other.vec_intern_ = nullptr;
   }
 
-  ~ichol() {
+  ~cusparse_ichol() {
     reset();
   }
 
@@ -75,11 +79,11 @@ public:
     MATHPRIM_INTERNAL_CHECK_THROW_CUSPARSE(cusparseCreateMatDescr(&descr_a_), std::runtime_error,
                                            "Failed to create matrix descriptor.");
     cusparseMatrixType_t mat_type = CUSPARSE_MATRIX_TYPE_GENERAL;
-    if (matrix_.property() == sparse::sparse_property::symmetric) {
-      mat_type = CUSPARSE_MATRIX_TYPE_SYMMETRIC;
-    } else {
-      // fprintf(stderr, "Warning: The matrix is not symmetric, the result may not be correct.\n");
-    }
+    // if (matrix_.property() == sparse::sparse_property::symmetric) {
+    //   mat_type = CUSPARSE_MATRIX_TYPE_SYMMETRIC;
+    // } else {
+    //   // fprintf(stderr, "Warning: The matrix is not symmetric, the result may not be correct.\n");
+    // }
     MATHPRIM_INTERNAL_CHECK_THROW_CUSPARSE(cusparseSetMatType(descr_a_, mat_type), std::runtime_error,
                                            "Failed to set matrix type.");
     MATHPRIM_INTERNAL_CHECK_THROW_CUSPARSE(cusparseSetMatIndexBase(descr_a_, CUSPARSE_INDEX_BASE_ZERO),

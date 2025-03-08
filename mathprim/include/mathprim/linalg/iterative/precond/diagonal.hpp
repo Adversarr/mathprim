@@ -4,7 +4,6 @@
 #include "mathprim/linalg/iterative/iterative.hpp"
 namespace mathprim::sparse::iterative {
 
-
 template <typename Scalar, typename Device, sparse::sparse_format Compression, typename Blas>
 class diagonal_preconditioner
     : public basic_preconditioner<diagonal_preconditioner<Scalar, Device, Compression, Blas>, Scalar, Device> {
@@ -15,20 +14,26 @@ public:
   using vector_type = typename base::vector_type;
   using const_vector = typename base::const_vector;
 
-  explicit diagonal_preconditioner(const_sparse sparse_matrix) :
-      inv_diag_(internal::diagonal_extract<Scalar, Device, Compression>::extract(sparse_matrix)) {}
+  explicit diagonal_preconditioner(const_sparse sparse_matrix, bool need_compute = true) : spm_(sparse_matrix) {
+    if (need_compute) {
+      compute();
+    }
+  }
   diagonal_preconditioner(diagonal_preconditioner&&) = default;
+
+  void compute() { inv_diag_ = internal::diagonal_extract<Scalar, Device, Compression>::extract(spm_); }
 
   // Y <- D^-1 * X
   void apply_impl(vector_type y, const_vector x) {
-    blas_.copy(y, x); // Y = X
+    blas_.copy(y, x);  // Y = X
     blas_.emul(inv_diag_.const_view(), y);
   }
 
 private:
   buffer_type inv_diag_;
   Blas blas_;
+
+  const_sparse spm_;
 };
 
 }  // namespace mathprim::sparse::iterative
-

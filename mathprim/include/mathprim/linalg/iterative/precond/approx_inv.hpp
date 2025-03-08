@@ -70,17 +70,16 @@ void fsai_compute(sparse::basic_sparse_view<const Scalar, device::cpu, sparse::s
 
 }  // namespace internal
 
-template <typename Scalar, typename Device, sparse::sparse_format Compression, typename SparseBlas>
-class approx_inverse_preconditioner;
-
-template <typename Scalar, typename Device, typename SparseBlas>
-class approx_inverse_preconditioner<Scalar, Device, sparse::sparse_format::csr, SparseBlas>
-    : public basic_preconditioner<approx_inverse_preconditioner<Scalar, Device, sparse::sparse_format::csr, SparseBlas>,
-                                  Scalar, Device> {
+template <typename SparseBlas>
+class approx_inverse_preconditioner
+    : public basic_preconditioner<approx_inverse_preconditioner<SparseBlas>, typename SparseBlas::scalar_type,
+                                  typename SparseBlas::device_type> {
 public:
-  using base
-      = basic_preconditioner<approx_inverse_preconditioner<Scalar, Device, sparse::sparse_format::csr, SparseBlas>,
-                             Scalar, Device>;
+  using base = basic_preconditioner<approx_inverse_preconditioner<SparseBlas>, typename SparseBlas::scalar_type,
+                                    typename SparseBlas::device_type>;
+  using Scalar = typename base::scalar_type;
+  using Device = typename base::device_type;
+
   using vector_type = typename base::vector_type;
   using const_vector = typename base::const_vector;
   friend base;
@@ -92,8 +91,14 @@ public:
   using sparse_cpu_matrix = sparse::basic_sparse_matrix<Scalar, device::cpu, sparse::sparse_format::csr>;
 
   approx_inverse_preconditioner() = default;
-  approx_inverse_preconditioner(const const_sparse_view& view) :  // NOLINT(google-explicit-constructor)
-      matrix_(view) {}
+  approx_inverse_preconditioner(const const_sparse_view& view,  // NOLINT(google-explicit-constructor)
+                                bool need_compute = true) :
+      matrix_(view) {
+    if (need_compute) {
+      compute();
+    }
+  }
+
   approx_inverse_preconditioner(const approx_inverse_preconditioner&) = delete;
   approx_inverse_preconditioner(approx_inverse_preconditioner&&) = default;
 

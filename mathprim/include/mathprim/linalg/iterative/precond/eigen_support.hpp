@@ -16,8 +16,9 @@ public:
 
   eigen_preconditioner() = default;
   template <typename MatType>
-  explicit eigen_preconditioner(const MatType& mat) {
-    compute(mat);
+  explicit eigen_preconditioner(const MatType& mat, bool need_compute = true) {
+    if (need_compute)
+      compute(mat);
   }
 
   eigen_preconditioner(eigen_preconditioner&&) = default;

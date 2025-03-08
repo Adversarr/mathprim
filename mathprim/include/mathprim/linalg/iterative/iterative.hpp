@@ -77,6 +77,8 @@ private:
 template <typename Derived, typename Scalar, typename Device>
 class basic_preconditioner {
 public:
+  using scalar_type = Scalar;
+  using device_type = Device;
   using vector_type = contiguous_view<Scalar, shape_t<keep_dim>, Device>;
   using const_vector = contiguous_view<const Scalar, shape_t<keep_dim>, Device>;
 
