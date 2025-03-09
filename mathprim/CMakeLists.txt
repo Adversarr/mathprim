@@ -39,8 +39,9 @@ if(MATHPRIM_ENABLE_BLAS)
     message(STATUS "Enabling BLAS:: (${BLA_VENDOR}) -> ${BLAS_LIBRARIES}")
 
     target_link_libraries(mathprim INTERFACE ${BLAS_LIBRARIES})
-    target_compile_definitions(mathprim INTERFACE MATHPRIM_ENABLE_BLAS)
   endif()
+
+  target_compile_definitions(mathprim INTERFACE MATHPRIM_ENABLE_BLAS)
 else()
   if(MATHPRIM_ENABLE_MKL)
     message(FATAL_ERROR "MKL cannot be enabled without BLAS")
@@ -69,9 +70,11 @@ if(MATHPRIM_ENABLE_CUDA)
   if(MATHPRIM_ENABLE_WARNINGS)
     if(MSVC)
       target_compile_options(mathprim INTERFACE $<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=/W4>)
-      # target_compile_options(mathprim INTERFACE $<$<COMPILE_LANGUAGE:CUDA>:-Wcross-execution-space-call>)
+
+    # target_compile_options(mathprim INTERFACE $<$<COMPILE_LANGUAGE:CUDA>:-Wcross-execution-space-call>)
     else()
       target_compile_options(mathprim INTERFACE $<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=-Wall,-Wextra>)
+
       # target_compile_options(mathprim INTERFACE $<$<COMPILE_LANGUAGE:CUDA>:-W=cross-execution-space-call>)
     endif()
   endif()
@@ -96,34 +99,34 @@ endif()
 if(MATHPRIM_INSTALL)
   include(GNUInstallDirs)
   install(DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/include/
-  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-  FILES_MATCHING PATTERN "*.hpp" PATTERN "*.cuh")
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+    FILES_MATCHING PATTERN "*.hpp" PATTERN "*.cuh")
 
   install(TARGETS mathprim
-  EXPORT mathprimTargets
-  INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+    EXPORT mathprimTargets
+    INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
   install(EXPORT mathprimTargets
-  FILE mathprimTargets.cmake
-  NAMESPACE mathprim::
-  DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/mathprim)
+    FILE mathprimTargets.cmake
+    NAMESPACE mathprim::
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/mathprim)
 
   include(CMakePackageConfigHelpers)
   configure_package_config_file(
-  ${CMAKE_CURRENT_LIST_DIR}/../cmake/mathprimConfig.cmake.in
-  ${CMAKE_CURRENT_BINARY_DIR}/mathprimConfig.cmake
-  INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/mathprim
-)
+    ${CMAKE_CURRENT_LIST_DIR}/../cmake/mathprimConfig.cmake.in
+    ${CMAKE_CURRENT_BINARY_DIR}/mathprimConfig.cmake
+    INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/mathprim
+  )
 
   write_basic_package_version_file(
-  ${CMAKE_CURRENT_BINARY_DIR}/mathprimConfigVersion.cmake
-  VERSION 0.0.1
-  COMPATIBILITY AnyNewerVersion
-)
+    ${CMAKE_CURRENT_BINARY_DIR}/mathprimConfigVersion.cmake
+    VERSION 0.0.1
+    COMPATIBILITY AnyNewerVersion
+  )
 
   install(FILES
-  ${CMAKE_CURRENT_BINARY_DIR}/mathprimConfig.cmake
-  ${CMAKE_CURRENT_BINARY_DIR}/mathprimConfigVersion.cmake
-  DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/mathprim
-)
+    ${CMAKE_CURRENT_BINARY_DIR}/mathprimConfig.cmake
+    ${CMAKE_CURRENT_BINARY_DIR}/mathprimConfigVersion.cmake
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/mathprim
+  )
 endif()

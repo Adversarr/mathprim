@@ -92,7 +92,7 @@ public:
                                            std::runtime_error, "Failed to set matrix index base.");
 
     /* Allocate required memory */
-    chol_nnz_copy_ = make_cuda_buffer<float>(nnz);
+    chol_nnz_copy_ = make_cuda_buffer<Scalar>(nnz);
     /* Wrap raw data into cuSPARSE generic API objects */
     MATHPRIM_CHECK_CUSPARSE(cusparseCreateDnVec(&vec_x_, rows, nullptr, dtype));
     MATHPRIM_CHECK_CUSPARSE(cusparseCreateDnVec(&vec_y_, rows, nullptr, dtype));
@@ -132,7 +132,7 @@ public:
 
     /* Allocate workspace for cuSPARSE */
     size_t buf_size_l;
-    float floatone = 1;
+    Scalar floatone = 1;
     int requirement;
     if constexpr (is_float32) {
       MATHPRIM_CHECK_CUSPARSE(cusparseScsric02_bufferSize(handle,                                      // call
@@ -159,7 +159,7 @@ public:
                                                     CUSPARSE_SPSV_ALG_DEFAULT, spsvDescrL_, &buf_size_l));
     buffer_lt_ = make_cuda_buffer<char>(buf_size_l);
 
-    buffer_intern_ = make_cuda_buffer<float>(rows);
+    buffer_intern_ = make_cuda_buffer<Scalar>(rows);
     MATHPRIM_CHECK_CUSPARSE(cusparseCreateDnVec(&vec_intern_, rows, buffer_intern_.data(), dtype));
   }
 
@@ -171,7 +171,7 @@ public:
     index_t* row_offsets = const_cast<index_t*>(matrix_.outer_ptrs().data());
     index_t* col_indices = const_cast<index_t*>(matrix_.inner_indices().data());
     Scalar* values = chol_nnz_copy_.data();
-    float floatone = 1;
+    Scalar floatone = 1;
     /* Copy A data to Cholesky vals as input*/
     copy(chol_nnz_copy_.view(), matrix_.values().as_const());
     /* Perform analysis for Cholesky */
@@ -273,7 +273,7 @@ public:
 private:
   void apply_impl(vector_type y, const_vector x) {
     cusparseHandle_t handle = sparse::blas::internal::get_cusparse_handle();
-    float floatone = 1;
+    Scalar floatone = 1;
     auto dtype = std::is_same_v<Scalar, float> ? CUDA_R_32F : CUDA_R_64F;
     MATHPRIM_CHECK_CUSPARSE(cusparseDnVecSetValues(vec_x_,
                                                    const_cast<Scalar*>(x.data())));  // input

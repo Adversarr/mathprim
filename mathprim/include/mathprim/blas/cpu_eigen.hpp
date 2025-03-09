@@ -210,6 +210,16 @@ protected:
   }
 };
 
+
+#ifndef MATHPRIM_ENABLE_BLAS
+namespace internal {
+template <typename Scalar>
+struct default_blas_selector<Scalar, device::cpu> {
+  using type = cpu_eigen<Scalar>;
+};
+}
+#endif
+
 }  // namespace blas
 
 }  // namespace mathprim

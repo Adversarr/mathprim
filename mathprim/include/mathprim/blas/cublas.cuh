@@ -464,6 +464,11 @@ public:
   cublasComputeType_t gemm_f64_compute_type_ = CUBLAS_COMPUTE_64F;
 };
 
+namespace internal {
+template <typename Scalar> struct default_blas_selector<Scalar, device::cuda> {
+  using type = cublas<Scalar>;
+};
+} // namespace internal
 } // namespace blas
 #undef MATHPRIM_INTERNAL_CUBLAS_CHECK
 

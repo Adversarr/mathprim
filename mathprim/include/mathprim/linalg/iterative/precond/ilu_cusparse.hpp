@@ -95,7 +95,7 @@ public:
       std::runtime_error, "Failed to set matrix index base.");
 
     /* Allocate required memory */
-    ilu_nnz_copy_ = make_cuda_buffer<float>(nnz);
+    ilu_nnz_copy_ = make_cuda_buffer<Scalar>(nnz);
     /* Wrap raw data into cuSPARSE generic API objects */
     MATHPRIM_CHECK_CUSPARSE(cusparseCreateDnVec(&vec_x_, rows, nullptr, dtype));
     MATHPRIM_CHECK_CUSPARSE(cusparseCreateDnVec(&vec_y_, rows, nullptr, dtype));
@@ -149,7 +149,7 @@ public:
 
     /* Allocate workspace for cuSPARSE */
     size_t buf_size_l, buf_size_u;
-    float floatone = 1;
+    Scalar floatone = 1;
     int requirement;
     if constexpr (is_float32) {
       MATHPRIM_CHECK_CUSPARSE(cusparseScsrilu02_bufferSize(handle,                                       // call
@@ -182,7 +182,7 @@ public:
     index_t* row_offsets = const_cast<index_t*>(matrix_.outer_ptrs().data());
     index_t* col_indices = const_cast<index_t*>(matrix_.inner_indices().data());
     Scalar* values = ilu_nnz_copy_.data();
-    float floatone = 1;
+    Scalar floatone = 1;
     /* Copy A data to Cholesky vals as input*/
     copy(ilu_nnz_copy_.view(), matrix_.values().as_const());
     /* Perform analysis for ILU(0) */
@@ -220,7 +220,7 @@ public:
         handle, CUSPARSE_OPERATION_NON_TRANSPOSE, &floatone,  // solve info
         descr_sparse_upper_, vec_x_, vec_y_, dtype,           // matrix info
         CUSPARSE_SPSV_ALG_DEFAULT, spsvDescrU_, buffer_u_.data()));
-    buffer_intern_ = make_cuda_buffer<float>(rows);
+    buffer_intern_ = make_cuda_buffer<Scalar>(rows);
     MATHPRIM_CHECK_CUSPARSE(cusparseCreateDnVec(&vec_intern_, rows, buffer_intern_.data(), dtype));
   }
 
@@ -288,7 +288,7 @@ public:
 private:
   void apply_impl(vector_type y, const_vector x) {
     cusparseHandle_t handle = sparse::blas::internal::get_cusparse_handle();
-    float floatone = 1;
+    Scalar floatone = 1;
     auto dtype = std::is_same_v<Scalar, float> ? CUDA_R_32F : CUDA_R_64F;
     MATHPRIM_CHECK_CUSPARSE(cusparseDnVecSetValues(vec_x_, const_cast<Scalar*>(x.data()))); // input
     MATHPRIM_CHECK_CUSPARSE(cusparseDnVecSetValues(vec_y_, y.data())); // output

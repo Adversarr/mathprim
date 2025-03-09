@@ -1,0 +1,2 @@
+add_executable(sparse_ainv_sparse main.cpp)
+target_link_libraries(sparse_ainv_sparse PRIVATE mathprim)
