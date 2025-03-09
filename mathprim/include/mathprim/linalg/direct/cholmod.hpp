@@ -18,12 +18,14 @@ public:
   using base = basic_direct_solver<cholmod_chol<Scalar, Format>, Scalar, Format, device::cpu>;
   using vector_view = typename base::vector_view;
   using const_vector = typename base::const_vector;
+  using sparse_view = typename base::sparse_view;
+  using const_sparse = typename base::const_sparse;
   using matrix_view = typename base::matrix_view;
   using const_matrix_view = typename base::const_matrix_view;
   friend base;
 
   cholmod_chol() = default;
-  explicit cholmod_chol(const_matrix_view mat) : base(mat) {
+  explicit cholmod_chol(const_sparse mat) : base(mat) {
     base::compute(mat);
   }
 
@@ -153,6 +155,31 @@ protected:
         CHOLMOD_A, factor_, &rhs, nullptr,  // Inputs
         &out, nullptr,                      // outputs
         &Ywork_, &Ework_, common_           // workspace
+    );
+  }
+
+  void vsolve_impl(matrix_view x, const_matrix_view y) {
+    cholmod_dense rhs, lhs;
+    ::std::memset(&rhs, 0, sizeof(rhs));
+    ::std::memset(&lhs, 0, sizeof(lhs));
+    rhs.d = rhs.nrow = static_cast<size_t>(mat_.rows());
+    rhs.nzmax = y.numel();
+    rhs.ncol = static_cast<size_t>(y.shape(1));
+    rhs.x = const_cast<Scalar*>(y.data());
+    rhs.xtype = CHOLMOD_REAL;
+    rhs.dtype = dtype();
+    lhs.d = lhs.nrow = static_cast<size_t>(mat_.rows());
+    lhs.nzmax = x.numel();
+    lhs.ncol = static_cast<size_t>(x.shape(1));
+    lhs.x = x.data();
+    lhs.xtype = CHOLMOD_REAL;
+    lhs.dtype = dtype();
+
+    cholmod_dense* out = &lhs;
+    cholmod_solve2(                          //
+        CHOLMOD_A, factor_, &rhs, nullptr,  // Inputs
+        &out, nullptr,                       // outputs
+        &Ywork_, &Ework_, common_            // workspace
     );
   }
 };

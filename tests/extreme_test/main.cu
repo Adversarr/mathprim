@@ -73,8 +73,7 @@ int main() {
   using sp_blas_t = sparse::blas::cusparse<float, mathprim::sparse::sparse_format::csr>;
   using blas_t = blas::cublas<float>;
   using lin_t = sparse::iterative::sparse_matrix<sp_blas_t>;
-  using prec_t = sparse::iterative::approx_inverse_preconditioner<
-      float, device::cuda, mathprim::sparse::sparse_format::csr, sp_blas_t>;
+  using prec_t = sparse::iterative::approx_inverse_preconditioner<sp_blas_t>;
   // using prec_t = sparse::iterative::diagonal_preconditioner<
   //     float, device::cuda, sparse::sparse_format::csr, blas_t>;
   report_time("Transfer GPU");

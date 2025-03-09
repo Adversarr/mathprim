@@ -28,6 +28,8 @@ public:
   using vector_type = typename base::vector_type;
   using const_vector = typename base::const_vector;
   using const_sparse_view = sparse::basic_sparse_view<const Scalar, device::cuda, sparse::sparse_format::csr>;
+  static constexpr bool is_float32 = std::is_same_v<Scalar, float>;
+  static_assert(is_float32 || std::is_same_v<Scalar, double>, "Only float32 and float64 are supported.");
 
   ilu();
   ilu(const const_sparse_view& view, bool need_compute = true) :  // NOLINT(google-explicit-constructor)
@@ -149,10 +151,17 @@ public:
     size_t buf_size_l, buf_size_u;
     float floatone = 1;
     int requirement;
-    MATHPRIM_CHECK_CUSPARSE(cusparseScsrilu02_bufferSize(handle,                                       // call
-                                                         rows, nnz,                                    // shape
-                                                         descr_lu_, values, row_offsets, col_indices,  // content
-                                                         info_ilu_, &requirement));
+    if constexpr (is_float32) {
+      MATHPRIM_CHECK_CUSPARSE(cusparseScsrilu02_bufferSize(handle,                                       // call
+                                                           rows, nnz,                                    // shape
+                                                           descr_lu_, values, row_offsets, col_indices,  // content
+                                                           info_ilu_, &requirement));
+    } else {
+      MATHPRIM_CHECK_CUSPARSE(cusparseDcsrilu02_bufferSize(handle,                                       // call
+                                                           rows, nnz,                                    // shape
+                                                           descr_lu_, values, row_offsets, col_indices,  // content
+                                                           info_ilu_, &requirement));
+    }
     buffer_lu_ = make_cuda_buffer<char>(requirement);
     MATHPRIM_CHECK_CUSPARSE(cusparseSpSV_createDescr(&spsvDescrL_));
     MATHPRIM_CHECK_CUSPARSE(cusparseSpSV_bufferSize(handle, CUSPARSE_OPERATION_NON_TRANSPOSE, &floatone, descr_sparse_lower_, vec_x_, vec_y_,
@@ -177,17 +186,31 @@ public:
     /* Copy A data to Cholesky vals as input*/
     copy(ilu_nnz_copy_.view(), matrix_.values().as_const());
     /* Perform analysis for ILU(0) */
-    MATHPRIM_CHECK_CUSPARSE(cusparseScsrilu02_analysis(  //
-        handle,                                          // context
-        rows, nnz, descr_a_,                             // matrix to factorize
-        values, row_offsets, col_indices,                // matrix data
-        info_ilu_, CUSPARSE_SOLVE_POLICY_USE_LEVEL, buffer_lu_.data()));
-    /* generate the ILU(0) factors */
-    MATHPRIM_CHECK_CUSPARSE(cusparseScsrilu02(  //
-        handle,                                 // context
-        rows, nnz, descr_lu_,                   // matrix
-        values, row_offsets, col_indices,       // matrix data
-        info_ilu_, CUSPARSE_SOLVE_POLICY_USE_LEVEL, buffer_lu_.data()));
+    if constexpr (is_float32) {
+      MATHPRIM_CHECK_CUSPARSE(cusparseScsrilu02_analysis(  //
+          handle,                                          // context
+          rows, nnz, descr_a_,                             // matrix to factorize
+          values, row_offsets, col_indices,                // matrix data
+          info_ilu_, CUSPARSE_SOLVE_POLICY_USE_LEVEL, buffer_lu_.data()));
+      /* generate the ILU(0) factors */
+      MATHPRIM_CHECK_CUSPARSE(cusparseScsrilu02(  //
+          handle,                                 // context
+          rows, nnz, descr_lu_,                   // matrix
+          values, row_offsets, col_indices,       // matrix data
+          info_ilu_, CUSPARSE_SOLVE_POLICY_USE_LEVEL, buffer_lu_.data()));
+    } else {
+      MATHPRIM_CHECK_CUSPARSE(cusparseDcsrilu02_analysis(  //
+          handle,                                          // context
+          rows, nnz, descr_a_,                             // matrix to factorize
+          values, row_offsets, col_indices,                // matrix data
+          info_ilu_, CUSPARSE_SOLVE_POLICY_USE_LEVEL, buffer_lu_.data()));
+      /* generate the ILU(0) factors */
+      MATHPRIM_CHECK_CUSPARSE(cusparseDcsrilu02(  //
+          handle,                                 // context
+          rows, nnz, descr_lu_,                   // matrix
+          values, row_offsets, col_indices,       // matrix data
+          info_ilu_, CUSPARSE_SOLVE_POLICY_USE_LEVEL, buffer_lu_.data()));
+    }
     /* perform triangular solve analysis */
     MATHPRIM_CHECK_CUSPARSE(cusparseSpSV_analysis(            //
         handle, CUSPARSE_OPERATION_NON_TRANSPOSE, &floatone,  // solve info

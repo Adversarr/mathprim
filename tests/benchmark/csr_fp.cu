@@ -5,7 +5,6 @@
 #include <mathprim/core/buffer.hpp>
 #include <mathprim/linalg/iterative/solver/cg.hpp>
 #include <mathprim/linalg/iterative/precond/diagonal.hpp>
-#include <mathprim/linalg/iterative/precond/ilu.hpp>
 #include <mathprim/linalg/iterative/precond/approx_inv.hpp>
 #include <mathprim/parallel/openmp.hpp>
 #include <mathprim/sparse/blas/eigen.hpp>

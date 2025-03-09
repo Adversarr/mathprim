@@ -28,6 +28,8 @@ public:
   using vector_type = typename base::vector_type;
   using const_vector = typename base::const_vector;
   using const_sparse_view = sparse::basic_sparse_view<const Scalar, device::cuda, sparse::sparse_format::csr>;
+  static constexpr bool is_float32 = std::is_same_v<Scalar, float>;
+  static_assert(is_float32 || std::is_same_v<Scalar, double>, "Only float32 and float64 are supported.");
 
   cusparse_ichol() = default;
   cusparse_ichol(const const_sparse_view& view, bool need_compute = true) :  // NOLINT(google-explicit-constructor)
@@ -132,10 +134,17 @@ public:
     size_t buf_size_l;
     float floatone = 1;
     int requirement;
-    MATHPRIM_CHECK_CUSPARSE(cusparseScsric02_bufferSize(handle,                                      // call
-                                                        rows, nnz,                                   // shape
-                                                        descr_a_, values, row_offsets, col_indices,  // content
-                                                        info_ichol_, &requirement));
+    if constexpr (is_float32) {
+      MATHPRIM_CHECK_CUSPARSE(cusparseScsric02_bufferSize(handle,                                      // call
+                                                          rows, nnz,                                   // shape
+                                                          descr_a_, values, row_offsets, col_indices,  // content
+                                                          info_ichol_, &requirement));
+    } else {
+      MATHPRIM_CHECK_CUSPARSE(cusparseDcsric02_bufferSize(handle,                                      // call
+                                                          rows, nnz,                                   // shape
+                                                          descr_a_, values, row_offsets, col_indices,  // content
+                                                          info_ichol_, &requirement));
+    }
     buffer_chol_ = make_cuda_buffer<char>(requirement);
 
     MATHPRIM_CHECK_CUSPARSE(cusparseSpSV_createDescr(&spsvDescrL_));
@@ -166,16 +175,29 @@ public:
     /* Copy A data to Cholesky vals as input*/
     copy(chol_nnz_copy_.view(), matrix_.values().as_const());
     /* Perform analysis for Cholesky */
-    MATHPRIM_CHECK_CUSPARSE(cusparseScsric02_analysis(                            //
-        handle,                                                                   // context
-        rows, nnz, descr_a_,                                                      // matrix to factorize
-        values, row_offsets, col_indices,                                         // matrix data
-        info_ichol_, CUSPARSE_SOLVE_POLICY_USE_LEVEL, buffer_chol_.data())); /* Generate the Cholesky factors */
-    MATHPRIM_CHECK_CUSPARSE(cusparseScsric02(                                     //
-        handle,                                                                   // context
-        rows, nnz, descr_a_,                                                      // matrix
-        values, row_offsets, col_indices,                                         // matrix data
-        info_ichol_, CUSPARSE_SOLVE_POLICY_USE_LEVEL, buffer_chol_.data()));
+    if constexpr (is_float32) {
+      MATHPRIM_CHECK_CUSPARSE(cusparseScsric02_analysis(                       //
+          handle,                                                              // context
+          rows, nnz, descr_a_,                                                 // matrix to factorize
+          values, row_offsets, col_indices,                                    // matrix data
+          info_ichol_, CUSPARSE_SOLVE_POLICY_USE_LEVEL, buffer_chol_.data())); /* Generate the Cholesky factors */
+      MATHPRIM_CHECK_CUSPARSE(cusparseScsric02(                                //
+          handle,                                                              // context
+          rows, nnz, descr_a_,                                                 // matrix
+          values, row_offsets, col_indices,                                    // matrix data
+          info_ichol_, CUSPARSE_SOLVE_POLICY_USE_LEVEL, buffer_chol_.data()));
+    } else {
+      MATHPRIM_CHECK_CUSPARSE(cusparseDcsric02_analysis(                       //
+          handle,                                                              // context
+          rows, nnz, descr_a_,                                                 // matrix to factorize
+          values, row_offsets, col_indices,                                    // matrix data
+          info_ichol_, CUSPARSE_SOLVE_POLICY_USE_LEVEL, buffer_chol_.data())); /* Generate the Cholesky factors */
+      MATHPRIM_CHECK_CUSPARSE(cusparseDcsric02(                                //
+          handle,                                                              // context
+          rows, nnz, descr_a_,                                                 // matrix
+          values, row_offsets, col_indices,                                    // matrix data
+          info_ichol_, CUSPARSE_SOLVE_POLICY_USE_LEVEL, buffer_chol_.data()));
+    }
     /* Perform triangular solve analysis */
     MATHPRIM_CHECK_CUSPARSE(cusparseSpSV_analysis(            //
         handle, CUSPARSE_OPERATION_NON_TRANSPOSE, &floatone,  // solve info

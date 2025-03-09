@@ -12,12 +12,14 @@ public:
   using base = basic_direct_solver<basic_eigen_direct_solver<EigenSolver, Scalar, Format>, Scalar, Format, device::cpu>;
   using vector_view = typename base::vector_view;
   using const_vector = typename base::const_vector;
+  using sparse_view = typename base::sparse_view;
+  using const_sparse = typename base::const_sparse;
   using matrix_view = typename base::matrix_view;
   using const_matrix_view = typename base::const_matrix_view;
   friend base;
 
   basic_eigen_direct_solver() = default;
-  explicit basic_eigen_direct_solver(const_matrix_view mat) : base(mat) {
+  explicit basic_eigen_direct_solver(const_sparse mat) : base(mat) {
     base::compute(mat);
   }
 
@@ -47,6 +49,12 @@ private:
   void solve_impl(vector_view lhs, const_vector rhs) {
     MATHPRIM_INTERNAL_CHECK_THROW(solver_, std::runtime_error, "The solver is not initialized.");
     eigen_support::cmap(lhs) = solver_->solve(eigen_support::cmap(rhs));
+  }
+
+
+  void vsolve_impl(matrix_view x, const_matrix_view y) {
+    MATHPRIM_INTERNAL_CHECK_THROW(solver_, std::runtime_error, "The solver is not initialized.");
+    eigen_support::cmap(x).transpose() = solver_->solve(eigen_support::cmap(y).transpose());
   }
 
 protected:
