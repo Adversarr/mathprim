@@ -81,7 +81,6 @@ struct launcher<index_pack<Sgrids...>, index_pack<Sblocks...>, true> {
 
   template <typename Fn>
   void run(const index_pack<Sgrids...> &grids, Fn &&fn) const noexcept {
-    // TODO: Optimize.
     auto begin = thrust::make_counting_iterator(0);
     auto end = thrust::make_counting_iterator(grids.numel());
     auto streamed_policy = thrust::cuda::par_nosync.on(stream_);

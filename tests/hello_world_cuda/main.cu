@@ -126,5 +126,19 @@ int main() {
   });
   parfor_default.sync();
 
+  // for (int i = 10; i < 20; ++i) {
+  //   index_t total = 1 << i;
+  //   auto buf = make_buffer<float, device::cuda>(total);
+  //   auto view = buf.view();
+  //   parfor_default.run(view.shape(), [view, total] __device__(index_t i) {
+  //     auto block_idx = blockIdx.x;
+  //     auto thread_idx = threadIdx.x;
+  //     auto idx = block_idx * blockDim.x + thread_idx;
+  //     if (thread_idx > 0) {
+  //       printf("total = %d, block_idx = %d, thread_idx = %d, idx = %d\n", total, block_idx, thread_idx, idx);
+  //     }
+  //   });
+  // }
+
   return EXIT_SUCCESS;
 }

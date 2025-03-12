@@ -43,6 +43,17 @@ vmap_arg<basic_view_iterator<T, Sshape, Sstride, Dev, BatchDim>> make_vmap_arg(
   return make_vmap_arg(view.begin(), view.end());
 }
 
+template <typename Fn>
+struct make_output_vmapped {
+  explicit make_output_vmapped(Fn fn) : fn_(fn) {}
+
+  template <typename... Args, typename Front>
+  MATHPRIM_PRIMFUNC void operator()(Front& last, Args&&... args) const noexcept {
+    last = fn_(std::forward<Args>(args)...);
+  }
+  Fn fn_;
+};
+
 ///////////////////////////////////////////////////////////////////////////////
 /// Parallel for loop
 ///////////////////////////////////////////////////////////////////////////////
