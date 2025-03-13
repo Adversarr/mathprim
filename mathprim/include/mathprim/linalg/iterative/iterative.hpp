@@ -109,7 +109,7 @@ public:
 /// Iterative Solver Base
 ///////////////////////////////////////////////////////////////////////////////
 template <typename Scalar>
-struct convergence_critera {
+struct convergence_criteria {
   index_t max_iterations_;
   Scalar norm_tol_;
 };
@@ -126,7 +126,7 @@ public:
   using scalar_type = Scalar;
   using linear_operator_type = LinearOperatorT;
   using results_type = convergence_result<Scalar>;
-  using parameters_type = convergence_critera<Scalar>;
+  using parameters_type = convergence_criteria<Scalar>;
   using vector_type = contiguous_view<Scalar, shape_t<keep_dim>, Device>;
   using const_vector = contiguous_view<const Scalar, shape_t<keep_dim>, Device>;
 
