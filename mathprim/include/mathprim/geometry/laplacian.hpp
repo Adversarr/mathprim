@@ -44,7 +44,7 @@ struct laplacian_builder<Format, Scalar, 2, 3, device::cpu> {
   using indices = typename mesh_t::indices;
   using vector_view = contiguous_vector_view<const Scalar, device::cpu>;
   static sparse_t build(const mesh_t& mesh, vector_view elem_coeffs = {}) {
-    using entry_t = sparse::sparse_entry<Scalar>;
+    using entry_t = sparse::entry<Scalar>;
     std::vector<entry_t> entries;
     if (elem_coeffs) {
       if (elem_coeffs.size() != mesh.indices_.shape(0)) {
@@ -100,7 +100,7 @@ struct laplacian_builder<Format, Scalar, 3, 3, device::cpu> {
   using indices = typename mesh_t::indices;
   using vector_view = contiguous_vector_view<const Scalar, device::cpu>;
   static sparse_t build(const mesh_t& mesh, vector_view elem_coeffs = {}) {
-    using entry_t = sparse::sparse_entry<Scalar>;
+    using entry_t = sparse::entry<Scalar>;
     std::vector<entry_t> entries;
     if (elem_coeffs) {
       if (elem_coeffs.size() != mesh.indices_.shape(0)) {
@@ -153,11 +153,11 @@ struct laplacian_builder<Format, Scalar, 3, 4, device::cpu> {
   using sparse_t = sparse::basic_sparse_matrix<Scalar, device::cpu, Format>;
   using vertices = typename mesh_t::vertices;
   using indices = typename mesh_t::indices;
-  using sparse_entry = sparse::sparse_entry<Scalar>;
+  using entry = sparse::entry<Scalar>;
   using vector_view = contiguous_vector_view<const Scalar, device::cpu>;
 
   static sparse_t build(const mesh_t& mesh, vector_view elem_coeffs = {}) {
-    using entry_t = sparse::sparse_entry<Scalar>;
+    using entry_t = sparse::entry<Scalar>;
     std::vector<entry_t> entries;
     const index_t n_elems = mesh.indices_.shape(0);
     const index_t n_verts = mesh.vertices_.shape(0);

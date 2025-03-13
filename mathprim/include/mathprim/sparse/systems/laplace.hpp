@@ -45,7 +45,7 @@ private:
 template <typename Scalar, index_t Dim>
 template <sparse_format SparseCompression, typename Fn>
 basic_sparse_matrix<Scalar, device::cpu, SparseCompression> laplace_operator<Scalar, Dim>::matrix(Fn bc) const {
-  std::vector<sparse_entry<Scalar>> entries;
+  std::vector<entry<Scalar>> entries;
   auto linear_strides = make_default_stride<Scalar>(dims_);
   for (auto cell_idx : dims_) {
     // For each neighbor of cell_idx

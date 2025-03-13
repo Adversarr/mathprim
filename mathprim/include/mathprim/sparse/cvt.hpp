@@ -179,7 +179,7 @@ basic_sparse_matrix<Scalar, device::cpu, sparse_format::coo>  //
 make_from_triplets(Iter begin, Iter end,                      //
                    index_t rows, index_t cols, sparse_property property = sparse_property::general) {
   using coo_matrix = basic_sparse_matrix<Scalar, device::cpu, sparse_format::coo>;
-  std::vector<sparse_entry<Scalar>> merged(begin, end);
+  std::vector<entry<Scalar>> merged(begin, end);
 
   // sort the triplets by row and column
   std::sort(merged.begin(), merged.end(), [](const auto& a, const auto& b) -> bool {

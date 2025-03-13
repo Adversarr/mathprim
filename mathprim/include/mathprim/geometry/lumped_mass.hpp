@@ -112,7 +112,7 @@ struct lumped_mass_builder<Format, Scalar, 3, 3, device::cpu> {
   using vertices = typename mesh_t::vertices;
   using indices = typename mesh_t::indices;
   static sparse_t build(const mesh_t& mesh) {
-    using entry_t = sparse::sparse_entry<Scalar>;
+    using entry_t = sparse::entry<Scalar>;
     std::vector<entry_t> entries;
     const index_t n_faces = mesh.indices_.shape(0);
     const index_t n_verts = mesh.vertices_.shape(0);
@@ -150,7 +150,7 @@ struct lumped_mass_builder<Format, Scalar, 2, 3, device::cpu> {
   using vertices = typename mesh_t::vertices;
   using indices = typename mesh_t::indices;
   static sparse_t build(const mesh_t& mesh) {
-    using entry_t = sparse::sparse_entry<Scalar>;
+    using entry_t = sparse::entry<Scalar>;
     std::vector<entry_t> entries;
     const index_t n_faces = mesh.indices_.shape(0);
     const index_t n_verts = mesh.vertices_.shape(0);
@@ -189,7 +189,7 @@ struct lumped_mass_builder<Format, Scalar, 3, 4, device::cpu> {
   using vertices = typename mesh_t::vertices;
   using indices = typename mesh_t::indices;
   static sparse_t build(const mesh_t& mesh) {
-    using entry_t = sparse::sparse_entry<Scalar>;
+    using entry_t = sparse::entry<Scalar>;
     std::vector<entry_t> entries;
     const index_t n_elems = mesh.indices_.shape(0);
     const index_t n_verts = mesh.vertices_.shape(0);

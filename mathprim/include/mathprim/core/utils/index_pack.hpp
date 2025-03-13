@@ -42,6 +42,23 @@ struct last<index_seq<front, args...>> {
   static constexpr index_t value = last<index_seq<args...>>::value;
 };
 
+template <index_t Cnt, typename Seq>
+struct drop_front;
+template <index_t Cnt, index_t Front, index_t... Args>
+struct drop_front<Cnt, index_seq<Front, Args...>> {
+  using type = typename drop_front<Cnt - 1, index_seq<Args...>>::type;
+};
+template <index_t Cnt>
+struct drop_front<Cnt, index_seq<>> {};
+template <>
+struct drop_front<0, index_seq<>> {
+  using type = index_seq<>;
+};
+template <index_t Front, index_t... Args>
+struct drop_front<0, index_seq<Front, Args...>> {
+  using type = index_seq<Front, Args...>;
+};
+
 template <index_t, typename seq>
 struct prepend;
 template <index_t value, index_t... args>
@@ -161,6 +178,8 @@ template <template <index_t...> class instanciation, typename seq>
 using apply_seq_t = typename apply_seq<instanciation, seq>::type;
 template <template <index_t> class transform, typename seq>
 using apply_elem_t = typename apply_elem<transform, seq>::type;
+template <index_t Cnt, typename Seq>
+using drop_front_t = typename drop_front<Cnt, Seq>::type;
 template <index_t value, typename seq>
 using prepend_t = typename prepend<value, seq>::type;
 template <index_t cnt, index_t value>
@@ -197,6 +216,11 @@ struct index_array {
             typename = std::enable_if_t<(std::is_integral_v<Integers> && ...) && sizeof...(Integers) == ndim>>
   MATHPRIM_PRIMFUNC explicit index_array(Integers... values) noexcept : data_{static_cast<index_t>(values)...} {}
 
+  MATHPRIM_PRIMFUNC explicit index_array(const index_t *data) noexcept {
+    for (index_t i = 0; i < ndim; ++i) {
+      data_[i] = data[i];
+    }
+  }
   index_array() noexcept = default;
   index_array(const index_array &) noexcept = default;
   index_array(index_array &&) noexcept = default;
@@ -273,13 +297,11 @@ struct index_array<1> {
     static_assert(i == 0, "Index out of range.");
     return data_[0];
   }
-  MATHPRIM_PRIMFUNC static index_array<1> constant(index_t value) noexcept {
-    return index_array<1>{value};
-  }
+  MATHPRIM_PRIMFUNC static index_array<1> constant(index_t value) noexcept { return index_array<1>{value}; }
 };
 
 template <index_t ndim>
-MATHPRIM_PRIMFUNC index_array<ndim> operator*(const index_array<ndim> &lhs, const index_array<ndim>& rhs) noexcept {
+MATHPRIM_PRIMFUNC index_array<ndim> operator*(const index_array<ndim> &lhs, const index_array<ndim> &rhs) noexcept {
   index_array<ndim> result;
   for (index_t i = 0; i < ndim; ++i) {
     result[i] = lhs[i] * rhs[i];
@@ -288,7 +310,7 @@ MATHPRIM_PRIMFUNC index_array<ndim> operator*(const index_array<ndim> &lhs, cons
 }
 
 template <index_t ndim>
-MATHPRIM_PRIMFUNC index_array<ndim> operator+(const index_array<ndim> &lhs, const index_array<ndim>& rhs) noexcept {
+MATHPRIM_PRIMFUNC index_array<ndim> operator+(const index_array<ndim> &lhs, const index_array<ndim> &rhs) noexcept {
   index_array<ndim> result;
   for (index_t i = 0; i < ndim; ++i) {
     result[i] = lhs[i] + rhs[i];
@@ -342,9 +364,7 @@ struct index_iterator {
     return tmp;
   }
 
-  constexpr MATHPRIM_PRIMFUNC const index_array<ndim> &operator*() const noexcept {
-    return current_;
-  }
+  constexpr MATHPRIM_PRIMFUNC const index_array<ndim> &operator*() const noexcept { return current_; }
 
   constexpr MATHPRIM_PRIMFUNC bool operator==(const index_iterator &other) const noexcept {
     for (index_t i = 0; i < ndim; ++i) {
@@ -356,9 +376,7 @@ struct index_iterator {
     return true;
   }
 
-  constexpr MATHPRIM_PRIMFUNC bool operator!=(const index_iterator &other) const noexcept {
-    return !(*this == other);
-  }
+  constexpr MATHPRIM_PRIMFUNC bool operator!=(const index_iterator &other) const noexcept { return !(*this == other); }
 };
 
 template <typename T>
@@ -475,9 +493,7 @@ struct index_pack {
     return i < 0 ? dyn_[ndim + i] : dyn_[i];
   }
 
-  MATHPRIM_PRIMFUNC index_t at(index_t i) const noexcept {
-    return i < 0 ? dyn_[ndim + i] : dyn_[i];
-  }
+  MATHPRIM_PRIMFUNC index_t at(index_t i) const noexcept { return i < 0 ? dyn_[ndim + i] : dyn_[i]; }
 
   template <index_t i>
   constexpr MATHPRIM_PRIMFUNC bool is_static() const noexcept {
@@ -516,9 +532,7 @@ struct index_pack {
     }
   }
 
-  MATHPRIM_PRIMFUNC const index_array<ndim> &to_array() const noexcept {
-    return dyn_;
-  }
+  MATHPRIM_PRIMFUNC const index_array<ndim> &to_array() const noexcept { return dyn_; }
 
   MATHPRIM_PRIMFUNC internal::index_iterator<ndim> begin() const noexcept {
     return internal::index_iterator<ndim>{dyn_, false};

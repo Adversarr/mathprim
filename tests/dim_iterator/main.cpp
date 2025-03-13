@@ -214,3 +214,31 @@ GTEST_TEST(view, sub1d) {
     }
   }
 }
+
+GTEST_TEST(view, mdslice) {
+  auto buf = make_buffer<int>(make_dshape(4, 3, 2));
+  for (auto [i, j, k] : buf.shape()) {
+    buf.view()(i, j, k) = i * 6 + j * 2 + k + 1;
+  }
+  auto bv = buf.view();
+  // auto sub = bv.mdslice<1>(index_array<1>{1});
+  {
+    auto sub = bv.mdslice(1);
+    for (auto [i, j] : sub.shape()) {
+      EXPECT_EQ(sub(i, j), bv(1, i, j));
+    }
+  }
+  {
+    auto sub = bv.mdslice(1, 2);
+    for (index_t i : sub.shape()) {
+      EXPECT_EQ(sub(i), bv(1, 2, i));
+    }
+  }
+
+  {
+    auto sub = bv(1, 2);
+    for (index_t i : sub.shape()) {
+      EXPECT_EQ(sub(i), bv(1, 2, i));
+    }
+  }
+}

@@ -7,6 +7,7 @@
 
 #include "mathprim/parallel/openmp.hpp"
 #include "mathprim/sparse/blas/eigen.hpp"
+#include "mathprim/sparse/gather.hpp"
 #include "mathprim/sparse/cvt.hpp"
 #include "mathprim/supports/eigen_sparse.hpp"
 #include "mathprim/supports/io/matrix_market.hpp"
@@ -208,7 +209,7 @@ GTEST_TEST(csc, convert) {
 }
 
 GTEST_TEST(coo, make_from_triplets) {
-  std::vector<sparse::sparse_entry<float>> matrix_entry;
+  std::vector<sparse::entry<float>> matrix_entry;
   matrix_entry.push_back({0, 0, 1.0f});
   matrix_entry.push_back({0, 1, 2.0f});
   matrix_entry.push_back({1, 1, 3.0f});
@@ -258,7 +259,7 @@ GTEST_TEST(laplacian, 1d) {
 }
 
 GTEST_TEST(coo, io) {
-  std::vector<sparse::sparse_entry<float>> matrix_entry;
+  std::vector<sparse::entry<float>> matrix_entry;
   matrix_entry.push_back({0, 0, 1.0f});
   matrix_entry.push_back({0, 1, 2.0f});
   matrix_entry.push_back({1, 1, 3.0f});
@@ -288,7 +289,7 @@ GTEST_TEST(coo, io) {
 }
 
 GTEST_TEST(csr, spmm) {
-  std::vector<sparse::sparse_entry<float>> matrix_entry;
+  std::vector<sparse::entry<float>> matrix_entry;
   matrix_entry.push_back({0, 0, 1.0f});
   matrix_entry.push_back({0, 1, 2.0f});
   matrix_entry.push_back({1, 1, 3.0f});
@@ -316,5 +317,57 @@ GTEST_TEST(csr, spmm) {
     for (int j = 0; j < y.cols(); ++j) {
       EXPECT_FLOAT_EQ(y(i, j), y_true(i, j));
     }
+  }
+}
+
+
+GTEST_TEST(gather, csr) {
+  // our gathering API is similar to a CSR mv operation.
+  
+  const int rows = 3, cols = 3, nnz = 5;
+  float h_csr_values[] = {1.0f, 2.0f, 3.0f, 4.0f, 5.0f};
+  int h_csr_col_idx[] = {0, 1, 1, 2, 2};
+  int h_csr_row_ptr[] = {0, 2, 4, 5};
+
+  sparse::basic_sparse_view<const float, device::cpu, sparse::sparse_format::csr> mat(
+      view(h_csr_values, make_shape(nnz)).as_const(), view(h_csr_row_ptr, make_shape(rows + 1)).as_const(),
+      view(h_csr_col_idx, make_shape(nnz)).as_const(), rows, cols, nnz, sparse::sparse_property::general);
+
+  float h_x[] = {1.0f, 1.0f, 1.0f};
+  float h_y[rows] = {0.0f};
+  auto x = view(h_x, make_shape(cols));
+  auto y = view(h_y, make_shape(rows));
+
+  sparse::basic_gather_desc<float, device::cpu> desc(mat.outer_ptrs(), mat.inner_indices(), mat.values());
+  auto ex = par::seq();
+  ex.run(make_shape(rows), sparse::basic_gather_operator<float, device::cpu, 0>(y, x, desc));
+
+  for (int i = 0; i < rows; ++i) {
+    float sum = 0.0f;
+    for (int j = h_csr_row_ptr[i]; j < h_csr_row_ptr[i + 1]; ++j) {
+      sum += h_csr_values[j] * h_x[h_csr_col_idx[j]];
+    }
+    EXPECT_FLOAT_EQ(h_y[i], sum);
+  }
+
+  float h_x_vectorized[6] = {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f};
+  float h_y_vectorized[6] = {0.0f};
+  auto x_vectorized = view(h_x_vectorized, make_shape(3, 2));
+  auto y_vectorized = view(h_y_vectorized, make_shape(3, 2));
+
+  functional::op_madd<decltype(x_vectorized[0]), decltype(y_vectorized[0])> madd(3.0f);
+  madd(y_vectorized[0], x_vectorized[0]);
+  for (int i = 0; i < 2; ++i) {
+    EXPECT_EQ(h_y_vectorized[i], 3.0f);
+    h_y_vectorized[i] = 0;
+  }
+  ex.run(make_shape(rows), sparse::basic_gather_operator<float, device::cpu, 1>(y_vectorized, x_vectorized, desc));
+  for (int i = 0; i < rows; ++i) {
+    float sum = 0.0f;
+    for (int j = h_csr_row_ptr[i]; j < h_csr_row_ptr[i + 1]; ++j) {
+      sum += h_csr_values[j] * h_x_vectorized[h_csr_col_idx[j]];
+    }
+    EXPECT_FLOAT_EQ(h_y_vectorized[i * 2], sum);
+    EXPECT_FLOAT_EQ(h_y_vectorized[i * 2 + 1], sum);
   }
 }

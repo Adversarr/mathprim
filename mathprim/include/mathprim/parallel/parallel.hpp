@@ -82,6 +82,20 @@ public:
   }
 
   /**
+   * @brief Shortcut for launching a linear kernel.
+   * 
+   * @tparam Fn 
+   * @tparam Integer 
+   * @param grid_dim 
+   * @param block_dim 
+   * @param fn 
+   */
+  template <typename Fn, typename Integer, typename = std::enable_if_t<std::is_integral_v<Integer>>>
+  void run(Integer grid_dim, Fn&& fn) const noexcept {
+    run(make_shape(grid_dim), std::forward<Fn>(fn));
+  }
+
+  /**
    * @brief Launch a kernel with grid dimensions
    *
    * @tparam Fn

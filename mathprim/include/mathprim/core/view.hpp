@@ -3,6 +3,7 @@
 
 #include "dim.hpp"
 #include "mathprim/core/defines.hpp"
+#include "mathprim/core/utils/common.hpp"
 #include "mathprim/core/utils/index_pack.hpp"
 
 namespace mathprim {
@@ -26,12 +27,42 @@ struct flatten<index_seq<Front, Args...>> {
 template <typename Seq>
 constexpr index_t flatten_v = flatten<Seq>::value;
 
+// Extends a pack
+template <typename Seq, index_t Idx, index_t Value>
+struct insert;
+template <index_t... Args, index_t Value>
+struct insert<index_seq<Args...>, 0, Value> {
+  using type = index_seq<Value, Args...>;
+};
+
+template <index_t Front, index_t... Args, index_t Idx, index_t Value>
+struct insert<index_seq<Front, Args...>, Idx, Value> {
+  using type = god::prepend_t<Front, typename insert<index_seq<Args...>, Idx - 1, Value>::type>;
+};
+
+template <index_t Idx, index_t Value>
+struct insert<index_seq<>, Idx, Value> {
+  // static_assert(always_false_v<index_seq<>>, "Index out of bound.");
+};
+
+template <typename Seq, index_t Idx, index_t Value>
+using insert_t = typename insert<Seq, Idx, Value>::type;
+
 // Slice a pack
 template <index_t I, typename Pack>
 using slice_t = god::to_pack<god::remove_t<I, typename Pack::seq>>;
 template <index_t I, typename Pack, index_t... Seq>
 constexpr MATHPRIM_PRIMFUNC slice_t<I, Pack> slice_impl(const Pack &full, index_seq<Seq...> /*seq*/) noexcept {
   return slice_t<I, Pack>((full.template get<(Seq < I ? Seq : Seq + 1)>())...);
+}
+
+// Drop front
+template <index_t Cnt, typename Pack>
+using drop_front_t = god::to_pack<god::drop_front_t<Cnt, typename Pack::seq>>;
+template <index_t Cnt, typename Pack, index_t... Seq>
+constexpr MATHPRIM_PRIMFUNC drop_front_t<Cnt, Pack> drop_front_impl(const Pack &full,
+                                                                    index_seq<Seq...> /*seq*/) noexcept {
+  return drop_front_t<Cnt, Pack>(full.template get<Seq + Cnt>()...);
 }
 
 // Transpose two dimension
@@ -99,6 +130,12 @@ constexpr MATHPRIM_PRIMFUNC internal::slice_t<I, index_pack<Svalues...>> pack_sl
   return internal::slice_impl<I>(full, make_index_seq<index_pack<Svalues...>::ndim - 1>{});
 }
 
+template <index_t Cnt, index_t... Svalues>
+constexpr MATHPRIM_PRIMFUNC internal::drop_front_t<Cnt, index_pack<Svalues...>> pack_drop_front(
+    const index_pack<Svalues...> &full) {
+  return internal::drop_front_impl<Cnt>(full, make_index_seq<sizeof...(Svalues) - Cnt>{});
+}
+
 }  // namespace internal
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -127,6 +164,9 @@ public:
   using flatten_type = std::conditional_t<ndim == 1, basic_view<Scalar, Sshape, Sstride, Dev> /*self*/,
                                           basic_view<Scalar, shape_t<internal::flatten_v<typename Sshape::seq>>,
                                                      stride_t<god::last_v<typename Sstride::seq>>, Dev>>;
+  template <index_t Cnt>
+  using mdslice_type
+      = basic_view<Scalar, internal::drop_front_t<Cnt, Sshape>, internal::drop_front_t<Cnt, Sstride>, Dev>;
 
   static constexpr bool is_contiguous_at_compile_time = internal::is_contiguous_compile_time_v<Sshape, Sstride>;
 
@@ -161,67 +201,41 @@ public:
   /// Meta data: most API follows torch's design.
   ///////////////////////////////////////////////////////////////////////////////
   // Return the number of element in view
-  MATHPRIM_PRIMFUNC index_t numel() const noexcept {
-    return shape_.numel();
-  }
+  MATHPRIM_PRIMFUNC index_t numel() const noexcept { return shape_.numel(); }
 
   // Return shape
-  MATHPRIM_PRIMFUNC const Sshape &shape() const noexcept {
-    return shape_;
-  }
+  MATHPRIM_PRIMFUNC const Sshape &shape() const noexcept { return shape_; }
 
-  MATHPRIM_PRIMFUNC index_t shape(index_t i) const noexcept {
-    return shape_.at(i);
-  }
+  MATHPRIM_PRIMFUNC index_t shape(index_t i) const noexcept { return shape_.at(i); }
 
-  MATHPRIM_PRIMFUNC index_t size() const noexcept {
-    return numel();
-  }
+  MATHPRIM_PRIMFUNC index_t size() const noexcept { return numel(); }
 
-  MATHPRIM_PRIMFUNC index_t size(index_t i) const noexcept {
-    return shape(i);
-  }
+  MATHPRIM_PRIMFUNC index_t size(index_t i) const noexcept { return shape(i); }
 
   // Return stride
-  MATHPRIM_PRIMFUNC const Sstride &stride() const noexcept {
-    return stride_;
-  }
+  MATHPRIM_PRIMFUNC const Sstride &stride() const noexcept { return stride_; }
 
-  MATHPRIM_PRIMFUNC index_t stride(index_t i) const noexcept {
-    return stride_.at(i);
-  }
+  MATHPRIM_PRIMFUNC index_t stride(index_t i) const noexcept { return stride_.at(i); }
 
   // Return true if the buffer is valid
-  MATHPRIM_PRIMFUNC bool valid() const noexcept {
-    return data_ != nullptr;
-  }
+  MATHPRIM_PRIMFUNC bool valid() const noexcept { return data_ != nullptr; }
 
   // Return the data pointer
-  MATHPRIM_PRIMFUNC pointer data() const noexcept {
-    return data_;
-  }
+  MATHPRIM_PRIMFUNC pointer data() const noexcept { return data_; }
 
   ///////////////////////////////////////////////////////////////////////////////
   /// Meta data shortcuts
   ///////////////////////////////////////////////////////////////////////////////
 
   // Return true if the buffer is valid
-  explicit MATHPRIM_PRIMFUNC operator bool() const noexcept {
-    return valid();
-  }
+  explicit MATHPRIM_PRIMFUNC operator bool() const noexcept { return valid(); }
 
   // Return if the underlying data is contiguous.
-  MATHPRIM_PRIMFUNC bool is_contiguous() const noexcept {
-    return stride_ == make_default_stride<Scalar>(shape_);
-  }
+  MATHPRIM_PRIMFUNC bool is_contiguous() const noexcept { return stride_ == make_default_stride<Scalar>(shape_); }
 
-  auto begin() const noexcept {
-    return basic_view_iterator<Scalar, Sshape, Sstride, Dev, 0>(*this, 0);
-  }
+  auto begin() const noexcept { return basic_view_iterator<Scalar, Sshape, Sstride, Dev, 0>(*this, 0); }
 
-  auto end() const noexcept {
-    return basic_view_iterator<Scalar, Sshape, Sstride, Dev, 0>(*this, shape(0));
-  }
+  auto end() const noexcept { return basic_view_iterator<Scalar, Sshape, Sstride, Dev, 0>(*this, shape(0)); }
 
   ///////////////////////////////////////////////////////////////////////////////
   /// Data accessing.
@@ -262,6 +276,13 @@ public:
     return operator()(index_array<ndim>(static_cast<index_t>(args)...));
   }
 
+
+  template <typename... Args,
+            typename = std::enable_if_t<(std::is_integral_v<std::decay_t<Args>> && ...) && sizeof...(Args) < ndim>>
+  MATHPRIM_PRIMFUNC mdslice_type<sizeof...(Args)> operator()(Args &&...args) const noexcept {
+    return mdslice(std::forward<Args>(args)...);
+  }
+
   /////////////////////////////////////////////////////////////////////////////
   // View Transforms
   /////////////////////////////////////////////////////////////////////////////
@@ -291,6 +312,24 @@ public:
       index_t batch = 0) const noexcept {
     auto offset = batch * stride_.template get<I>();
     return {data_ + offset, internal::pack_slice<I>(shape_), internal::pack_slice<I>(stride_)};
+  }
+
+  /**
+   * @brief Return a subview, limiting to a multi dimensional slice
+   */
+  template <index_t Cnt>
+  MATHPRIM_PRIMFUNC mdslice_type<Cnt>
+  mdslice(const index_array<Cnt> &anchor) const noexcept {
+    index_t offset = 0;
+    for (index_t i = 0; i < Cnt; ++i) {
+      offset += anchor[i] * stride_[i];
+    }
+    return {data_ + offset, internal::pack_drop_front<Cnt>(shape_), internal::pack_drop_front<Cnt>(stride_)};
+  }
+
+  template <typename... Integers, typename = std::enable_if_t<(std::is_integral_v<Integers> && ...)>>
+  MATHPRIM_PRIMFUNC mdslice_type<sizeof...(Integers)> mdslice(Integers... anchor) const noexcept {
+    return mdslice<sizeof...(Integers)>(index_array<sizeof...(Integers)>{static_cast<index_t>(anchor)...});
   }
 
   /**
@@ -327,7 +366,7 @@ public:
 
   /**
    * @brief Returns a subview
-   * 
+   *
    * @param anchor  starting point of new view
    * @param shape   new view's shape
    */
@@ -352,9 +391,18 @@ public:
     return {data_ + start * stride(0), dshape<1>{end - start}, stride_};
   }
 
+  template <index_t InsertDim = ndim - 1>
+  MATHPRIM_PRIMFUNC basic_view<
+      Scalar, god::to_pack<internal::insert_t<typename Sshape::seq, InsertDim, 1>>,
+      god::to_pack<internal::insert_t<typename Sstride::seq, InsertDim, god::get_v<typename Sstride::seq, InsertDim>>>,
+      Dev>
+  unsqueeze() const noexcept {
+    // TODO: TOOOOOOO complex.
+  }
+
   /**
    * @brief Reshape the view to target shape.
-   * 
+   *
    */
   template <typename Sshape2>
   MATHPRIM_PRIMFUNC basic_view<Scalar, Sshape2, default_stride_t<Sshape2>, Dev> reshape(const Sshape2 &shape) const {
@@ -373,9 +421,7 @@ public:
    *
    * @return MATHPRIM_PRIMFUNC
    */
-  MATHPRIM_PRIMFUNC basic_view<const Scalar, Sshape, Sstride, Dev> as_const() const {
-    return {data_, shape_, stride_};
-  }
+  MATHPRIM_PRIMFUNC basic_view<const Scalar, Sshape, Sstride, Dev> as_const() const { return {data_, shape_, stride_}; }
 
   MATHPRIM_FORCE_INLINE void swap(basic_view &other) noexcept {
     std::swap(shape_, other.shape_);
@@ -478,21 +524,15 @@ struct basic_view_iterator {
     return current == other.current && view.data() == other.view.data();
   }
 
-  MATHPRIM_PRIMFUNC bool operator!=(const basic_view_iterator &other) const noexcept {
-    return !(*this == other);
-  }
+  MATHPRIM_PRIMFUNC bool operator!=(const basic_view_iterator &other) const noexcept { return !(*this == other); }
 
-  MATHPRIM_PRIMFUNC bool operator<(const basic_view_iterator &other) const noexcept {
-    return current < other.current;
-  }
+  MATHPRIM_PRIMFUNC bool operator<(const basic_view_iterator &other) const noexcept { return current < other.current; }
 
   MATHPRIM_PRIMFUNC bool operator<=(const basic_view_iterator &other) const noexcept {
     return current <= other.current;
   }
 
-  MATHPRIM_PRIMFUNC bool operator>(const basic_view_iterator &other) const noexcept {
-    return current > other.current;
-  }
+  MATHPRIM_PRIMFUNC bool operator>(const basic_view_iterator &other) const noexcept { return current > other.current; }
 
   MATHPRIM_PRIMFUNC bool operator>=(const basic_view_iterator &other) const noexcept {
     return current >= other.current;
@@ -554,7 +594,7 @@ struct memcpy_impl {
     device::basic_memcpy<Dev2, Dev1>{}(dst.data(), src.data(), total);
   }
 };
-}
+}  // namespace internal
 
 template <typename T1, typename Sshape1, typename Sstride1, typename Dev1, typename T2, typename Sshape2,
           typename Sstride2, typename Dev2>

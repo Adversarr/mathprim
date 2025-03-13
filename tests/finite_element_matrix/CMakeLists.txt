@@ -1,0 +1,2 @@
+add_executable(finite_element_matrix main.cpp)
+target_link_libraries(finite_element_matrix PRIVATE mathprim)

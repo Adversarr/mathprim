@@ -21,12 +21,19 @@ enum class sparse_property {
 };
 
 template <typename Scalar>
-struct sparse_entry {
-  index_t row_;
-  index_t col_;
+struct entry {
+  union {
+    index_t row_;
+    index_t dst_;
+  };
+  union {
+    index_t col_;
+    index_t src_;
+  };
   Scalar value_;
 
-  sparse_entry(index_t row, index_t col, Scalar value) : row_(row), col_(col), value_(value) {}
+  entry(index_t row, index_t col, Scalar value) : row_(row), col_(col), value_(value) {}
+  entry(index_t row, index_t col) : row_(row), col_(col), value_(0) {}
 };
 
 template <typename Scalar, typename Device, sparse_format SparseCompression>
