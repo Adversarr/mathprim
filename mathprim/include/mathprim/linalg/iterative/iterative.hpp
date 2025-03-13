@@ -97,7 +97,7 @@ public:
 
   none_preconditioner() = default;
   template <typename SparseMatrixT>
-  none_preconditioner(const SparseMatrixT& /* matrix */) {}
+  none_preconditioner(const SparseMatrixT& /* matrix */) {}  // NOLINT(google-explicit-constructor)
   none_preconditioner(none_preconditioner&&) = default;
 
   void apply_impl(vector_type y, const_vector x) {
@@ -109,13 +109,13 @@ public:
 /// Iterative Solver Base
 ///////////////////////////////////////////////////////////////////////////////
 template <typename Scalar>
-struct iterative_solver_parameters {
+struct convergence_critera {
   index_t max_iterations_;
   Scalar norm_tol_;
 };
 
 template <typename Scalar>
-struct iterative_solver_result {
+struct convergence_result {
   index_t iterations_ = {1 << 10};                         ///< number of iterations.
   Scalar norm_ = {std::numeric_limits<float>::epsilon()};  ///< l2 norm of the residual. (norm(r))
 };
@@ -125,8 +125,8 @@ class basic_iterative_solver {
 public:
   using scalar_type = Scalar;
   using linear_operator_type = LinearOperatorT;
-  using results_type = iterative_solver_result<Scalar>;
-  using parameters_type = iterative_solver_parameters<Scalar>;
+  using results_type = convergence_result<Scalar>;
+  using parameters_type = convergence_critera<Scalar>;
   using vector_type = contiguous_view<Scalar, shape_t<keep_dim>, Device>;
   using const_vector = contiguous_view<const Scalar, shape_t<keep_dim>, Device>;
 
