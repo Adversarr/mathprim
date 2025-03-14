@@ -174,6 +174,8 @@ MATHPRIM_PRIMFUNC shape_t<keep_dim, Svalues...> batched_shape_impl(index_t batch
 
 }  // namespace internal
 
+using internal::holder;
+
 template <typename... Args>
 dshape<sizeof...(Args)> make_dshape(Args &&...args) noexcept {
   return dshape<sizeof...(Args)>{std::forward<Args>(args)...};
