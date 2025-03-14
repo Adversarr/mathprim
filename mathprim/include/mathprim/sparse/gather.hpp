@@ -122,9 +122,9 @@ public:
   bool has_weight() const noexcept { return has_weights_; }
 
   template <typename Iter>
-  void set_from_sparse(Iter beg, Iter end) {
+  void set_from_triplets(Iter beg, Iter end) {
     // Build CSR matrix and check the indices.
-    auto sparse_coo = make_from_triplets<Scalar>(beg, end);
+    auto sparse_coo = make_from_triplets<Scalar>(beg, end, num_outputs_, num_inputs_);
     auto sparse_csr = make_from_coos<Scalar, sparse_format::csr>(sparse_coo);
     visit(sparse_csr.view(), par::seq(), [&](index_t dst, index_t src, Scalar /* weight */) {
       if (dst >= num_outputs_ || src >= num_inputs_) {
@@ -139,9 +139,18 @@ public:
     copy(inner_.view(), sparse_csr.inner_indices());
 
     if (has_weights_) {
-      weight_ = make_buffer<Scalar, Device>(sparse_csr.values());
+      weight_ = make_buffer<Scalar, Device>(sparse_csr.values().shape());
       copy(weight_.view(), sparse_csr.values());
     }
+  }
+
+  basic_sparse_view<const Scalar, Device, sparse_format::csr> view_as_csr() const {
+    if (!weight_) {
+      throw std::runtime_error("The gather info does not have weights.");
+    }
+
+    return {weight_.view(), outer_.view(),  inner_.view(),           num_outputs_,
+            num_inputs_,    inner_.numel(), sparse_property::general};
   }
 
 private:

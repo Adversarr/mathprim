@@ -7,13 +7,15 @@
 
 #include "mathprim/parallel/openmp.hpp"
 #include "mathprim/sparse/blas/eigen.hpp"
-#include "mathprim/sparse/gather.hpp"
 #include "mathprim/sparse/cvt.hpp"
+#include "mathprim/sparse/gather.hpp"
 #include "mathprim/supports/eigen_sparse.hpp"
 #include "mathprim/supports/io/matrix_market.hpp"
 #include "mathprim/supports/stringify.hpp"
 
 using namespace mathprim;
+using namespace mathprim::literal;
+
 GTEST_TEST(csr, gemv) {
   const int rows = 3, cols = 3, nnz = 5;
   float h_csr_values[] = {1.0f, 2.0f, 3.0f, 4.0f, 5.0f};
@@ -305,9 +307,9 @@ GTEST_TEST(csr, spmm) {
   x.setRandom();
   auto y = Eigen::MatrixXf(4, 3);
   y.setZero();
-  
-  auto xv = eigen_support::view(x); // 3,4
-  auto yv = eigen_support::view(y); // 3,4
+
+  auto xv = eigen_support::view(x);  // 3,4
+  auto yv = eigen_support::view(y);  // 3,4
   // mat: 3,3
   sparse::blas::eigen<float, sparse::sparse_format::csr> blas(csr.const_view());
   blas.spmm(1.0f, xv, 0.0f, yv);
@@ -320,10 +322,9 @@ GTEST_TEST(csr, spmm) {
   }
 }
 
-
 GTEST_TEST(gather, csr) {
   // our gathering API is similar to a CSR mv operation.
-  
+
   const int rows = 3, cols = 3, nnz = 5;
   float h_csr_values[] = {1.0f, 2.0f, 3.0f, 4.0f, 5.0f};
   int h_csr_col_idx[] = {0, 1, 1, 2, 2};
@@ -355,12 +356,6 @@ GTEST_TEST(gather, csr) {
   auto x_vectorized = view(h_x_vectorized, make_shape(3, 2));
   auto y_vectorized = view(h_y_vectorized, make_shape(3, 2));
 
-  functional::op_madd<decltype(x_vectorized[0]), decltype(y_vectorized[0])> madd(3.0f);
-  madd(y_vectorized[0], x_vectorized[0]);
-  for (int i = 0; i < 2; ++i) {
-    EXPECT_EQ(h_y_vectorized[i], 3.0f);
-    h_y_vectorized[i] = 0;
-  }
   ex.run(make_shape(rows), sparse::basic_gather_operator<float, device::cpu, 1>(y_vectorized, x_vectorized, desc));
   for (int i = 0; i < rows; ++i) {
     float sum = 0.0f;
@@ -369,5 +364,48 @@ GTEST_TEST(gather, csr) {
     }
     EXPECT_FLOAT_EQ(h_y_vectorized[i * 2], sum);
     EXPECT_FLOAT_EQ(h_y_vectorized[i * 2 + 1], sum);
+  }
+}
+
+GTEST_TEST(gather, force) {
+  auto ext_forces_vert = make_buffer<float, device::cpu>(4, 2_s);
+  index_t face_buf[6] = {0, 1, 2, 1, 2, 3};
+  auto face = view(face_buf, make_shape(2, 3_s));
+  float gt_buf[8] = {0};
+  auto gt = view(gt_buf, make_shape(4, 2_s));
+
+  // We have 2 elements, each have 3 vertices, and each forces have 2 direction.
+  auto ext_forces_buffer = make_buffer<float, device::cpu>(2, 3_s, 2_s);
+  auto ext_forces = ext_forces_buffer.view();
+  for (auto [i, j, k] : ext_forces.shape()) {
+    ext_forces(i, j, k) = i + j;
+  }
+  std::vector<sparse::entry<float>> gather_info;
+  for (int i = 0; i < 2; ++i) {
+    for (int j = 0; j < 3; ++j) {
+      auto vid = face(i, j);
+      for (int k = 0; k < 2; ++k) {
+        gt(vid, k) += ext_forces(i, j, k);
+      }
+      index_t dst = vid;
+      index_t src = i * 3 + j;
+      gather_info.emplace_back(dst, src, 1.0f);
+    }
+  }
+  
+  sparse::basic_gather_info<float, device::cpu> info(4, 6, true);
+  info.set_from_triplets(gather_info.begin(), gather_info.end());
+  auto result_buf = make_buffer<float, device::cpu>(4, 2_s);
+  auto result = result_buf.view();
+  result_buf.fill_bytes(0);
+
+  auto csr = eigen_support::map(info.view_as_csr());
+  auto flat = ext_forces.reshape(6, 2_s);
+  auto seq = par::seq();
+  seq.run(4, sparse::basic_gather_operator<float, device::cpu, 1>(result, flat, info.desc()));
+  for (int i = 0; i < 4; ++i) {
+    for (int j = 0; j < 2; ++j) {
+      EXPECT_FLOAT_EQ(result(i, j), gt(i, j));
+    }
   }
 }

@@ -104,6 +104,8 @@ private:
       } else {
         auto [ls_result, ls_step_size] = ls.template search<ProblemDerived>(problem, gradients_view, learning_rate_);
         // The linesearcher will update the parameters & gradients.
+        MATHPRIM_UNUSED(ls_result);
+        MATHPRIM_UNUSED(ls_step_size);
       }
 
       Scalar new_value = problem.current_value();  // Update the gradients.

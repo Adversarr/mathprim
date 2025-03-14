@@ -45,7 +45,6 @@ struct small_svd<float, Device, 3, 3, true> {
   using singular_type = contiguous_view<float, shape_t<3>, Device>;
 
   bool rotation_variant_ = false;
-  small_svd() = default;
   MATHPRIM_PRIMFUNC explicit small_svd(bool rotation_variant = false) : rotation_variant_(rotation_variant) {}
   small_svd(const small_svd&) = default;
   small_svd& operator=(const small_svd&) = default;
@@ -76,7 +75,6 @@ struct small_svd<float, Device, 3, 3, false> {
   using singular_type = contiguous_view<float, shape_t<3>, Device>;
 
   bool rotation_variant_ = false;
-  small_svd() = default;
   MATHPRIM_PRIMFUNC explicit small_svd(bool rotation_variant = false) : rotation_variant_(rotation_variant) {}
   small_svd(const small_svd&) = default;
   small_svd& operator=(const small_svd&) = default;
@@ -108,7 +106,6 @@ struct small_svd<double, Device, 3, 3, false> {
   using singular_type = contiguous_view<double, shape_t<3>, Device>;
 
   bool rotation_variant_ = false;
-  small_svd() = default;
   MATHPRIM_PRIMFUNC explicit small_svd(bool rotation_variant = false) : rotation_variant_(rotation_variant) {}
   small_svd(const small_svd&) = default;
   small_svd& operator=(const small_svd&) = default;

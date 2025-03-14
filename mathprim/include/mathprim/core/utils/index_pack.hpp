@@ -7,39 +7,47 @@
 namespace mathprim {
 
 // static and dynamic
-template <index_t... args>
+template <index_t... Args>
 struct index_pack;
+
+template <typename T>
+struct is_index_pack : std::false_type {};
+template <index_t... Args>
+struct is_index_pack<index_pack<Args...>> : std::true_type {};
+
+template <typename T>
+constexpr bool is_index_pack_v = is_index_pack<T>::value;
 
 ///////////////////////////////////////////////////////////////////////////////
 /// Tiny meta programming library.
 ///////////////////////////////////////////////////////////////////////////////
 namespace god {
 
-template <typename seq>
+template <typename Seq>
 struct car;
-template <index_t front, index_t... args>
-struct car<index_seq<front, args...>> {
-  static constexpr index_t value = front;
+template <index_t Front, index_t... Args>
+struct car<index_seq<Front, Args...>> {
+  static constexpr index_t value = Front;
 };
 
-template <typename seq>
+template <typename Seq>
 struct cdr {
-  static_assert(!std::is_same_v<seq, seq>, "Unsupported.");
+  static_assert(!std::is_same_v<Seq, Seq>, "Unsupported.");
 };
-template <index_t front, index_t... args>
-struct cdr<index_seq<front, args...>> {
-  using type = index_seq<args...>;
+template <index_t Front, index_t... Args>
+struct cdr<index_seq<Front, Args...>> {
+  using type = index_seq<Args...>;
 };
 
-template <typename seq>
+template <typename Seq>
 struct last;
-template <index_t front>
-struct last<index_seq<front>> {
-  static constexpr index_t value = front;
+template <index_t Front>
+struct last<index_seq<Front>> {
+  static constexpr index_t value = Front;
 };
-template <index_t front, index_t... args>
-struct last<index_seq<front, args...>> {
-  static constexpr index_t value = last<index_seq<args...>>::value;
+template <index_t Front, index_t... Args>
+struct last<index_seq<Front, Args...>> {
+  static constexpr index_t value = last<index_seq<Args...>>::value;
 };
 
 template <index_t Cnt, typename Seq>
@@ -59,165 +67,165 @@ struct drop_front<0, index_seq<Front, Args...>> {
   using type = index_seq<Front, Args...>;
 };
 
-template <index_t, typename seq>
+template <index_t, typename Seq>
 struct prepend;
-template <index_t value, index_t... args>
-struct prepend<value, index_seq<args...>> {
-  using type = index_seq<value, args...>;
+template <index_t Value, index_t... Args>
+struct prepend<Value, index_seq<Args...>> {
+  using type = index_seq<Value, Args...>;
 };
 
-template <index_t, typename seq>
+template <index_t, typename Seq>
 struct append;
-template <index_t value, index_t... args>
-struct append<value, index_seq<args...>> {
-  using type = index_seq<args..., value>;
+template <index_t Value, index_t... Args>
+struct append<Value, index_seq<Args...>> {
+  using type = index_seq<Args..., Value>;
 };
 
-template <index_t value, typename seq>
+template <index_t Value, typename Seq>
 struct remove {
-  static_assert(value >= 0, "The value must be greater than or equal to 0.");
+  static_assert(Value >= 0, "The value must be greater than or equal to 0.");
 };
-template <index_t value>
-struct remove<value, index_seq<>> {
-  static_assert(value == 0, "Trying to remove a non-existing value.");
+template <index_t Value>
+struct remove<Value, index_seq<>> {
+  static_assert(Value == 0, "Trying to remove a non-existing value.");
 };
-template <index_t value, index_t front, index_t... args>
-struct remove<value, index_seq<front, args...>> {
-  using type = typename prepend<front, typename remove<value - 1, index_seq<args...>>::type>::type;
+template <index_t Value, index_t Front, index_t... Args>
+struct remove<Value, index_seq<Front, Args...>> {
+  using type = typename prepend<Front, typename remove<Value - 1, index_seq<Args...>>::type>::type;
 };
-template <index_t front, index_t... args>
-struct remove<0, index_seq<front, args...>> {
-  using type = index_seq<args...>;
+template <index_t Front, index_t... Args>
+struct remove<0, index_seq<Front, Args...>> {
+  using type = index_seq<Args...>;
 };
 template <>
 struct remove<0, index_seq<>> {
   using type = index_seq<>;
 };
 
-template <index_t cnt, index_t value>
+template <index_t Cnt, index_t Value>
 struct duplicate;
-template <index_t value>
-struct duplicate<0, value> {
+template <index_t Value>
+struct duplicate<0, Value> {
   using type = index_seq<>;
 };
-template <index_t cnt, index_t value>
+template <index_t Cnt, index_t Value>
 struct duplicate {
-  static_assert(cnt > 0, "The count must be greater than 0.");
-  using type = typename prepend<value, typename duplicate<cnt - 1, value>::type>::type;
+  static_assert(Cnt > 0, "The count must be greater than 0.");
+  using type = typename prepend<Value, typename duplicate<Cnt - 1, Value>::type>::type;
 };
 
-template <typename seq, index_t n>
+template <typename Seq, index_t N>
 struct get;
-template <typename seq>
-struct get<seq, 0> {
-  static constexpr index_t value = car<seq>::value;
+template <typename Seq>
+struct get<Seq, 0> {
+  static constexpr index_t value = car<Seq>::value;
 };
-template <typename seq, index_t n>
+template <typename Seq, index_t N>
 struct get {
-  static constexpr index_t value = get<typename cdr<seq>::type, n - 1>::value;
+  static constexpr index_t value = get<typename cdr<Seq>::type, N - 1>::value;
 };
 
-template <template <index_t...> class instanciation, typename seq>
+template <template <index_t...> class Instanciation, typename Seq>
 struct apply_seq;
-template <template <index_t...> class instanciation, index_t... args>
-struct apply_seq<instanciation, index_seq<args...>> {
-  using type = instanciation<args...>;
+template <template <index_t...> class Instanciation, index_t... Args>
+struct apply_seq<Instanciation, index_seq<Args...>> {
+  using type = Instanciation<Args...>;
 };
 
-template <template <index_t> class transform, typename seq>
+template <template <index_t> class Transform, typename Seq>
 struct apply_elem;
-template <template <index_t> class transform, index_t... args>
-struct apply_elem<transform, index_seq<args...>> {
-  using type = index_seq<transform<args>::value...>;
+template <template <index_t> class Transform, index_t... Args>
+struct apply_elem<Transform, index_seq<Args...>> {
+  using type = index_seq<Transform<Args>::value...>;
 };
 
-template <typename seq>
+template <typename Seq>
 struct numel;
-template <index_t front>
-struct numel<index_seq<front>> {
-  static constexpr index_t value = front;
+template <index_t Front>
+struct numel<index_seq<Front>> {
+  static constexpr index_t value = Front;
 };
-template <index_t front, index_t... args>
-struct numel<index_seq<front, args...>> {
-  static constexpr index_t value_last = numel<index_seq<args...>>::value;
-  static constexpr index_t value = (front < 0 || value_last < 0) ? -1 : front * value_last;
+template <index_t Front, index_t... Args>
+struct numel<index_seq<Front, Args...>> {
+  static constexpr index_t value_last = numel<index_seq<Args...>>::value;
+  static constexpr index_t value = (Front < 0 || value_last < 0) ? -1 : Front * value_last;
 };
 
-template <index_t lhs, index_t rhs>
+template <index_t Lhs, index_t Rhs>
 struct arithmetic_op {
-  static constexpr index_t plus = (lhs > 0 && rhs > 0) ? lhs + rhs : keep_dim;
-  static constexpr index_t minus = (lhs > 0 && rhs > 0) ? lhs - rhs : keep_dim;
-  static constexpr index_t multiply = (lhs > 0 && rhs > 0) ? lhs * rhs : keep_dim;
-  static constexpr index_t divide = (lhs > 0 && rhs > 0) ? lhs / rhs : keep_dim;
-  static constexpr index_t up_div = (lhs > 0 && rhs > 0) ? (lhs + rhs - 1) / rhs : keep_dim;
+  static constexpr index_t plus = (Lhs > 0 && Rhs > 0) ? Lhs + Rhs : keep_dim;
+  static constexpr index_t minus = (Lhs > 0 && Rhs > 0) ? Lhs - Rhs : keep_dim;
+  static constexpr index_t multiply = (Lhs > 0 && Rhs > 0) ? Lhs * Rhs : keep_dim;
+  static constexpr index_t divide = (Lhs > 0 && Rhs > 0) ? Lhs / Rhs : keep_dim;
+  static constexpr index_t up_div = (Lhs > 0 && Rhs > 0) ? (Lhs + Rhs - 1) / Rhs : keep_dim;
 };
 
-template <typename lhs_seq, typename rhs_seq>
+template <typename LhsSeq, typename RhsSeq>
 struct arithmetic_seq;  // Forward declaration.
-template <index_t... lhs, index_t... rhs>
-struct arithmetic_seq<index_seq<lhs...>, index_seq<rhs...>> {
-  using plus = index_seq<arithmetic_op<lhs, rhs>::plus...>;
-  using minus = index_seq<arithmetic_op<lhs, rhs>::minus...>;
-  using multiply = index_seq<arithmetic_op<lhs, rhs>::multiply...>;
-  using divide = index_seq<arithmetic_op<lhs, rhs>::divide...>;
-  using up_div = index_seq<arithmetic_op<lhs, rhs>::up_div...>;
+template <index_t... Lhs, index_t... Rhs>
+struct arithmetic_seq<index_seq<Lhs...>, index_seq<Rhs...>> {
+  using plus = index_seq<arithmetic_op<Lhs, Rhs>::plus...>;
+  using minus = index_seq<arithmetic_op<Lhs, Rhs>::minus...>;
+  using multiply = index_seq<arithmetic_op<Lhs, Rhs>::multiply...>;
+  using divide = index_seq<arithmetic_op<Lhs, Rhs>::divide...>;
+  using up_div = index_seq<arithmetic_op<Lhs, Rhs>::up_div...>;
 };
 
 /// Aliases:
-template <typename seq>
-constexpr index_t car_v = car<seq>::value;
-template <typename seq>
-constexpr index_t last_v = last<seq>::value;
-template <typename seq>
-using cdr_t = typename cdr<seq>::type;
-template <typename seq, index_t n>
-constexpr index_t get_v = get<seq, n>::value;
-template <typename seq>
-constexpr index_t numel_v = numel<seq>::value;
-template <template <index_t...> class instanciation, typename seq>
-using apply_seq_t = typename apply_seq<instanciation, seq>::type;
-template <template <index_t> class transform, typename seq>
-using apply_elem_t = typename apply_elem<transform, seq>::type;
+template <typename Seq>
+constexpr index_t car_v = car<Seq>::value;
+template <typename Seq>
+constexpr index_t last_v = last<Seq>::value;
+template <typename Seq>
+using cdr_t = typename cdr<Seq>::type;
+template <typename Seq, index_t N>
+constexpr index_t get_v = get<Seq, N>::value;
+template <typename Seq>
+constexpr index_t numel_v = numel<Seq>::value;
+template <template <index_t...> class Instanciation, typename Seq>
+using apply_seq_t = typename apply_seq<Instanciation, Seq>::type;
+template <template <index_t> class Transform, typename Seq>
+using apply_elem_t = typename apply_elem<Transform, Seq>::type;
 template <index_t Cnt, typename Seq>
 using drop_front_t = typename drop_front<Cnt, Seq>::type;
-template <index_t value, typename seq>
-using prepend_t = typename prepend<value, seq>::type;
-template <index_t cnt, index_t value>
-using duplicate_t = typename duplicate<cnt, value>::type;
-template <index_t value, typename seq>
-using remove_t = typename remove<value, seq>::type;
-template <typename seq>
-using to_pack = apply_seq_t<index_pack, seq>;
-template <typename lhs, typename rhs>
+template <index_t Value, typename Seq>
+using prepend_t = typename prepend<Value, Seq>::type;
+template <index_t Cnt, index_t Value>
+using duplicate_t = typename duplicate<Cnt, Value>::type;
+template <index_t Value, typename Seq>
+using remove_t = typename remove<Value, Seq>::type;
+template <typename Seq>
+using to_pack = apply_seq_t<index_pack, Seq>;
+template <typename Lhs, typename Rhs>
 using arithmetic_seq_plus
-    = apply_seq_t<index_pack, typename arithmetic_seq<typename lhs::seq, typename rhs::seq>::plus>;
-template <typename lhs, typename rhs>
+    = apply_seq_t<index_pack, typename arithmetic_seq<typename Lhs::seq, typename Rhs::seq>::plus>;
+template <typename Lhs, typename Rhs>
 using arithmetic_seq_multiply
-    = apply_seq_t<index_pack, typename arithmetic_seq<typename lhs::seq, typename rhs::seq>::multiply>;
-template <typename lhs, typename rhs>
+    = apply_seq_t<index_pack, typename arithmetic_seq<typename Lhs::seq, typename Rhs::seq>::multiply>;
+template <typename Lhs, typename Rhs>
 using arithmetic_seq_up_div
-    = apply_seq_t<index_pack, typename arithmetic_seq<typename lhs::seq, typename rhs::seq>::up_div>;
-template <index_t value, typename seq>
-using append_t = typename append<value, seq>::type;
+    = apply_seq_t<index_pack, typename arithmetic_seq<typename Lhs::seq, typename Rhs::seq>::up_div>;
+template <index_t Value, typename Seq>
+using append_t = typename append<Value, Seq>::type;
 
 }  // namespace god
 
-template <typename seq>
-using index_seq_t = god::apply_seq_t<index_pack, seq>;
+template <typename Seq>
+using index_seq_t = god::apply_seq_t<index_pack, Seq>;
 
 ///////////////////////////////////////////////////////////////////////////////
 /// wrapper for a small array, fully dynamic
 ///////////////////////////////////////////////////////////////////////////////
-template <index_t ndim>
+template <index_t Ndim>
 struct index_array {
-  index_t data_[ndim] = {0};
+  index_t data_[Ndim] = {0};
 
   template <typename... Integers,
-            typename = std::enable_if_t<(std::is_integral_v<Integers> && ...) && sizeof...(Integers) == ndim>>
+            typename = std::enable_if_t<(std::is_integral_v<Integers> && ...) && sizeof...(Integers) == Ndim>>
   MATHPRIM_PRIMFUNC explicit index_array(Integers... values) noexcept : data_{static_cast<index_t>(values)...} {}
 
   MATHPRIM_PRIMFUNC explicit index_array(const index_t *data) noexcept {
-    for (index_t i = 0; i < ndim; ++i) {
+    for (index_t i = 0; i < Ndim; ++i) {
       data_[i] = data[i];
     }
   }
@@ -228,24 +236,24 @@ struct index_array {
   index_array &operator=(index_array &&) noexcept = default;
 
   MATHPRIM_PRIMFUNC index_t &operator[](index_t i) noexcept {
-    MATHPRIM_ASSERT(0 <= i && i < ndim);
+    MATHPRIM_ASSERT(0 <= i && i < Ndim);
     return data_[i];
   }
 
   MATHPRIM_PRIMFUNC const index_t &operator[](index_t i) const noexcept {
-    MATHPRIM_ASSERT(0 <= i && i < ndim);
+    MATHPRIM_ASSERT(0 <= i && i < Ndim);
     return data_[i];
   }
 
-  template <index_t i>
+  template <index_t I>
   MATHPRIM_PRIMFUNC index_t get() const noexcept {
-    static_assert(i < ndim, "Index out of range.");
-    return data_[i];
+    static_assert(I < Ndim, "Index out of range.");
+    return data_[I];
   }
 
-  MATHPRIM_PRIMFUNC static index_array<ndim> constant(index_t value) noexcept {
-    index_array<ndim> result;
-    for (index_t i = 0; i < ndim; ++i) {
+  MATHPRIM_PRIMFUNC static index_array<Ndim> constant(index_t value) noexcept {
+    index_array<Ndim> result;
+    for (index_t i = 0; i < Ndim; ++i) {
       result[i] = value;
     }
     return result;
@@ -261,7 +269,7 @@ struct index_array<0> {
   index_array &operator=(index_array &&) noexcept = default;
   MATHPRIM_PRIMFUNC index_t &operator[](index_t) noexcept;
   MATHPRIM_PRIMFUNC const index_t &operator[](index_t i) const noexcept;
-  template <index_t i>
+  template <index_t I>
   MATHPRIM_PRIMFUNC index_t get() const noexcept;
   MATHPRIM_PRIMFUNC static index_array<0> constant(index_t) noexcept;
 };
@@ -292,36 +300,36 @@ struct index_array<1> {
     return data_[i];
   }
 
-  template <index_t i>
+  template <index_t I>
   MATHPRIM_PRIMFUNC index_t get() const noexcept {
-    static_assert(i == 0, "Index out of range.");
+    static_assert(I == 0, "Index out of range.");
     return data_[0];
   }
   MATHPRIM_PRIMFUNC static index_array<1> constant(index_t value) noexcept { return index_array<1>{value}; }
 };
 
-template <index_t ndim>
-MATHPRIM_PRIMFUNC index_array<ndim> operator*(const index_array<ndim> &lhs, const index_array<ndim> &rhs) noexcept {
-  index_array<ndim> result;
-  for (index_t i = 0; i < ndim; ++i) {
+template <index_t Ndim>
+MATHPRIM_PRIMFUNC index_array<Ndim> operator*(const index_array<Ndim> &lhs, const index_array<Ndim> &rhs) noexcept {
+  index_array<Ndim> result;
+  for (index_t i = 0; i < Ndim; ++i) {
     result[i] = lhs[i] * rhs[i];
   }
   return result;
 }
 
-template <index_t ndim>
-MATHPRIM_PRIMFUNC index_array<ndim> operator+(const index_array<ndim> &lhs, const index_array<ndim> &rhs) noexcept {
-  index_array<ndim> result;
-  for (index_t i = 0; i < ndim; ++i) {
+template <index_t Ndim>
+MATHPRIM_PRIMFUNC index_array<Ndim> operator+(const index_array<Ndim> &lhs, const index_array<Ndim> &rhs) noexcept {
+  index_array<Ndim> result;
+  for (index_t i = 0; i < Ndim; ++i) {
     result[i] = lhs[i] + rhs[i];
   }
   return result;
 }
 
-template <index_t ndim>
-MATHPRIM_PRIMFUNC index_array<ndim> up_div(const index_array<ndim> &array, const index_array<ndim> &divisor) noexcept {
-  index_array<ndim> result;
-  for (index_t i = 0; i < ndim; ++i) {
+template <index_t Ndim>
+MATHPRIM_PRIMFUNC index_array<Ndim> up_div(const index_array<Ndim> &array, const index_array<Ndim> &divisor) noexcept {
+  index_array<Ndim> result;
+  for (index_t i = 0; i < Ndim; ++i) {
     MATHPRIM_ASSERT(divisor[i] > 0 && "Divisor must be greater than 0.");
     result[i] = (array[i] + divisor[i] - 1) / divisor[i];
   }
@@ -330,26 +338,26 @@ MATHPRIM_PRIMFUNC index_array<ndim> up_div(const index_array<ndim> &array, const
 
 // Iterators for index_array and index_pack
 namespace internal {
-template <index_t ndim>
+template <index_t Ndim>
 struct index_iterator {
-  index_array<ndim> current_;
-  const index_array<ndim> shape_;
+  index_array<Ndim> current_;
+  const index_array<Ndim> shape_;
 
   // Constructor
-  constexpr MATHPRIM_PRIMFUNC explicit index_iterator(const index_array<ndim> &shape, bool is_end = false) noexcept :
+  constexpr MATHPRIM_PRIMFUNC explicit index_iterator(const index_array<Ndim> &shape, bool is_end = false) noexcept :
       shape_(shape) {
     if (is_end) {
       current_[0] = shape[0];
-      for (index_t i = 1; i < ndim; ++i)
+      for (index_t i = 1; i < Ndim; ++i)
         current_[i] = 0;
     } else {
-      for (index_t i = 0; i < ndim; ++i)
+      for (index_t i = 0; i < Ndim; ++i)
         current_[i] = 0;
     }
   }
 
   constexpr MATHPRIM_PRIMFUNC index_iterator &operator++() noexcept {
-    for (index_t i = ndim - 1; i > 0; --i) {
+    for (index_t i = Ndim - 1; i > 0; --i) {
       if (++current_[i] < shape_[i])
         return *this;
       current_[i] = 0;
@@ -364,10 +372,10 @@ struct index_iterator {
     return tmp;
   }
 
-  constexpr MATHPRIM_PRIMFUNC const index_array<ndim> &operator*() const noexcept { return current_; }
+  constexpr MATHPRIM_PRIMFUNC const index_array<Ndim> &operator*() const noexcept { return current_; }
 
   constexpr MATHPRIM_PRIMFUNC bool operator==(const index_iterator &other) const noexcept {
-    for (index_t i = 0; i < ndim; ++i) {
+    for (index_t i = 0; i < Ndim; ++i) {
       if (current_[i] != other.current_[i])
         return false;
       if (shape_[i] != other.shape_[i])
@@ -380,7 +388,7 @@ struct index_iterator {
 };
 
 template <typename T>
-MATHPRIM_PRIMFUNC void swap_(T &lhs, T &rhs) noexcept {
+MATHPRIM_PRIMFUNC void myswap(T &lhs, T &rhs) noexcept {
 #ifdef __CUDA_ARCH__
   T tmp = lhs;
   lhs = rhs;
@@ -392,10 +400,10 @@ MATHPRIM_PRIMFUNC void swap_(T &lhs, T &rhs) noexcept {
 #endif
 }
 
-template <index_t ndim>
-void swap_impl(index_array<ndim> &lhs, index_array<ndim> &rhs) noexcept {
-  for (index_t i = 0; i < ndim; ++i) {
-    swap_<index_t>(lhs[i], rhs[i]);
+template <index_t Ndim>
+void swap_impl(index_array<Ndim> &lhs, index_array<Ndim> &rhs) noexcept {
+  for (index_t i = 0; i < Ndim; ++i) {
+    myswap<index_t>(lhs[i], rhs[i]);
   }
 }
 
@@ -416,32 +424,32 @@ MATHPRIM_PRIMFUNC internal::index_iterator<NDim> end(const index_array<NDim> &sh
 ///////////////////////////////////////////////////////////////////////////////
 namespace internal {
 // Static or Dynamic Router
-template <index_t svalue, bool IsKeepDim = (svalue == keep_dim)>
+template <index_t Svalue, bool IsKeepDim = (Svalue == keep_dim)>
 struct router;
 
-template <index_t svalue>
-struct router<svalue, false> {
-  static_assert(svalue > 0, "Cannot assign a negative value to a static index.");
+template <index_t Svalue>
+struct router<Svalue, false> {
+  static_assert(Svalue > 0, "Cannot assign a negative value to a static index.");
 
   static MATHPRIM_PRIMFUNC index_t assign(index_t dvalue) noexcept {
-    MATHPRIM_ASSERT(dvalue == svalue || dvalue == keep_dim);
+    MATHPRIM_ASSERT(dvalue == Svalue || dvalue == keep_dim);
     MATHPRIM_UNUSED(dvalue);
-    return svalue;
+    return Svalue;
   }
 };
 
-template <index_t svalue>
-struct router<svalue, true> {
+template <index_t Svalue>
+struct router<Svalue, true> {
   static MATHPRIM_PRIMFUNC index_t assign(index_t dvalue) noexcept {
     MATHPRIM_ASSERT(dvalue >= 0);
     return dvalue;
   }
 };
 
-template <index_t ndim>
+template <index_t Ndim>
 struct make_index_seq_impl {
-  static_assert(ndim > 0, "The dimension must be greater than 0.");
-  using type = god::append_t<ndim - 1, typename make_index_seq_impl<ndim - 1>::type>;
+  static_assert(Ndim > 0, "The dimension must be greater than 0.");
+  using type = god::append_t<Ndim - 1, typename make_index_seq_impl<Ndim - 1>::type>;
 };
 
 template <>
@@ -449,26 +457,26 @@ struct make_index_seq_impl<0> {
   using type = index_seq<>;
 };
 
-template <index_t ndim>
-using make_index_seq = typename make_index_seq_impl<ndim>::type;
+template <index_t Ndim>
+using make_index_seq = typename make_index_seq_impl<Ndim>::type;
 
 }  // namespace internal
 
-template <index_t ndim>
-using make_index_seq = internal::make_index_seq<ndim>;
+template <index_t Ndim>
+using make_index_seq = internal::make_index_seq<Ndim>;
 
-template <index_t... svalues>
+template <index_t... Svalues>
 struct index_pack {
-  using seq = index_seq<svalues...>;
-  using arr = index_array<sizeof...(svalues)>;
-  using iterator = internal::index_iterator<sizeof...(svalues)>;
-  using const_iterator = internal::index_iterator<sizeof...(svalues)>;
+  using seq = index_seq<Svalues...>;
+  using arr = index_array<sizeof...(Svalues)>;
+  using iterator = internal::index_iterator<sizeof...(Svalues)>;
+  using const_iterator = internal::index_iterator<sizeof...(Svalues)>;
 
-  static_assert(((svalues > 0 || svalues == keep_dim) && ...), "Encountered an invalid value in the index_pack.");
-  static constexpr index_t ndim = sizeof...(svalues);
-  static constexpr bool fully_static = ((svalues > 0) && ...);
+  static_assert(((Svalues > 0 || Svalues == keep_dim) && ...), "Encountered an invalid value in the index_pack.");
+  static constexpr index_t ndim = sizeof...(Svalues);
+  static constexpr bool fully_static = ((Svalues > 0) && ...);
 
-  MATHPRIM_PRIMFUNC index_pack() noexcept : dyn_(svalues...) {}
+  MATHPRIM_PRIMFUNC index_pack() noexcept : dyn_(Svalues...) {}
 
   // Constructors.
   explicit MATHPRIM_PRIMFUNC index_pack(const index_array<ndim> &array) noexcept : dyn_(array) {}
@@ -476,7 +484,7 @@ struct index_pack {
   template <typename... Integers,
             typename = std::enable_if_t<(std::is_integral_v<Integers> && ...) && sizeof...(Integers) == ndim>>
   explicit MATHPRIM_PRIMFUNC index_pack(const Integers &...args) noexcept :
-      dyn_{internal::router<svalues>::assign(static_cast<index_t>(args))...} {}
+      dyn_{internal::router<Svalues>::assign(static_cast<index_t>(args))...} {}
 
   index_pack(const index_pack &) noexcept = default;
   index_pack(index_pack &&) noexcept = default;
@@ -495,16 +503,16 @@ struct index_pack {
 
   MATHPRIM_PRIMFUNC index_t at(index_t i) const noexcept { return i < 0 ? dyn_[ndim + i] : dyn_[i]; }
 
-  template <index_t i>
+  template <index_t I>
   constexpr MATHPRIM_PRIMFUNC bool is_static() const noexcept {
-    static_assert(-ndim <= i && i < ndim, "Index out of range.");
-    return god::get_v<seq, i> > 0;
+    static_assert(-ndim <= I && I < ndim, "Index out of range.");
+    return god::get_v<seq, I> > 0;
   }
 
-  template <index_t i>
+  template <index_t I>
   constexpr MATHPRIM_PRIMFUNC index_t get() const noexcept {
-    static_assert(-ndim <= i && i < ndim, "Index out of range.");
-    constexpr index_t idx = i < 0 ? ndim + i : i;
+    static_assert(-ndim <= I && I < ndim, "Index out of range.");
+    constexpr index_t idx = I < 0 ? ndim + I : I;
 
     if constexpr (god::get_v<seq, idx> > 0) {
       return god::get_v<seq, idx>;
@@ -513,10 +521,10 @@ struct index_pack {
     }
   }
 
-  template <index_t i>
+  template <index_t I>
   MATHPRIM_PRIMFUNC void set(index_t dvalue) noexcept {
-    static_assert(-ndim <= i && i < ndim, "Index out of range.");
-    constexpr index_t idx = i < 0 ? ndim + i : i;
+    static_assert(-ndim <= I && I < ndim, "Index out of range.");
+    constexpr index_t idx = I < 0 ? ndim + I : I;
     dyn_[idx] = internal::router<god::get_v<seq, idx>>::assign(dvalue);
   }
 
@@ -548,13 +556,13 @@ struct index_pack {
 ///////////////////////////////////////////////////////////////////////////////
 /// Helpers
 ///////////////////////////////////////////////////////////////////////////////
-template <index_t... svalues>
-constexpr MATHPRIM_PRIMFUNC index_t ndim(index_pack<svalues...>) {
-  return index_pack<svalues...>::ndim;
+template <index_t... Svalues>
+constexpr MATHPRIM_PRIMFUNC index_t ndim(index_pack<Svalues...>) {
+  return index_pack<Svalues...>::ndim;
 }
 
-template <index_t... svalues>
-constexpr MATHPRIM_PRIMFUNC index_t numel(index_pack<svalues...> pack) {
+template <index_t... Svalues>
+constexpr MATHPRIM_PRIMFUNC index_t numel(index_pack<Svalues...> pack) {
   return pack.numel();
 }
 
@@ -562,56 +570,56 @@ constexpr MATHPRIM_PRIMFUNC index_t numel(index_pack<svalues...> pack) {
 /// Operators
 ///////////////////////////////////////////////////////////////////////////////
 namespace internal {
-template <typename lhs, typename rhs, bool dim_equal = lhs::ndim == rhs::ndim>
+template <typename Lhs, typename Rhs, bool DimEqual = Lhs::ndim == Rhs::ndim>
 struct compile_time_equal : std::false_type {};
 
-template <index_t... svalues1, index_t... svalues2>
-struct compile_time_equal<index_pack<svalues1...>, index_pack<svalues2...>, true> {
-  static constexpr bool value = ((svalues1 == svalues2 && svalues1 != keep_dim && svalues2 != keep_dim) && ...);
+template <index_t... Svalues1, index_t... Svalues2>
+struct compile_time_equal<index_pack<Svalues1...>, index_pack<Svalues2...>, true> {
+  static constexpr bool value = ((Svalues1 == Svalues2 && Svalues1 != keep_dim && Svalues2 != keep_dim) && ...);
 };
-template <typename lhs, typename rhs, bool dim_equal = lhs::ndim == rhs::ndim>
+template <typename Lhs, typename Rhs, bool DimEqual = Lhs::ndim == Rhs::ndim>
 struct compile_time_capable : std::false_type {};
 
-template <index_t... svalues1, index_t... svalues2>
-struct compile_time_capable<index_pack<svalues1...>, index_pack<svalues2...>, true> {
-  static constexpr bool value = ((svalues1 == svalues2 || svalues1 == keep_dim || svalues2 == keep_dim) && ...);
+template <index_t... Svalues1, index_t... Svalues2>
+struct compile_time_capable<index_pack<Svalues1...>, index_pack<Svalues2...>, true> {
+  static constexpr bool value = ((Svalues1 == Svalues2 || Svalues1 == keep_dim || Svalues2 == keep_dim) && ...);
 };
 
-template <typename lhs, typename rhs>
-constexpr bool is_compile_time_equal_v = compile_time_equal<lhs, rhs>::value;
+template <typename Lhs, typename Rhs>
+constexpr bool is_compile_time_equal_v = compile_time_equal<Lhs, Rhs>::value;
 
-template <typename lhs, typename rhs>
-constexpr bool is_compile_time_capable_v = compile_time_capable<lhs, rhs>::value;
+template <typename Lhs, typename Rhs>
+constexpr bool is_compile_time_capable_v = compile_time_capable<Lhs, Rhs>::value;
 
-template <index_t... svalues1, index_t... svalues2, index_t... idx>
-constexpr MATHPRIM_PRIMFUNC bool equal(const index_pack<svalues1...> lhs, const index_pack<svalues2...> rhs,
-                                       const index_seq<idx...> & /*loop*/) {
+template <index_t... Svalues1, index_t... Svalues2, index_t... Idx>
+constexpr MATHPRIM_PRIMFUNC bool equal(const index_pack<Svalues1...> lhs, const index_pack<Svalues2...> rhs,
+                                       const index_seq<Idx...> & /*loop*/) {
   MATHPRIM_UNUSED(lhs);
   MATHPRIM_UNUSED(rhs);
-  constexpr bool is_static_equal = ((svalues1 == svalues2 || svalues1 == keep_dim || svalues2 == keep_dim) && ...);
-  return is_static_equal && ((lhs.template get<idx>() == rhs.template get<idx>()) && ...);
+  constexpr bool is_static_equal = ((Svalues1 == Svalues2 || Svalues1 == keep_dim || Svalues2 == keep_dim) && ...);
+  return is_static_equal && ((lhs.template get<Idx>() == rhs.template get<Idx>()) && ...);
 }
 
-template <index_t... svalues1, index_t... svalues2, index_t... idx>
-constexpr MATHPRIM_PRIMFUNC god::arithmetic_seq_plus<index_seq<svalues1...>, index_seq<svalues2...>> plus(
-    const index_pack<svalues1...> &lhs, const index_pack<svalues2...> &rhs, const index_seq<idx...> & /*loop*/) {
-  return {lhs.template get<idx>() + rhs.template get<idx>()...};
+template <index_t... Svalues1, index_t... Svalues2, index_t... Idx>
+constexpr MATHPRIM_PRIMFUNC god::arithmetic_seq_plus<index_seq<Svalues1...>, index_seq<Svalues2...>> plus(
+    const index_pack<Svalues1...> &lhs, const index_pack<Svalues2...> &rhs, const index_seq<Idx...> & /*loop*/) {
+  return {lhs.template get<Idx>() + rhs.template get<Idx>()...};
 }
 
-template <index_t ndim, index_t... idx>
-MATHPRIM_PRIMFUNC bool equal(const index_array<ndim> &lhs, const index_array<ndim> &rhs, index_seq<idx...>) noexcept {
-  return ((lhs[idx] == rhs[idx]) && ...);
+template <index_t Ndim, index_t... Idx>
+MATHPRIM_PRIMFUNC bool equal(const index_array<Ndim> &lhs, const index_array<Ndim> &rhs, index_seq<Idx...>) noexcept {
+  return ((lhs[Idx] == rhs[Idx]) && ...);
 }
 
-template <index_t ndim, index_t... idx>
-MATHPRIM_PRIMFUNC index_array<ndim> multiply(index_t alpha, index_array<ndim> array, index_seq<idx...>) noexcept {
-  return index_array<ndim>{alpha * array[idx]...};
+template <index_t Ndim, index_t... Idx>
+MATHPRIM_PRIMFUNC index_array<Ndim> multiply(index_t alpha, index_array<Ndim> array, index_seq<Idx...>) noexcept {
+  return index_array<Ndim>{alpha * array[Idx]...};
 }
 
 // Cast from one index_pack to another.
-template <typename To, index_t... idx, typename From>
-MATHPRIM_PRIMFUNC To safe_cast_impl(const From &from, index_seq<idx...>) noexcept {
-  return To{from.template get<idx>()...};
+template <typename To, index_t... Idx, typename From>
+MATHPRIM_PRIMFUNC To safe_cast_impl(const From &from, index_seq<Idx...>) noexcept {
+  return To{from.template get<Idx>()...};
 }
 
 template <typename To, typename From, typename = std::enable_if_t<is_compile_time_capable_v<From, To>>>
@@ -619,53 +627,53 @@ MATHPRIM_PRIMFUNC To safe_cast(const From &from) noexcept {
   return safe_cast_impl<To>(from, make_index_seq<To::ndim>{});
 }
 
-template <typename from, typename to>
+template <typename From, typename To>
 struct is_castable;
-template <index_t... from_values, index_t... to_values>
-struct is_castable<index_pack<from_values...>, index_pack<to_values...>> {
-  static constexpr bool value = ((from_values == to_values || from_values == keep_dim || to_values == keep_dim) && ...);
+template <index_t... FromValues, index_t... ToValues>
+struct is_castable<index_pack<FromValues...>, index_pack<ToValues...>> {
+  static constexpr bool value = ((FromValues == ToValues || FromValues == keep_dim || ToValues == keep_dim) && ...);
 };
-template <typename from, typename to>
-static constexpr bool is_castable_v = is_castable<from, to>::value;
+template <typename From, typename To>
+static constexpr bool is_castable_v = is_castable<From, To>::value;
 }  // namespace internal
 
-template <index_t... svalues, index_t... svalues2>
-MATHPRIM_PRIMFUNC bool operator==(const index_pack<svalues...> &lhs, const index_pack<svalues2...> &rhs) noexcept {
-  return internal::equal(lhs, rhs, make_index_seq<sizeof...(svalues)>{});
+template <index_t... Svalues, index_t... Svalues2>
+MATHPRIM_PRIMFUNC bool operator==(const index_pack<Svalues...> &lhs, const index_pack<Svalues2...> &rhs) noexcept {
+  return internal::equal(lhs, rhs, make_index_seq<sizeof...(Svalues)>{});
 }
 
-template <index_t ndim>
-MATHPRIM_PRIMFUNC bool operator==(const index_array<ndim> &lhs, const index_array<ndim> &rhs) noexcept {
-  return internal::equal(lhs, rhs, make_index_seq<ndim>{});
+template <index_t Ndim>
+MATHPRIM_PRIMFUNC bool operator==(const index_array<Ndim> &lhs, const index_array<Ndim> &rhs) noexcept {
+  return internal::equal(lhs, rhs, make_index_seq<Ndim>{});
 }
 
-template <index_t ndim>
-MATHPRIM_PRIMFUNC index_array<ndim> operator*(index_t alpha, const index_array<ndim> &array) noexcept {
-  return internal::multiply(alpha, array, make_index_seq<ndim>{});
+template <index_t Ndim>
+MATHPRIM_PRIMFUNC index_array<Ndim> operator*(index_t alpha, const index_array<Ndim> &array) noexcept {
+  return internal::multiply(alpha, array, make_index_seq<Ndim>{});
 }
 
-template <index_t ndim>
-MATHPRIM_PRIMFUNC index_array<ndim> operator*(const index_array<ndim> &array, index_t alpha) noexcept {
-  return internal::multiply(alpha, array, make_index_seq<ndim>{});
+template <index_t Ndim>
+MATHPRIM_PRIMFUNC index_array<Ndim> operator*(const index_array<Ndim> &array, index_t alpha) noexcept {
+  return internal::multiply(alpha, array, make_index_seq<Ndim>{});
 }
 
-template <index_t... svalues1, index_t... svalues2>
-constexpr MATHPRIM_PRIMFUNC bool operator!=(const index_pack<svalues1...> &lhs,
-                                            const index_pack<svalues2...> &rhs) noexcept {
+template <index_t... Svalues1, index_t... Svalues2>
+constexpr MATHPRIM_PRIMFUNC bool operator!=(const index_pack<Svalues1...> &lhs,
+                                            const index_pack<Svalues2...> &rhs) noexcept {
   return !(lhs == rhs);
 }
 
-template <index_t... svalues1, index_t... svalues2>
-constexpr MATHPRIM_PRIMFUNC god::arithmetic_seq_plus<index_pack<svalues1...>, index_pack<svalues2...>> operator+(
-    const index_pack<svalues1...> &lhs, const index_pack<svalues2...> &rhs) noexcept {
-  return god::arithmetic_seq_plus<index_pack<svalues1...>, index_pack<svalues2...>>(
-      internal::plus(lhs, rhs, make_index_seq<sizeof...(svalues1)>{}));
+template <index_t... Svalues1, index_t... Svalues2>
+constexpr MATHPRIM_PRIMFUNC god::arithmetic_seq_plus<index_pack<Svalues1...>, index_pack<Svalues2...>> operator+(
+    const index_pack<Svalues1...> &lhs, const index_pack<Svalues2...> &rhs) noexcept {
+  return god::arithmetic_seq_plus<index_pack<Svalues1...>, index_pack<Svalues2...>>(
+      internal::plus(lhs, rhs, make_index_seq<sizeof...(Svalues1)>{}));
 }
 
-template <index_t... svalues1, index_t... svalues2>
-constexpr MATHPRIM_PRIMFUNC god::arithmetic_seq_up_div<index_pack<svalues1...>, index_pack<svalues2...>> up_div(
-    const index_pack<svalues1...> &lhs, const index_pack<svalues2...> &rhs) noexcept {
-  return god::arithmetic_seq_up_div<index_pack<svalues1...>, index_pack<svalues2...>>(
+template <index_t... Svalues1, index_t... Svalues2>
+constexpr MATHPRIM_PRIMFUNC god::arithmetic_seq_up_div<index_pack<Svalues1...>, index_pack<Svalues2...>> up_div(
+    const index_pack<Svalues1...> &lhs, const index_pack<Svalues2...> &rhs) noexcept {
+  return god::arithmetic_seq_up_div<index_pack<Svalues1...>, index_pack<Svalues2...>>(
       up_div(lhs.to_array(), rhs.to_array()));
 }
 
@@ -676,19 +684,19 @@ constexpr MATHPRIM_PRIMFUNC god::arithmetic_seq_up_div<index_pack<svalues1...>, 
 ///////////////////////////////////////////////////////////////////////////////
 namespace std {
 
-template <::mathprim::index_t ndim>
-struct tuple_size<::mathprim::index_array<ndim>> : std::integral_constant<size_t, static_cast<size_t>(ndim)> {};
+template <::mathprim::index_t Ndim>
+struct tuple_size<::mathprim::index_array<Ndim>> : std::integral_constant<size_t, static_cast<size_t>(Ndim)> {};
 
-template <size_t i, ::mathprim::index_t ndim>
-struct tuple_element<i, ::mathprim::index_array<ndim>> {
+template <size_t I, ::mathprim::index_t Ndim>
+struct tuple_element<I, ::mathprim::index_array<Ndim>> {
   using type = ::mathprim::index_t;
 };
 
-template <::mathprim::index_t... svalues>
-struct tuple_size<::mathprim::index_pack<svalues...>> : std::integral_constant<size_t, sizeof...(svalues)> {};
+template <::mathprim::index_t... Svalues>
+struct tuple_size<::mathprim::index_pack<Svalues...>> : std::integral_constant<size_t, sizeof...(Svalues)> {};
 
-template <size_t i, ::mathprim::index_t... svalues>
-struct tuple_element<i, ::mathprim::index_pack<svalues...>> {
+template <size_t I, ::mathprim::index_t... Svalues>
+struct tuple_element<I, ::mathprim::index_pack<Svalues...>> {
   using type = ::mathprim::index_t;
 };
 

@@ -44,7 +44,7 @@ public:
     return fx;
   }
 
-  const ptrdiff_t get_ncalls() { return ncalls; }
+  ptrdiff_t get_ncalls() { return ncalls; }
 };
 
 template <template <class> typename LineSearch>

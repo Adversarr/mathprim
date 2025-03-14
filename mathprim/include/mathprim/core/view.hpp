@@ -3,7 +3,6 @@
 
 #include "dim.hpp"
 #include "mathprim/core/defines.hpp"
-#include "mathprim/core/utils/common.hpp"
 #include "mathprim/core/utils/index_pack.hpp"
 
 namespace mathprim {
@@ -410,10 +409,9 @@ public:
     return {data_, shape, make_default_stride<Scalar>(shape)};
   }
 
-  template <typename... Integers, typename = std::enable_if_t<(std::is_integral_v<Integers> && ...)>>
-  MATHPRIM_PRIMFUNC basic_view<Scalar, dshape<sizeof...(Integers)>, default_stride_t<dshape<sizeof...(Integers)>>, Dev>
-  reshape(Integers... dims) const {
-    return reshape(dshape<sizeof...(Integers)>{static_cast<index_t>(dims)...});
+  template <typename... Integers, typename = std::enable_if_t<((!is_index_pack_v<Integers>) && ...)>>
+  MATHPRIM_PRIMFUNC auto reshape(Integers... dims) const {
+    return reshape(make_shape(dims...));
   }
 
   /**

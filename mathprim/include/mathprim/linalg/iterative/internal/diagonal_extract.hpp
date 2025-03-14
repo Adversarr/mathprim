@@ -36,12 +36,11 @@ struct diagonal_extract<Scalar, device::cpu, Compression> {
 /// CUDA implementation
 ///////////////////////////////////////////////////////////////////////////////
 #ifdef __CUDACC__
-template <typename Scalar>
-struct diagonal_extract<Scalar, device::cuda, sparse::sparse_format::csr> {
+template <typename Scalar, sparse::sparse_format Compression>
+struct diagonal_extract<Scalar, device::cuda, Compression>  {
   using buffer_type = contiguous_buffer<Scalar, shape_t<keep_dim>, device::cuda>;
 
-  static buffer_type extract(
-      const sparse::basic_sparse_view<const Scalar, device::cuda, sparse::sparse_format::csr>& mat) {
+  static buffer_type extract(const sparse::basic_sparse_view<const Scalar, device::cuda, Compression>& mat) {
     auto diag = make_cuda_buffer<Scalar>(make_shape(mat.rows()));
     par::cuda pf;
     diag.fill_bytes(0);

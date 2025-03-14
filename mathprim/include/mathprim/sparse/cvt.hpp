@@ -208,6 +208,12 @@ make_from_triplets(Iter begin, Iter end,                      //
     outer_ptrs[i] = merged[i].row_;
     inner_indices[i] = merged[i].col_;
     values[i] = merged[i].value_;
+
+    if (outer_ptrs[i] < 0 || outer_ptrs[i] >= rows) {
+      throw std::runtime_error("Invalid index (row) in the sparse matrix: " + std::to_string(outer_ptrs[i]));
+    } else if (inner_indices[i] < 0 || inner_indices[i] >= cols) {
+      throw std::runtime_error("Invalid index (col) in the sparse matrix: " + std::to_string(inner_indices[i]));
+    }
   }
 
   return result;

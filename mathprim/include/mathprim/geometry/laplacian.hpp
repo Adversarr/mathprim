@@ -188,6 +188,14 @@ struct laplacian_builder<Format, Scalar, 3, 4, device::cpu> {
       }
 
       // TODO: Make spsd enough.
+      Eigen::SelfAdjointEigenSolver<Eigen::Matrix<Scalar, 4, 4>> eigensolver(local);
+      if (eigensolver.info() != Eigen::Success) {
+        throw std::runtime_error("Eigen solver failed.");
+      }
+      Eigen::Matrix<Scalar, 4, 4> eigenvectors = eigensolver.eigenvectors();
+      Eigen::Vector<Scalar, 4> eigvals = eigensolver.eigenvalues();
+      local = eigenvectors * eigvals.asDiagonal() * eigenvectors.transpose();
+
       for (index_t i = 0; i < 4; ++i) {
         for (index_t j = 0; j < 4; ++j) {
           entries.push_back({elem[i], elem[j], local(i, j)});
@@ -209,6 +217,13 @@ template <sparse::sparse_format Format, typename Scalar, index_t SpaceNdim, inde
 sparse::basic_sparse_matrix<Scalar, Device, Format> build_laplacian(
     const basic_mesh<Scalar, SpaceNdim, SimplexNdim, Device>& mesh) {
   return laplacian_builder<Format, Scalar, SpaceNdim, SimplexNdim, Device>::build(mesh);
+}
+
+template <sparse::sparse_format Format, typename Scalar, index_t SpaceNdim, index_t SimplexNdim, typename Device>
+sparse::basic_sparse_matrix<Scalar, Device, Format> build_laplacian(
+    const basic_mesh<Scalar, SpaceNdim, SimplexNdim, Device>& mesh,
+    contiguous_vector_view<const Scalar, Device> elem_coeffs) {
+  return laplacian_builder<Format, Scalar, SpaceNdim, SimplexNdim, Device>::build(mesh, elem_coeffs);
 }
 
 }  // namespace mathprim::geometry
