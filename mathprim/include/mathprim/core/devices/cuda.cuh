@@ -170,8 +170,4 @@ from_cuda_pitched_ptr(cudaPitchedPtr ptr) {
                             stride_t<keep_dim, 1>(pitch, 1));
 }
 
-namespace internal {
-// TODO: Implements CUDA memcpy for pitched ptr.
-}
-
 } // namespace mathprim

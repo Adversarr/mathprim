@@ -2,7 +2,8 @@
 #include "mathprim/core/dim.hpp"
 
 namespace mathprim::par {
-
+template <class ParImpl>
+class parfor;
 template <typename IterT>
 struct vmap_arg {
   using reference = typename IterT::reference;
@@ -54,12 +55,49 @@ struct make_output_vmapped {
   Fn fn_;
 };
 
+template <typename Derived>
+struct basic_task {
+  template <typename ParImpl>
+  void run(const parfor<ParImpl>& parallel) { // NOLINT
+    static_cast<Derived*>(this)->template run_impl<ParImpl>(parallel);
+  }
+};
+
+template <typename Fn, index_t ... Sgrids>
+struct basic_task_with_grid : public basic_task<basic_task_with_grid<Fn, Sgrids...>> {
+  Fn fn_;
+  index_pack<Sgrids...> grid_dim_;
+
+  MATHPRIM_PRIMFUNC explicit basic_task_with_grid(index_pack<Sgrids...> grid_dim, Fn fn) :
+      fn_(fn), grid_dim_(grid_dim) {}
+
+  template <typename ParImpl>
+  void run_impl(const parfor<ParImpl>& parallel) const noexcept {
+    parallel.run(grid_dim_, fn_);
+  }
+};
+
+template <typename Fn, typename Sgrid, typename Sblock>
+struct basic_task_with_grid_block : public basic_task<basic_task_with_grid_block<Fn, Sgrid, Sblock>> {
+  Fn fn_;
+  Sgrid grid_dim_;
+  Sblock block_dim_;
+
+  MATHPRIM_PRIMFUNC explicit basic_task_with_grid_block(Sgrid grid_dim, Sblock block_dim, Fn fn) :
+      fn_(fn), grid_dim_(grid_dim), block_dim_(block_dim) {}
+
+  template <typename ParImpl>
+  void run_impl(const parfor<ParImpl>& parallel) const noexcept {
+    parallel.run(grid_dim_, block_dim_, fn_);
+  }
+};
+
 ///////////////////////////////////////////////////////////////////////////////
 /// Parallel for loop
 ///////////////////////////////////////////////////////////////////////////////
 
 /**
- * @brief CRTP base class for parallel for loop.
+* @brief CRTP base class for parallel for loop.
  * 
  * @tparam ParImpl 
  */
@@ -122,6 +160,16 @@ public:
     // ensure is a vmap_arg
     static_cast<ParImpl*>(this)->template vmap_impl<Fn>(std::forward<Fn>(fn),
                                                         make_vmap_arg(std::forward<VmapArgs>(args))...);
+  }
+
+  template <typename TaskDerived>
+  void run(basic_task<TaskDerived>& task) const noexcept {
+    task.template run<ParImpl>(*this);
+  }
+
+  template <typename TaskDerived>
+  void run(const basic_task<TaskDerived>& task) const noexcept {
+    task.template run<ParImpl>(*this);
   }
 
 protected:

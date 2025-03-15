@@ -392,7 +392,7 @@ GTEST_TEST(gather, force) {
       gather_info.emplace_back(dst, src, 1.0f);
     }
   }
-  
+
   sparse::basic_gather_info<float, device::cpu> info(4, 6, true);
   info.set_from_triplets(gather_info.begin(), gather_info.end());
   auto result_buf = make_buffer<float, device::cpu>(4, 2_s);
@@ -408,4 +408,28 @@ GTEST_TEST(gather, force) {
       EXPECT_FLOAT_EQ(result(i, j), gt(i, j));
     }
   }
+}
+
+GTEST_TEST(sparse, visitor) {
+  const int rows = 3, cols = 3, nnz = 5;
+  float h_csr_values[] = {1.0f, 2.0f, 3.0f, 4.0f, 5.0f};
+  int h_csr_col_idx[] = {0, 1, 1, 2, 2};
+  int h_csr_row_ptr[] = {0, 2, 4, 5};
+
+  sparse::basic_sparse_view<const float, device::cpu, sparse::sparse_format::csr> mat(
+      view(h_csr_values, make_shape(nnz)).as_const(), view(h_csr_row_ptr, make_shape(rows + 1)).as_const(),
+      view(h_csr_col_idx, make_shape(nnz)).as_const(), rows, cols, nnz, sparse::sparse_property::general);
+
+  auto ex = par::seq();
+  sparse::sparse_visit_task visitor(mat, [&, cnt = 0](int /* i */, int /* j */, float v) mutable {
+    EXPECT_FLOAT_EQ(v, h_csr_values[cnt]);
+    ++cnt;
+  });
+  ex.run(visitor);
+
+  auto visitor2 = mat.visit([&, cnt = 0](int /* i */, int /* j */, float v) mutable {
+    EXPECT_FLOAT_EQ(v, h_csr_values[cnt]);
+    ++cnt;
+  });
+  ex.run(visitor2);
 }

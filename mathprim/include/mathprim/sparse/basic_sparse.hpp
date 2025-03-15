@@ -2,6 +2,7 @@
 #include "mathprim/core/buffer.hpp"
 #include "mathprim/core/utils/common.hpp"
 #include "mathprim/core/view.hpp"
+#include "mathprim/parallel/parallel.hpp"
 namespace mathprim::sparse {
 
 enum class sparse_format {
@@ -35,6 +36,9 @@ struct entry {
   entry(index_t row, index_t col, Scalar value) : row_(row), col_(col), value_(value) {}
   entry(index_t row, index_t col) : row_(row), col_(col), value_(0) {}
 };
+
+template <typename Fn, typename Scalar, typename Device, sparse_format SparseCompression>
+struct sparse_visit_task;
 
 template <typename Scalar, typename Device, sparse_format SparseCompression>
 class basic_sparse_view {
@@ -82,15 +86,15 @@ public:
     }
   }
 
-  MATHPRIM_PRIMFUNC values_view values() const noexcept {
+  MATHPRIM_PRIMFUNC const values_view &values() const noexcept {
     return values_;
   }
 
-  MATHPRIM_PRIMFUNC ptrs_view outer_ptrs() const noexcept {
+  MATHPRIM_PRIMFUNC const ptrs_view &outer_ptrs() const noexcept {
     return outer_ptrs_;
   }
 
-  MATHPRIM_PRIMFUNC ptrs_view inner_indices() const noexcept {
+  MATHPRIM_PRIMFUNC const ptrs_view &inner_indices() const noexcept {
     return inner_indices_;
   }
 
@@ -117,6 +121,18 @@ public:
   basic_sparse_view<std::add_const_t<Scalar>, Device, SparseCompression> as_const() const noexcept {
     return basic_sparse_view<std::add_const_t<Scalar>, Device, SparseCompression>(
         values_.as_const(), outer_ptrs_.as_const(), inner_indices_.as_const(), rows_, cols_, nnz_, property_);
+  }
+
+  /**
+   * @brief Create a visiting task suitable for parfor execution.
+   * 
+   * @tparam Fn 
+   * @param fn 
+   * @return visitor<Fn, Scalar, Device, SparseCompression> 
+   */
+  template <typename Fn>
+  sparse_visit_task<Fn, Scalar, Device, SparseCompression> visit(Fn&& fn) {
+    return {*this, std::forward<Fn>(fn)};
   }
 
 private:
@@ -400,5 +416,44 @@ void visit(const basic_sparse_view<Scalar, device::cuda, SparseCompression>& vie
   }
 }
 #endif
+
+template <typename Fn, typename Scalar, typename Device, sparse_format SparseCompression>
+struct sparse_visit_task : public par::basic_task<sparse_visit_task<Fn, Scalar, Device, SparseCompression>> {
+  Fn fn_;
+  basic_sparse_view<Scalar, Device, SparseCompression> view_;
+  sparse_visit_task(basic_sparse_view<Scalar, Device, SparseCompression> view, Fn fn) : fn_(fn), view_(view) {}
+
+  MATHPRIM_INTERNAL_COPY(sparse_visit_task, default);
+  MATHPRIM_INTERNAL_MOVE(sparse_visit_task, default);
+
+  MATHPRIM_PRIMFUNC void operator()(index_t outer_entry) {
+    auto outer = view_.outer_ptrs();
+    auto inner = view_.inner_indices();
+    auto values = view_.values();
+    
+    if constexpr (SparseCompression == sparse_format::csr) {
+      auto start = outer[outer_entry];
+      auto end = outer[outer_entry + 1];
+      for (index_t j = start; j < end; ++j) {
+        fn_(outer_entry, inner[j], values[j]);
+      }
+    } else if constexpr (SparseCompression == sparse_format::csc) {
+      auto start = outer[outer_entry];
+      auto end = outer[outer_entry + 1];
+      for (index_t i = start; i < end; ++i) {
+        fn_(inner[i], outer_entry, values[i]);
+      }
+    } else if constexpr (SparseCompression == sparse_format::coo) {
+      fn_(inner[outer_entry], outer_entry, values[outer_entry]);
+    } else {
+      static_assert(::mathprim::internal::always_false_v<Scalar>, "Not implemented");
+    }
+  }
+
+  template <typename ParImpl>
+  void run_impl(const par::parfor<ParImpl>& pf) {
+    pf.run(make_shape(view_.outer_ptrs().size() - 1), *this);
+  }
+};
 
 }  // namespace mathprim::sparse
