@@ -61,34 +61,10 @@ struct basic_task {
   void run(const parfor<ParImpl>& parallel) { // NOLINT
     static_cast<Derived*>(this)->template run_impl<ParImpl>(parallel);
   }
-};
-
-template <typename Fn, index_t ... Sgrids>
-struct basic_task_with_grid : public basic_task<basic_task_with_grid<Fn, Sgrids...>> {
-  Fn fn_;
-  index_pack<Sgrids...> grid_dim_;
-
-  MATHPRIM_PRIMFUNC explicit basic_task_with_grid(index_pack<Sgrids...> grid_dim, Fn fn) :
-      fn_(fn), grid_dim_(grid_dim) {}
 
   template <typename ParImpl>
-  void run_impl(const parfor<ParImpl>& parallel) const noexcept {
-    parallel.run(grid_dim_, fn_);
-  }
-};
-
-template <typename Fn, typename Sgrid, typename Sblock>
-struct basic_task_with_grid_block : public basic_task<basic_task_with_grid_block<Fn, Sgrid, Sblock>> {
-  Fn fn_;
-  Sgrid grid_dim_;
-  Sblock block_dim_;
-
-  MATHPRIM_PRIMFUNC explicit basic_task_with_grid_block(Sgrid grid_dim, Sblock block_dim, Fn fn) :
-      fn_(fn), grid_dim_(grid_dim), block_dim_(block_dim) {}
-
-  template <typename ParImpl>
-  void run_impl(const parfor<ParImpl>& parallel) const noexcept {
-    parallel.run(grid_dim_, block_dim_, fn_);
+  void run(const parfor<ParImpl>& parallel) const {  // NOLINT
+    static_cast<const Derived*>(this)->template run_impl<ParImpl>(parallel);
   }
 };
 
@@ -104,6 +80,8 @@ struct basic_task_with_grid_block : public basic_task<basic_task_with_grid_block
 template <class ParImpl>
 class parfor {
 public:
+  ParImpl& derived() noexcept { return static_cast<ParImpl&>(*this); }
+  const ParImpl& derived() const noexcept { return static_cast<ParImpl const&>(*this); }
   /**
    * @brief Launch a kernel with grid and block dimensions
    *

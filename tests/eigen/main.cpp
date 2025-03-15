@@ -256,3 +256,30 @@ GTEST_TEST(inv, 3d) {
   std::cout << "inv: " << std::endl << inv << std::endl;
   std::cout << "inv_gt: " << std::endl << inv_gt << std::endl;
 }
+
+GTEST_TEST(view, rect) {
+  Eigen::Matrix<float, 4, 3> m;
+  for (int r = 0; r < 4; ++r) {
+    for (int c = 0; c < 3; ++c) {
+      m(r, c) = static_cast<float>(r * 4 + c);
+    }
+  }
+
+  auto view = eigen_support::view(m);
+  for (auto [c, r] : view.shape()) {
+    EXPECT_EQ(view(c, r), m(r, c));
+  }
+  using namespace literal;
+  auto buf = make_buffer<float>(4_s, 3_s);
+  auto view2 = buf.view();
+  auto map = eigen_support::map(view2);
+  std::cout << map.RowsAtCompileTime << std::endl;
+  std::cout << map.ColsAtCompileTime << std::endl;
+  for (auto [c, r] : view2.shape()) {
+    view2(c, r) = static_cast<float>(r * 4 + c);
+  }
+
+  for (auto [c, r] : view2.shape()) {
+    EXPECT_EQ(view2(c, r), map(r, c));
+  }
+}

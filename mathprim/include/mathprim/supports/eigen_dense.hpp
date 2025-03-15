@@ -161,12 +161,11 @@ static constexpr Eigen::AlignmentType alignment_v = internal::alignment_impl<T, 
 
 /// Determine a proper type for mapped matrix
 template <typename T, int rows, int cols, typename dev>
-using matrix_map_t = Eigen::Map<matrix_t<T, cols, rows>, Eigen::Unaligned, Eigen::Stride<dynamic, dynamic>>;
+using matrix_map_t = Eigen::Map<matrix_t<T, rows, cols>, Eigen::Unaligned, Eigen::Stride<dynamic, dynamic>>;
 
 /// Determine a proper type for contiguous mapped matrix
 template <typename T, int rows, int cols, typename dev>
-using matrix_cmap_t = Eigen::Map<matrix_t<T, cols, rows>>;
-// using matrix_cmap_t = Eigen::Map<matrix_t<T, cols, rows>, alignment_v<T, dev, rows, cols>, Eigen::Stride<0, 0>>;
+using matrix_cmap_t = Eigen::Map<matrix_t<T, rows, cols>>;
 
 template <typename EigenMatrix>
 using from_eigen_shape_t = std::conditional_t<
@@ -188,11 +187,11 @@ template <typename T, int rows, typename dev> using vector_cmap_t = Eigen::Map<v
 // using vector_cmap_t = Eigen::Map<vector_t<T, rows>, alignment_v<T, dev, rows, 1>, Eigen::Stride<0, 0>>;
 
 /**
- * @brief Create a contiguous map to matrix from a buffer view.
+ * @brief Create a contiguous map to matrix from a buffer view. (Always transpose, due to Eigen's column-major layout)
  */
 template <typename Scalar, index_t s_rows, index_t s_cols, index_t outer_stride, index_t inner_stride, typename dev>
 MATHPRIM_PRIMFUNC matrix_cmap_t<Scalar, to_eigen_v<s_rows>, to_eigen_v<s_cols>, dev> cmap(
-    basic_view<Scalar, shape_t<s_rows, s_cols>, stride_t<outer_stride, inner_stride>, dev> view) noexcept {
+    basic_view<Scalar, shape_t<s_cols, s_rows>, stride_t<outer_stride, inner_stride>, dev> view) noexcept {
   MATHPRIM_ASSERT(view.is_contiguous());
   auto [cols, rows] = view.shape();
   return {view.data(), rows, cols};
@@ -208,6 +207,9 @@ MATHPRIM_PRIMFUNC vector_cmap_t<Scalar, to_eigen_v<s_rows>, dev> cmap(
   return {view.data(), view.shape(0)};
 }
 
+/**
+ * @brief Create a map to matrix from a buffer view. (Always transpose, due to Eigen's column-major layout)
+ */
 template <typename dev = device::cpu, typename Scalar, int Rows, int Cols, int Options, int MaxRows, int MaxCols>
 MATHPRIM_PRIMFUNC matrix_view_t<Eigen::Matrix<Scalar, Rows, Cols, Options, MaxRows, MaxCols>, true, dev> view(
     const Eigen::Matrix<Scalar, Rows, Cols, Options, MaxRows, MaxCols> &mat) noexcept {
@@ -219,6 +221,9 @@ MATHPRIM_PRIMFUNC matrix_view_t<Eigen::Matrix<Scalar, Rows, Cols, Options, MaxRo
   }
 }
 
+/**
+ * @brief Create a map to matrix from a buffer view. (Always transpose, due to Eigen's column-major layout)
+ */
 template <typename dev = device::cpu, typename Scalar, int Rows, int Cols, int Options, int MaxRows, int MaxCols>
 MATHPRIM_PRIMFUNC matrix_view_t<Eigen::Matrix<Scalar, Rows, Cols, Options, MaxRows, MaxCols>, false, dev> view(
     Eigen::Matrix<Scalar, Rows, Cols, Options, MaxRows, MaxCols> &mat) noexcept {
@@ -231,23 +236,26 @@ MATHPRIM_PRIMFUNC matrix_view_t<Eigen::Matrix<Scalar, Rows, Cols, Options, MaxRo
 }
 
 /**
- * @brief Create a map to matrix from a buffer view.
+ * @brief Create a map to matrix from a buffer view. (Always transpose, due to Eigen's column-major layout)
  */
 template <typename Scalar, index_t s_rows, index_t s_cols, index_t outer_stride, index_t inner_stride, typename dev>
 MATHPRIM_PRIMFUNC matrix_map_t<Scalar, to_eigen_v<s_rows>, to_eigen_v<s_cols>, dev> map(
-    basic_view<Scalar, shape_t<s_rows, s_cols>, stride_t<outer_stride, inner_stride>, dev> view) noexcept {
+    basic_view<Scalar, shape_t<s_cols, s_rows>, stride_t<outer_stride, inner_stride>, dev> view) noexcept {
   auto [cols, rows] = view.shape();
   auto [outer, inner] = view.stride();
   return {view.data(), rows, cols, Eigen::Stride<Eigen::Dynamic, Eigen::Dynamic>(outer, inner)};
 }
 
+/**
+ * @brief Create a map to matrix from a buffer view. (Always transpose, due to Eigen's column-major layout)
+ */
 template <typename Scalar, index_t s_rows, index_t s_cols, index_t outer_stride, index_t inner_stride, typename dev>
 MATHPRIM_PRIMFUNC std::conditional_t<
-    ::mathprim::internal::is_contiguous_compile_time_v<shape_t<s_rows, s_cols>, stride_t<outer_stride, inner_stride>>,
+    ::mathprim::internal::is_contiguous_compile_time_v<shape_t<s_cols, s_rows>, stride_t<outer_stride, inner_stride>>,
     matrix_cmap_t<Scalar, to_eigen_v<s_rows>, to_eigen_v<s_cols>, dev>,
     matrix_map_t<Scalar, to_eigen_v<s_rows>, to_eigen_v<s_cols>, dev>>
-amap(basic_view<Scalar, shape_t<s_rows, s_cols>, stride_t<outer_stride, inner_stride>, dev> view) noexcept {
-  if constexpr (::mathprim::internal::is_contiguous_compile_time_v<shape_t<s_rows, s_cols>,
+amap(basic_view<Scalar, shape_t<s_cols, s_rows>, stride_t<outer_stride, inner_stride>, dev> view) noexcept {
+  if constexpr (::mathprim::internal::is_contiguous_compile_time_v<shape_t<s_cols, s_rows>,
                                                                    stride_t<outer_stride, inner_stride>>) {
     return cmap<Scalar, s_rows, s_cols, outer_stride, inner_stride, dev>(view);
   } else {
@@ -279,14 +287,13 @@ MATHPRIM_PRIMFUNC vector_map_t<Scalar, to_eigen_v<s_rows>, dev> map(
 }
 
 /**
- * @brief Create a contiguous Eigen::Ref from a buffer view. (matrix)
+ * @brief Create a contiguous Eigen::Ref from a buffer view. (Always transpose, due to Eigen's column-major layout)
  */
 template <typename Scalar, index_t s_rows, index_t s_cols, index_t outer_stride, index_t inner_stride, typename dev>
-MATHPRIM_PRIMFUNC Eigen::Ref<matrix_t<Scalar, to_eigen_v<s_rows>, to_eigen_v<s_cols>>,
-                             alignment_v<Scalar, dev, to_eigen_v<s_rows>, to_eigen_v<s_cols>>>
-cref(basic_view<Scalar, shape_t<s_rows, s_cols>, stride_t<outer_stride, inner_stride>, dev> view) noexcept {
+MATHPRIM_PRIMFUNC Eigen::Ref<matrix_t<Scalar, to_eigen_v<s_rows>, to_eigen_v<s_cols>>>  //
+cref(basic_view<Scalar, shape_t<s_cols, s_rows>, stride_t<outer_stride, inner_stride>, dev> view) noexcept {
   MATHPRIM_ASSERT(view.is_contiguous());
-  auto [rows, cols] = view.shape();
+  auto [cols, rows] = view.shape();
   return {view.data(), rows, cols};
 }
 
@@ -294,7 +301,7 @@ cref(basic_view<Scalar, shape_t<s_rows, s_cols>, stride_t<outer_stride, inner_st
  * @brief Create a contiguous Eigen::Ref from a buffer view. (vector)
  */
 template <typename Scalar, index_t s_rows, index_t inner_stride, typename dev>
-MATHPRIM_PRIMFUNC Eigen::Ref<vector_t<Scalar, to_eigen_v<s_rows>>, alignment_v<Scalar, dev, to_eigen_v<s_rows>, 1>>
+MATHPRIM_PRIMFUNC Eigen::Ref<vector_t<Scalar, to_eigen_v<s_rows>>>  //
 cref(basic_view<Scalar, shape_t<s_rows>, stride_t<inner_stride>, dev> view) noexcept {
   MATHPRIM_ASSERT(view.is_contiguous());
   return {view.data(), view.shape(0)};
@@ -304,12 +311,11 @@ cref(basic_view<Scalar, shape_t<s_rows>, stride_t<inner_stride>, dev> view) noex
  * @brief Create a Eigen::Ref from a buffer view. (matrix)
  */
 template <typename Scalar, index_t s_rows, index_t s_cols, index_t outer_stride, index_t inner_stride, typename dev>
-MATHPRIM_PRIMFUNC Eigen::Ref<matrix_t<Scalar, to_eigen_v<s_rows>, to_eigen_v<s_cols>>,
-                             alignment_v<Scalar, dev, to_eigen_v<s_rows>, to_eigen_v<s_cols>>>
-ref(basic_view<Scalar, shape_t<s_rows, s_cols>, stride_t<outer_stride, inner_stride>, dev> view) noexcept {
-  auto [rows, cols] = view.shape();
+MATHPRIM_PRIMFUNC Eigen::Ref<matrix_t<Scalar, to_eigen_v<s_rows>, to_eigen_v<s_cols>>>  //
+ref(basic_view<Scalar, shape_t<s_cols, s_rows>, stride_t<outer_stride, inner_stride>, dev> view) noexcept {
+  auto [cols, rows] = view.shape();
   auto [outer, inner] = view.stride();
-  return {view.data(), rows, cols, Eigen::Stride<Eigen::Dynamic, Eigen::Dynamic>(outer, inner)};
+  return {view.data(), cols, rows, Eigen::Stride<Eigen::Dynamic, Eigen::Dynamic>(outer, inner)};
 }
 
 /**
