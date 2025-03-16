@@ -39,7 +39,7 @@ struct basic_gather_desc {
  * @brief An operator that suitable for parfor.
  */
 template <typename Scalar, typename Device, index_t VectorizedDim>
-struct basic_gather_operator {
+struct basic_gather_operator : public par::basic_task<basic_gather_operator<Scalar, Device, VectorizedDim>> {
   using data_item = contiguous_view<Scalar, dshape<VectorizedDim>, Device>;
   using const_item = contiguous_view<const Scalar, dshape<VectorizedDim>, Device>;
   using data_view = batched<data_item>;
@@ -58,6 +58,12 @@ struct basic_gather_operator {
   desc_type desc_;
   Scalar alpha_{1};
 
+  template <typename ParImpl>
+  void run(const par::parfor<ParImpl> &parallel) const noexcept {
+    index_t dst_size = dst_.shape(0);
+    parallel.run(dst_size, *this);
+  }
+
   MATHPRIM_PRIMFUNC void operator()(index_t outer) {
     const index_t start = desc_.outer_ptrs_(outer);
     const index_t end = desc_.outer_ptrs_(outer + 1);
@@ -70,26 +76,33 @@ struct basic_gather_operator {
 };
 
 template <typename Scalar, typename Device>
-struct basic_gather_operator<Scalar, Device, 0> {
+struct basic_gather_operator<Scalar, Device, 0> : public par::basic_task<basic_gather_operator<Scalar, Device, 0>> {
   using data_view = contiguous_vector_view<Scalar, Device>;
   using const_data = contiguous_vector_view<const Scalar, Device>;
   using desc_type = basic_gather_desc<Scalar, Device>;
 
-  MATHPRIM_PRIMFUNC basic_gather_operator(data_view dst, const_data src, desc_type desc) noexcept :
-      dst_(dst), src_(src), desc_(desc) {}
+  MATHPRIM_PRIMFUNC basic_gather_operator(data_view dst, const_data src, desc_type desc, Scalar alpha = 1) noexcept :
+      dst_(dst), src_(src), desc_(desc), alpha_(alpha) {}
 
   MATHPRIM_INTERNAL_COPY(basic_gather_operator, default);
   MATHPRIM_INTERNAL_MOVE(basic_gather_operator, default);
   data_view dst_;
   const_data src_;
   desc_type desc_;
+  Scalar alpha_{1};
+
+  template <typename ParImpl>
+  void run(const par::parfor<ParImpl> &parallel) const noexcept {
+    index_t dst_size = dst_.shape(0);
+    parallel.run(dst_size, *this);
+  }
 
   MATHPRIM_PRIMFUNC void operator()(index_t outer) const noexcept {
-    Scalar out = 0;
+    Scalar out = dst_(outer);
     const index_t start = desc_.outer_ptrs_(outer);
     const index_t end = desc_.outer_ptrs_(outer + 1);
     for (index_t i = start; i < end; ++i) {
-      Scalar alpha = desc_.weight_ ? desc_.weight_(i) : 1;
+      Scalar alpha = (desc_.weight_ ? desc_.weight_(i) : 1) * alpha_;
       out += alpha * src_[desc_.inner_inds_(i)];
     }
 
