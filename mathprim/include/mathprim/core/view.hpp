@@ -21,7 +21,8 @@ struct flatten<index_seq<Front>> {
 };
 template <index_t Front, index_t... Args>
 struct flatten<index_seq<Front, Args...>> {
-  static constexpr index_t value = Front == keep_dim ? flatten<index_seq<Args...>>::value : Front;
+  static constexpr index_t sub_flatten = flatten<index_seq<Args...>>::value;
+  static constexpr index_t value = (Front == keep_dim || sub_flatten == keep_dim) ? keep_dim : Front * sub_flatten;
 };
 template <typename Seq>
 constexpr index_t flatten_v = flatten<Seq>::value;
