@@ -49,6 +49,28 @@ void par_for_norm_mathprim(benchmark::State &state) {
     cudaDeviceSynchronize();
   }
 }
+template <typename Scalar>
+struct sqr_out {
+  MATHPRIM_PRIMFUNC Scalar operator()(Scalar x) const { return x * x; }
+};
+
+template <typename Flt>
+void par_for_norm_vmap(benchmark::State &state) {
+  int n = state.range();
+
+  int blocksize = 256;
+  int gridsize = (n + blocksize - 1) / blocksize;
+
+  auto buf_x = make_cuda_buffer<Flt>(n);
+  auto buf_y = make_cuda_buffer<Flt>(n);
+
+  auto pf = par::cuda();
+
+  for (auto _ : state) {
+    pf.vmap(par::make_output_vmapped(sqr_out<Flt>()), buf_y.view(), buf_x.view());
+    cudaDeviceSynchronize();
+  }
+}
 
 BENCHMARK_TEMPLATE(par_for_norm, float)
     ->RangeMultiplier(2)
@@ -64,5 +86,14 @@ BENCHMARK_TEMPLATE(par_for_norm_mathprim, float)
 BENCHMARK_TEMPLATE(par_for_norm_mathprim, double)
     ->RangeMultiplier(2)
     ->Range(1 << 20, 1 << 24);
+
+BENCHMARK_TEMPLATE(par_for_norm_vmap, float)
+    ->RangeMultiplier(2)
+    ->Range(1 << 20, 1 << 24);
+
+BENCHMARK_TEMPLATE(par_for_norm_vmap, double)
+    ->RangeMultiplier(2)
+    ->Range(1 << 20, 1 << 24);
+
 
 BENCHMARK_MAIN();

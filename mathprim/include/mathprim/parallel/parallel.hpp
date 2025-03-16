@@ -49,8 +49,8 @@ struct make_output_vmapped {
   explicit make_output_vmapped(Fn fn) : fn_(fn) {}
 
   template <typename... Args, typename Front>
-  MATHPRIM_PRIMFUNC void operator()(Front& last, Args&&... args) const noexcept {
-    last = fn_(std::forward<Args>(args)...);
+  MATHPRIM_PRIMFUNC void operator()(Front& front, Args&&... args) const noexcept {
+    front = fn_(std::forward<Args>(args)...);
   }
   Fn fn_;
 };
