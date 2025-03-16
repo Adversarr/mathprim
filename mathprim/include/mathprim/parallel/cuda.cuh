@@ -251,7 +251,7 @@ public:
   }
 
   template <typename Fn, typename... VmapArgs>
-  void vmap_impl(Fn &&fn, VmapArgs... args) const noexcept {
+  void vmap_impl(Fn &&fn, VmapArgs... args) const {
     // now args is vmap_arg.
     auto size = (args.size(), ...); // Extract the size of each vmap_arg
     // Expects all vmap_args have the same size

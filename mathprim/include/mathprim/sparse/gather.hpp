@@ -47,8 +47,8 @@ struct basic_gather_operator {
 
   using desc_type = basic_gather_desc<Scalar, Device>;
 
-  MATHPRIM_PRIMFUNC basic_gather_operator(data_view dst, const_data src, desc_type desc) noexcept :
-      dst_(dst), src_(src), desc_(desc) {}
+  MATHPRIM_PRIMFUNC basic_gather_operator(data_view dst, const_data src, desc_type desc, Scalar alpha = 1) noexcept :
+      dst_(dst), src_(src), desc_(desc), alpha_(alpha) {}
 
   MATHPRIM_INTERNAL_COPY(basic_gather_operator, default);
   MATHPRIM_INTERNAL_MOVE(basic_gather_operator, default);
@@ -56,12 +56,13 @@ struct basic_gather_operator {
   data_view dst_;
   const_data src_;
   desc_type desc_;
+  Scalar alpha_{1};
 
   MATHPRIM_PRIMFUNC void operator()(index_t outer) {
     const index_t start = desc_.outer_ptrs_(outer);
     const index_t end = desc_.outer_ptrs_(outer + 1);
     for (index_t i = start; i < end; ++i) {
-      Scalar alpha = desc_.weight_ ? desc_.weight_(i) : 1;
+      Scalar alpha = (desc_.weight_ ? desc_.weight_(i) : 1) * alpha_;
       functional::madd<data_item, const_item> madd(alpha);
       madd(dst_(outer), src_(desc_.inner_inds_(i)));
     }

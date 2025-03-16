@@ -33,7 +33,7 @@ GTEST_TEST(view, iteration) {
   EXPECT_EQ(value0, 1);
 
   {
-    auto stride = make_default_stride<int>(shape);
+    auto stride = make_default_stride(shape);
     auto [i, j, k] = stride;
     EXPECT_EQ(i, 6);
     EXPECT_EQ(j, 2);

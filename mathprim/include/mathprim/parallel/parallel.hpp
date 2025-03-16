@@ -133,25 +133,25 @@ public:
    * @param args batch data.
    */
   template <typename Fn, typename... VmapArgs>
-  void vmap(Fn&& fn, VmapArgs&&... args) const noexcept {
+  void vmap(Fn&& fn, VmapArgs&&... args) const {
     static_assert(sizeof...(VmapArgs) > 0, "must provide at least one argument");
     // ensure is a vmap_arg
     derived().template vmap_impl<Fn>(std::forward<Fn>(fn), make_vmap_arg(std::forward<VmapArgs>(args))...);
   }
 
   template <typename TaskDerived>
-  void run(basic_task<TaskDerived>& task) const noexcept {
+  void run(basic_task<TaskDerived>& task) const {
     task.template run<ParImpl>(derived());
   }
 
   template <typename TaskDerived>
-  void run(const basic_task<TaskDerived>& task) const noexcept {
+  void run(const basic_task<TaskDerived>& task) const {
     task.template run<ParImpl>(derived());
   }
 
 protected:
   template <typename Fn, typename... VmapArgs>
-  void vmap_impl(Fn&& fn, VmapArgs&&... args) const noexcept {
+  void vmap_impl(Fn&& fn, VmapArgs&&... args) const {
     // now args is vmap_arg.
     auto size = (args.size(), ...);  // Extract the size of each vmap_arg
     // Expects all vmap_args have the same size

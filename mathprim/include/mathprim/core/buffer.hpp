@@ -77,7 +77,7 @@ public:
   }
 
   // For external allocated buffers. not responsible for the allocation but responsible for deallocation
-  basic_buffer(Scalar *data, const Sshape &shape) : basic_buffer(data, shape, make_default_stride<Scalar>(shape)) {}
+  basic_buffer(Scalar *data, const Sshape &shape) : basic_buffer(data, shape, make_default_stride(shape)) {}
   basic_buffer(Scalar *data, const Sshape &shape, const Sstride &stride) :
       shape_(shape), stride_(stride), data_(data) {}
 
@@ -168,7 +168,7 @@ public:
 
   // Return if the underlying data is contiguous.
   bool is_contiguous() const noexcept {
-    return stride_ == make_default_stride<Scalar>(shape_);
+    return stride_ == make_default_stride(shape_);
   }
 
   /**

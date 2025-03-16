@@ -37,7 +37,7 @@ constexpr bool is_capable_vector(const shape_t<sshape_values...> &shape,
     // Only the last stride can vary.
     const index_t last_stride = stride.template get<-1>();
     const index_t last_stride_elem = last_stride;
-    const auto default_stride = make_default_stride<Scalar>(shape).to_array();
+    const auto default_stride = make_default_stride(shape).to_array();
     return last_stride_elem * default_stride == stride.to_array();
   }
 }

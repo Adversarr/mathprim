@@ -175,7 +175,7 @@ public:
   MATHPRIM_PRIMFUNC basic_view() noexcept : data_{nullptr} {}
 
   MATHPRIM_PRIMFUNC basic_view(pointer data, const Sshape &shape) noexcept :
-      basic_view(data, shape, make_default_stride<Scalar>(shape)) {}
+      basic_view(data, shape, make_default_stride(shape)) {}
 
   MATHPRIM_PRIMFUNC basic_view(pointer data, const Sshape &shape, const Sstride &stride) noexcept :
       shape_(shape), stride_(stride), data_(data) {}
@@ -230,7 +230,7 @@ public:
   explicit MATHPRIM_PRIMFUNC operator bool() const noexcept { return valid(); }
 
   // Return if the underlying data is contiguous.
-  MATHPRIM_PRIMFUNC bool is_contiguous() const noexcept { return stride_ == make_default_stride<Scalar>(shape_); }
+  MATHPRIM_PRIMFUNC bool is_contiguous() const noexcept { return stride_ == make_default_stride(shape_); }
 
   auto begin() const noexcept { return basic_view_iterator<Scalar, Sshape, Sstride, Dev, 0>(*this, 0); }
 
@@ -344,7 +344,7 @@ public:
       // Only the last dimension can have non-contiguous stride.
       const index_t stride_last = shape_.template get<ndim - 1>();
       const auto drop_last_shape = internal::slice_impl<ndim - 1>(shape_, make_index_seq<ndim - 1>{});
-      const auto drop_last_stride_check = make_default_stride<Scalar>(drop_last_shape).to_array() * stride_last;
+      const auto drop_last_stride_check = make_default_stride(drop_last_shape).to_array() * stride_last;
       const auto drop_last_stride = internal::slice_impl<ndim - 1>(stride_, make_index_seq<ndim - 1>{}).to_array();
       MATHPRIM_ASSERT(drop_last_stride_check == drop_last_stride && "The view is not contiguous enough for flatten.");
 #endif
@@ -356,7 +356,7 @@ public:
   MATHPRIM_NOINLINE flatten_type safe_flatten() const {
     const auto drop_last_shape = internal::slice_impl<ndim - 1>(shape_, make_index_seq<ndim - 1>{});
     const auto drop_last_stride = internal::slice_impl<ndim - 1>(stride_, make_index_seq<ndim - 1>{});
-    if (make_default_stride<Scalar>(drop_last_shape) != drop_last_stride) {
+    if (make_default_stride(drop_last_shape) != drop_last_stride) {
       throw shape_error("The view is not contiguous enough for flatten.");
     }
 
@@ -406,7 +406,7 @@ public:
   template <typename Sshape2>
   MATHPRIM_PRIMFUNC basic_view<Scalar, Sshape2, default_stride_t<Sshape2>, Dev> reshape(const Sshape2 &shape) const {
     MATHPRIM_ASSERT(shape.numel() == numel() && "The new shape must have the same number of elements.");
-    return {data_, shape, make_default_stride<Scalar>(shape)};
+    return {data_, shape, make_default_stride(shape)};
   }
 
   template <typename... Integers, typename = std::enable_if_t<((!is_index_pack_v<Integers>) && ...)>>

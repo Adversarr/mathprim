@@ -220,12 +220,11 @@ using default_stride_t = internal::default_stride_t<Pack>;
 /**
  * @brief Calculate the byte offset from the subscript.
  *
- * @tparam T Scalar type.
  * @tparam Svalues
  * @param shape
  * @return default_stride_t<index_pack<Svalues...>>
  */
-template <typename T, index_t... Svalues>
+template <index_t... Svalues>
 MATHPRIM_PRIMFUNC default_stride_t<index_pack<Svalues...>> make_default_stride(index_pack<Svalues...> shape) {
   using Ret = default_stride_t<index_pack<Svalues...>>;
   Ret stride;
