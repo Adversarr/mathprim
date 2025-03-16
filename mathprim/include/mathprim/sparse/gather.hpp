@@ -59,7 +59,7 @@ struct basic_gather_operator : public par::basic_task<basic_gather_operator<Scal
   Scalar alpha_{1};
 
   template <typename ParImpl>
-  void run(const par::parfor<ParImpl> &parallel) const noexcept {
+  void run_impl(const par::parfor<ParImpl> &parallel) const noexcept {
     index_t dst_size = dst_.shape(0);
     parallel.run(dst_size, *this);
   }
@@ -92,7 +92,7 @@ struct basic_gather_operator<Scalar, Device, 0> : public par::basic_task<basic_g
   Scalar alpha_{1};
 
   template <typename ParImpl>
-  void run(const par::parfor<ParImpl> &parallel) const noexcept {
+  void run_impl(const par::parfor<ParImpl> &parallel) const noexcept {
     index_t dst_size = dst_.shape(0);
     parallel.run(dst_size, *this);
   }
