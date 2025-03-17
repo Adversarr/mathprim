@@ -59,12 +59,12 @@ template <typename Derived>
 struct basic_task {
   template <typename ParImpl, typename... Args>
   void run(const parfor<ParImpl>& parallel, Args&&... args) {  // NOLINT
-    static_cast<Derived*>(this)->template run_impl<ParImpl, Args...>(parallel, std::forward<Args>(args)...);
+    static_cast<Derived*>(this)->template run_impl<ParImpl>(parallel, std::forward<Args>(args)...);
   }
 
   template <typename ParImpl, typename... Args>
   void run(const parfor<ParImpl>& parallel, Args&&... args) const noexcept {  // NOLINT
-    static_cast<Derived*>(this)->template run_impl<ParImpl, Args...>(parallel, std::forward<Args>(args)...);
+    static_cast<Derived*>(this)->template run_impl<ParImpl>(parallel, std::forward<Args>(args)...);
   }
 };
 
@@ -141,12 +141,12 @@ public:
 
   template <typename TaskDerived, typename ... Args>
   void run(basic_task<TaskDerived>& task, Args&&... args) const {
-    task.template run<ParImpl, Args...>(derived(), std::forward<Args>(args)...);
+    task.template run<ParImpl>(derived(), std::forward<Args>(args)...);
   }
 
   template <typename TaskDerived, typename ... Args>
   void run(const basic_task<TaskDerived>& task, Args&&... args) const {
-    task.template run<ParImpl, Args...>(derived(), std::forward<Args>(args)...);
+    task.template run<ParImpl>(derived(), std::forward<Args>(args)...);
   }
 
 protected:
