@@ -44,6 +44,18 @@ vmap_arg<basic_view_iterator<T, Sshape, Sstride, Dev, BatchDim>> make_vmap_arg(
   return make_vmap_arg(view.begin(), view.end());
 }
 
+template <index_t BatchDim = 0, typename T, typename Sshape, typename Sstride, typename Dev>
+vmap_arg<basic_view_iterator<T, Sshape, Sstride, Dev, BatchDim>> make_vmap_arg(
+    const basic_buffer<T, Sshape, Sstride, Dev>& buf) {
+  return make_vmap_arg(buf.const_view());
+}
+
+template <index_t BatchDim = 0, typename T, typename Sshape, typename Sstride, typename Dev>
+vmap_arg<basic_view_iterator<T, Sshape, Sstride, Dev, BatchDim>> make_vmap_arg(
+    basic_buffer<T, Sshape, Sstride, Dev>& buf) {
+  return make_vmap_arg(buf.view());
+}
+
 template <typename Fn>
 struct make_output_vmapped {
   explicit make_output_vmapped(Fn fn) : fn_(fn) {}
