@@ -57,14 +57,14 @@ struct make_output_vmapped {
 
 template <typename Derived>
 struct basic_task {
-  template <typename ParImpl>
-  void run(const parfor<ParImpl>& parallel) { // NOLINT
-    static_cast<Derived*>(this)->template run_impl<ParImpl>(parallel);
+  template <typename ParImpl, typename... Args>
+  void run(const parfor<ParImpl>& parallel, Args&&... args) {  // NOLINT
+    static_cast<Derived*>(this)->template run_impl<ParImpl, Args...>(parallel, std::forward<Args>(args)...);
   }
 
-  template <typename ParImpl>
-  void run(const parfor<ParImpl>& parallel) const {  // NOLINT
-    static_cast<const Derived*>(this)->template run_impl<ParImpl>(parallel);
+  template <typename ParImpl, typename... Args>
+  void run(const parfor<ParImpl>& parallel, Args&&... args) const noexcept {  // NOLINT
+    static_cast<Derived*>(this)->template run_impl<ParImpl, Args...>(parallel, std::forward<Args>(args)...);
   }
 };
 
@@ -139,14 +139,14 @@ public:
     derived().template vmap_impl<Fn>(std::forward<Fn>(fn), make_vmap_arg(std::forward<VmapArgs>(args))...);
   }
 
-  template <typename TaskDerived>
-  void run(basic_task<TaskDerived>& task) const {
-    task.template run<ParImpl>(derived());
+  template <typename TaskDerived, typename ... Args>
+  void run(basic_task<TaskDerived>& task, Args&&... args) const {
+    task.template run<ParImpl, Args...>(derived(), std::forward<Args>(args)...);
   }
 
-  template <typename TaskDerived>
-  void run(const basic_task<TaskDerived>& task) const {
-    task.template run<ParImpl>(derived());
+  template <typename TaskDerived, typename ... Args>
+  void run(const basic_task<TaskDerived>& task, Args&&... args) const {
+    task.template run<ParImpl, Args...>(derived(), std::forward<Args>(args)...);
   }
 
 protected:
