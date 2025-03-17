@@ -64,7 +64,7 @@ struct basic_task {
 
   template <typename ParImpl, typename... Args>
   void run(const parfor<ParImpl>& parallel, Args&&... args) const noexcept {  // NOLINT
-    static_cast<Derived*>(this)->template run_impl<ParImpl>(parallel, std::forward<Args>(args)...);
+    static_cast<const Derived*>(this)->template run_impl<ParImpl>(parallel, std::forward<Args>(args)...);
   }
 };
 
