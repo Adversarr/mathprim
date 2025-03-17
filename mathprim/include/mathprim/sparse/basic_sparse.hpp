@@ -278,7 +278,11 @@ public:
   using const_matrix_view = contiguous_matrix_view<const Scalar, Device>;
   using sparse_view = basic_sparse_view<Scalar, Device, SparseCompression>;
   using const_sparse_view = basic_sparse_view<const Scalar, Device, SparseCompression>;
+  sparse_blas_base() = default;
   explicit sparse_blas_base(const_sparse_view matrix_view) : mat_(matrix_view) {}
+  MATHPRIM_INTERNAL_COPY(sparse_blas_base, default);
+  MATHPRIM_INTERNAL_MOVE(sparse_blas_base, default);
+
   virtual ~sparse_blas_base() = default;
 
   const_sparse_view matrix() const noexcept {

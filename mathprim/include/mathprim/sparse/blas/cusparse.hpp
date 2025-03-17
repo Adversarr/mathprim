@@ -104,11 +104,12 @@ public:
   using const_vector_view = typename base::const_vector_view;
   using sparse_view = typename base::sparse_view;
   using const_sparse_view = typename base::const_sparse_view;
+  cusparse() = default;
   explicit cusparse(const_sparse_view mat);
   cusparse(const cusparse&) = delete;
-  cusparse(cusparse&& other);
   cusparse& operator=(const cusparse&) = delete;
-  cusparse& operator=(cusparse&&) = delete;
+  cusparse(cusparse&& other);
+  cusparse& operator=(cusparse&&);
   ~cusparse();
 
   static constexpr cusparseIndexType_t index_type() {
@@ -130,6 +131,8 @@ public:
   }
 
 private:
+  void reset();
+
   template <typename SshapeB, typename SstrideB, typename SshapeC, typename SstrideC>
   void spmm_impl(Scalar alpha, basic_view<const Scalar, SshapeB, SstrideB, device::cuda> B, Scalar beta,
                  basic_view<Scalar, SshapeC, SstrideC, device::cuda> C, bool transA);
@@ -213,33 +216,75 @@ cusparse<Scalar, Compression>::cusparse(const_sparse_view mat) : base(mat) {
 
 template <typename Scalar, sparse_format Compression>
 cusparse<Scalar, Compression>::~cusparse() {
+  reset();
+}
+
+template <typename Scalar, sparse_format Compression>
+cusparse<Scalar, Compression>::cusparse(cusparse&& other) : base(other.matrix()) {
+  no_transpose_buffer_ = std::move(other.no_transpose_buffer_);
+  transpose_buffer_ = std::move(other.transpose_buffer_);
+  spmm_buffer_ = std::move(other.spmm_buffer_);
+  mat_desc_ = other.mat_desc_;
+  x_desc_ = other.x_desc_;
+  y_desc_ = other.y_desc_;
+  b_desc_ = other.b_desc_;
+  c_desc_ = other.c_desc_;
+  other.mat_desc_ = nullptr;
+  other.x_desc_ = nullptr;
+  other.y_desc_ = nullptr;
+  other.b_desc_ = nullptr;
+  other.c_desc_ = nullptr;
+}
+
+template <typename Scalar, sparse_format Compression>
+cusparse<Scalar, Compression>& cusparse<Scalar, Compression>::operator=(cusparse&& other) {
+  base::operator=(other);
+  if (this != &other) {
+    reset();
+    no_transpose_buffer_ = std::move(other.no_transpose_buffer_);
+    transpose_buffer_ = std::move(other.transpose_buffer_);
+    spmm_buffer_ = std::move(other.spmm_buffer_);
+    mat_desc_ = other.mat_desc_;
+    x_desc_ = other.x_desc_;
+    y_desc_ = other.y_desc_;
+    b_desc_ = other.b_desc_;
+    c_desc_ = other.c_desc_;
+    other.mat_desc_ = nullptr;
+    other.x_desc_ = nullptr;
+    other.y_desc_ = nullptr;
+    other.b_desc_ = nullptr;
+    other.c_desc_ = nullptr;
+  }
+  return *this;
+}
+
+template <typename Scalar, sparse_format Compression>
+void cusparse<Scalar, Compression>::reset() {
   if (mat_desc_)
     MATHPRIM_CHECK_CUSPARSE(cusparseDestroySpMat(mat_desc_));
   if (x_desc_)
     MATHPRIM_CHECK_CUSPARSE(cusparseDestroyDnVec(x_desc_));
   if (y_desc_)
     MATHPRIM_CHECK_CUSPARSE(cusparseDestroyDnVec(y_desc_));
-
   if (b_desc_)
     MATHPRIM_CHECK_CUSPARSE(cusparseDestroyDnMat(b_desc_));
   if (c_desc_)
     MATHPRIM_CHECK_CUSPARSE(cusparseDestroyDnMat(c_desc_));
-}
-
-template <typename Scalar, sparse_format Compression>
-cusparse<Scalar, Compression>::cusparse(cusparse&& other) : base(other.matrix()) {
-  mat_desc_ = other.mat_desc_;
-  x_desc_ = other.x_desc_;
-  y_desc_ = other.y_desc_;
-  no_transpose_buffer_ = std::move(other.no_transpose_buffer_);
-  transpose_buffer_ = std::move(other.transpose_buffer_);
-  other.mat_desc_ = nullptr;
-  other.x_desc_ = nullptr;
-  other.y_desc_ = nullptr;
+  mat_desc_ = nullptr;
+  x_desc_ = nullptr;
+  y_desc_ = nullptr;
+  b_desc_ = nullptr;
+  c_desc_ = nullptr;
+  no_transpose_buffer_.reset();
+  transpose_buffer_.reset();
+  spmm_buffer_.reset();
 }
 
 template <typename Scalar, sparse_format Compression>
 void cusparse<Scalar, Compression>::gemv_no_trans(Scalar alpha, const_vector_view x, Scalar beta, vector_view y) {
+  MATHPRIM_INTERNAL_CHECK_THROW(mat_desc_, std::runtime_error, "Matrix descriptor is not initialized.");
+  MATHPRIM_ASSERT(x_desc_ && "Vector descriptor is not initialized.");
+  MATHPRIM_ASSERT(y_desc_ && "Vector descriptor is not initialized.");
   // Set up the cuSPARSE handle
   cusparseHandle_t handle = internal::get_cusparse_handle();
 
@@ -272,6 +317,10 @@ void cusparse<Scalar, Compression>::gemv_no_trans(Scalar alpha, const_vector_vie
 
 template <typename Scalar, sparse_format Compression>
 void cusparse<Scalar, Compression>::gemv_trans(Scalar alpha, const_vector_view x, Scalar beta, vector_view y) {
+  MATHPRIM_INTERNAL_CHECK_THROW(mat_desc_, std::runtime_error, "Matrix descriptor is not initialized.");
+  MATHPRIM_ASSERT(x_desc_ && "Vector descriptor is not initialized.");
+  MATHPRIM_ASSERT(y_desc_ && "Vector descriptor is not initialized.");
+
   // Set up the cuSPARSE handle
   cusparseHandle_t handle = internal::get_cusparse_handle();
 
@@ -306,6 +355,9 @@ template <typename SshapeB, typename SstrideB, typename SshapeC, typename Sstrid
 void cusparse<Scalar, Compression>::spmm_impl(Scalar alpha, basic_view<const Scalar, SshapeB, SstrideB, device::cuda> B,
                                               Scalar beta, basic_view<Scalar, SshapeC, SstrideC, device::cuda> C,
                                               bool transA) {
+  MATHPRIM_INTERNAL_CHECK_THROW(mat_desc_, std::runtime_error, "Matrix descriptor is not initialized.");
+  MATHPRIM_ASSERT(x_desc_ && "Vector descriptor is not initialized.");
+  MATHPRIM_ASSERT(y_desc_ && "Vector descriptor is not initialized.");
   // Set up the cuSPARSE handle
   cusparseHandle_t handle = internal::get_cusparse_handle();
   const bool trans_b = B.stride(1) != 1, trans_c = C.stride(1) != 1;

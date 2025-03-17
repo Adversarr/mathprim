@@ -41,7 +41,9 @@ void work_cuda_spmm(benchmark::State &state) {
   auto nnz = mat.nnz();
 
   using blas_t = sparse::blas::cusparse<float, mathprim::sparse::sparse_format::csr>;
-  blas_t bl(mat);
+  blas_t bl2(mat);
+  blas_t bl;
+  bl = std::move(bl2);
 
   auto x = make_cuda_buffer<float>(rows, 32);
   auto y = make_cuda_buffer<float>(rows, 32);
