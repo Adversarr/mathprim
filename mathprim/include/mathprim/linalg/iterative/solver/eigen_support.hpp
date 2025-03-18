@@ -78,7 +78,7 @@ public:
 
 private:
   template <typename Callback>
-  MATHPRIM_NOINLINE results_type apply_impl(const_vector b, vector_type x, const parameters_type& params = {},
+  MATHPRIM_NOINLINE results_type solve_impl(vector_type x, const_vector b, const parameters_type& params = {},
                                             Callback&& /* cb */ = {}) {
     MATHPRIM_INTERNAL_CHECK_THROW(solver_, std::runtime_error, "The solver is not initialized.");
     results_type res;

@@ -18,9 +18,12 @@
 
 using namespace mathprim;
 
+
 template <typename BlasImpl>
 static void work(benchmark::State &state) {
   int dsize = state.range(0);
+
+  sparse::convergence_criteria<float> criteria{dsize * dsize, 1e-6f};
   sparse::laplace_operator<float, 2> lap(make_shape(dsize, dsize));
   auto mat_buf = lap.matrix<mathprim::sparse::sparse_format::csr>();
   auto mat = mat_buf.const_view();
@@ -48,11 +51,7 @@ static void work(benchmark::State &state) {
       xv[i] = (i % 100 - 50) / 100.0f;
     });
     state.ResumeTiming();
-    auto result = cg.apply(b.view(), x.view(),
-                           {
-                             .max_iterations_ = dsize * dsize,
-                             .norm_tol_ = 1e-6f,
-                           });
+    auto result = cg.solve(x.view(), b.view(), criteria);
     state.SetLabel(std::to_string(result.iterations_));
     if (result.norm_ > 1e-6f) {
       state.SkipWithError("CG did not converge");
@@ -84,16 +83,13 @@ static void work_ic(benchmark::State &state) {
     });
     // b = A * x
     cg.linear_operator().apply(1.0f, x.view(), 0.0f, b.view());
+    sparse::convergence_criteria<float> criteria{dsize * dsize, 1e-6f};
 
     par::seq().run(make_shape(rows), [xv = x.view(), bv = b.view()](index_t i) {
       xv[i] = (i % 100 - 50) / 100.0f;
     });
     state.ResumeTiming();
-    auto result = cg.apply(b.view(), x.view(),
-                           {
-                             .max_iterations_ = dsize * dsize,
-                             .norm_tol_ = 1e-6f,
-                           });
+    auto result = cg.solve(x.view(), b.view(), criteria);
     state.SetLabel(std::to_string(result.iterations_));
     if (result.norm_ > 1e-6f) {
       state.SkipWithError("CG did not converge");
@@ -132,12 +128,9 @@ static void work2(benchmark::State &state) {
       xv[i] = (i % 100 - 50) / 100.0f;
     });
 
+    sparse::convergence_criteria<float> criteria{dsize * dsize, 1e-6f};
     state.ResumeTiming();
-    auto result = cg.apply(b.view(), x.view(),
-                           {
-                             .max_iterations_ = dsize * dsize,
-                             .norm_tol_ = 1e-6f,
-                           });
+    auto result = cg.solve(x.view(), b.view(), criteria);
     state.SetLabel(std::to_string(result.iterations_));
     if (result.norm_ > 1e-6f) {
       state.SkipWithError("CG did not converge");
@@ -175,11 +168,9 @@ static void work_chol(benchmark::State &state) {
     });
 
     state.ResumeTiming();
-    auto result = cg.apply(b.view(), x.view(),
-                           {
-                             .max_iterations_ = dsize * dsize,
-                             .norm_tol_ = 1e-6f,
-                           });
+    sparse::convergence_criteria<float> criteria{dsize * dsize, 1e-6f};
+
+    auto result = cg.solve(x.view(), b.view(), criteria);
     state.SetLabel(std::to_string(result.iterations_));
     if (result.norm_ > 1e-6f) {
       state.SkipWithError("CG did not converge");
@@ -252,11 +243,9 @@ void work_eigen_wrapped(benchmark::State &state) {
     });
 
     state.ResumeTiming();
-    auto result = cg.apply(b.view(), x.view(),
-                           {
-                             .max_iterations_ = dsize * dsize,
-                             .norm_tol_ = 1e-6f,
-                           });
+    sparse::convergence_criteria<float> criteria{dsize * dsize, 1e-6f};
+
+    auto result = cg.solve(x.view(), b.view(), criteria);
     state.SetLabel(std::to_string(result.iterations_));
     if (result.norm_ > 1e-6f) {
       state.SkipWithError("CG did not converge");

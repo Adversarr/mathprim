@@ -10,11 +10,12 @@ class cg : public basic_iterative_solver<cg<Scalar, Device, LinearOperatorT, Bla
 public:
   using base = basic_iterative_solver<cg<Scalar, Device, LinearOperatorT, BlasT, PreconditionerT>, Scalar, Device,
                                       LinearOperatorT>;
-  using scalar_type = typename base::scalar_type;
+  friend base;
+  using scalar_type = Scalar;
   using linear_operator_type = typename base::linear_operator_type;
   using results_type = typename base::results_type;
   using parameters_type = typename base::parameters_type;
-  using vector_type = typename base::vector_type;
+  using vector_view = typename base::vector_view;
   using const_vector = typename base::const_vector;
   using blas_type = BlasT;
   using preconditioner_type = PreconditionerT;
@@ -35,13 +36,13 @@ public:
   }
 
   template <typename Callback>
-  results_type apply_impl(const_vector b, vector_type x, const parameters_type& params, Callback&& cb) {
+  results_type solve_impl(vector_view x, const_vector b, const parameters_type& params, Callback&& cb) {
     auto& blas = blas_;
     auto& preconditioner = preconditioner_;
     auto& matrix = base::matrix_;
     auto& residual_buffer = base::residual_;
     const_vector cx = x.as_const();
-    vector_type r = residual_buffer.view(), q = q_.view(), d = d_.view();
+    vector_view r = residual_buffer.view(), q = q_.view(), d = d_.view();
     const_vector cr = r.as_const(), cq = q.as_const(), cd = d.as_const();
     const Scalar b_norm = blas.norm(b);
 

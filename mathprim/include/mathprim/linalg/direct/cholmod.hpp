@@ -10,18 +10,20 @@
 namespace mathprim::sparse::direct {
 
 template <typename Scalar, sparse_format Format>
-class cholmod_chol : public basic_direct_solver<cholmod_chol<Scalar, Format>, Scalar, Format, device::cpu> {
+class cholmod_chol : public basic_sparse_solver<cholmod_chol<Scalar, Format>, Scalar, device::cpu, Format> {
 public:
   static_assert(Format == sparse_format::csr || Format == sparse_format::csc,
                 "Cholmod only supports CSR or CSC format. (Symmetric)");
 
-  using base = basic_direct_solver<cholmod_chol<Scalar, Format>, Scalar, Format, device::cpu>;
+  using base = basic_sparse_solver<cholmod_chol<Scalar, Format>, Scalar, device::cpu, Format>;
   using vector_view = typename base::vector_view;
   using const_vector = typename base::const_vector;
   using sparse_view = typename base::sparse_view;
   using const_sparse = typename base::const_sparse;
   using matrix_view = typename base::matrix_view;
   using const_matrix_view = typename base::const_matrix_view;
+  using results_type = convergence_result<Scalar>;
+  using parameters_type = convergence_criteria<Scalar>;
   friend base;
 
   cholmod_chol() = default;
@@ -135,7 +137,8 @@ protected:
     }
   }
 
-  void solve_impl(vector_view x, const_vector y) {
+  template <typename Callback>
+  results_type solve_impl(vector_view x, const_vector y, parameters_type /* params */, Callback&& /* cb */) {
     cholmod_dense rhs, lhs;
     ::std::memset(&rhs, 0, sizeof(rhs));
     ::std::memset(&lhs, 0, sizeof(lhs));
@@ -156,9 +159,10 @@ protected:
         &out, nullptr,                      // outputs
         &Ywork_, &Ework_, common_           // workspace
     );
+    return {};
   }
 
-  void vsolve_impl(matrix_view x, const_matrix_view y) {
+  void vsolve_impl(matrix_view x, const_matrix_view y, parameters_type /* params */) {
     cholmod_dense rhs, lhs;
     ::std::memset(&rhs, 0, sizeof(rhs));
     ::std::memset(&lhs, 0, sizeof(lhs));

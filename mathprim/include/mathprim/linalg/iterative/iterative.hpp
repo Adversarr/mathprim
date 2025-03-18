@@ -3,6 +3,7 @@
 
 #include "mathprim/core/buffer.hpp"
 #include "mathprim/core/view.hpp"
+#include "mathprim/linalg/basic_sparse_solver.hpp"
 #include "mathprim/sparse/basic_sparse.hpp"
 
 namespace mathprim::sparse::iterative {
@@ -44,6 +45,7 @@ template <typename SparseBlas>
 class sparse_matrix : public basic_linear_operator<sparse_matrix<SparseBlas>, typename SparseBlas::scalar_type,
                                                    typename SparseBlas::device_type> {
 public:
+  static constexpr sparse_format compression = SparseBlas::compression;
   using base = basic_linear_operator<sparse_matrix<SparseBlas>, typename SparseBlas::scalar_type,
                                      typename SparseBlas::device_type>;
   friend base;
@@ -53,6 +55,8 @@ public:
   using const_sparse_view = typename SparseBlas::const_sparse_view;
 
   explicit sparse_matrix(const_sparse_view mat) : base(mat.rows(), mat.cols()), spmv_(mat) {}
+
+  const_sparse_view matrix() const noexcept { return spmv_.matrix(); }
 
 protected:
   void apply_impl(Scalar alpha, const_vector x, Scalar beta, vector_type y) {
@@ -66,6 +70,7 @@ protected:
       throw std::runtime_error("Not implemented for unsymmetric matrix.");
     }
   }
+
 
 private:
   SparseBlas spmv_;
@@ -108,18 +113,6 @@ public:
 ///////////////////////////////////////////////////////////////////////////////
 /// Iterative Solver Base
 ///////////////////////////////////////////////////////////////////////////////
-template <typename Scalar>
-struct convergence_criteria {
-  index_t max_iterations_;
-  Scalar norm_tol_;
-};
-
-template <typename Scalar>
-struct convergence_result {
-  index_t iterations_ = {1 << 10};                         ///< number of iterations.
-  Scalar norm_ = {std::numeric_limits<float>::epsilon()};  ///< l2 norm of the residual. (norm(r))
-};
-
 template <typename Derived, typename Scalar, typename Device, typename LinearOperatorT>
 class basic_iterative_solver {
 public:
@@ -142,7 +135,7 @@ public:
 
   // Solve the linear system.
   template <typename Callback = no_op>
-  MATHPRIM_NOINLINE results_type apply(const_vector b, vector_type x, const parameters_type& params = {},
+  MATHPRIM_NOINLINE results_type solve(vector_type x, const_vector b, const parameters_type& params = {},
                                        Callback&& cb = {}) {
     // 1. Check the size of b and x.
     const index_t b_size = b.size();
@@ -163,7 +156,7 @@ public:
     }
 
     // 3. Apply the solver.
-    return static_cast<Derived*>(this)->template apply_impl<Callback>(b, x, params, std::forward<Callback>(cb));
+    return static_cast<Derived*>(this)->template solve_impl<Callback>(x, b, params, std::forward<Callback>(cb));
   }
 
   const_vector residual() const noexcept {
@@ -174,6 +167,40 @@ public:
     return matrix_;
   }
 
+protected:
+  linear_operator_type matrix_;
+  contiguous_buffer<Scalar, shape_t<keep_dim>, Device> residual_;
+};
+
+///////////////////////////////////////////////////////////////////////////////
+/// Specialization for LinearOperator == SparseMatrix
+///////////////////////////////////////////////////////////////////////////////
+template <typename Derived, typename Scalar, typename Device, typename SparseBlas>
+class basic_iterative_solver<Derived, Scalar, Device, sparse_matrix<SparseBlas>>
+    : public basic_sparse_solver<Derived, Scalar, Device, sparse_matrix<SparseBlas>::compression> {
+public:
+  using base = basic_sparse_solver<Derived, Scalar, Device, sparse_matrix<SparseBlas>::compression>;
+  using vector_view = typename base::vector_view;
+  using const_vector = typename base::const_vector;
+  using sparse_view = typename base::sparse_view;
+  using const_sparse = typename base::const_sparse;
+  using matrix_view = typename base::matrix_view;
+  using const_matrix_view = typename base::const_matrix_view;
+  using results_type = convergence_result<Scalar>;
+  using parameters_type = convergence_criteria<Scalar>;
+  using linear_operator_type = sparse_matrix<SparseBlas>;
+  friend base;
+
+  explicit basic_iterative_solver(linear_operator_type matrix) : base(matrix.matrix()), matrix_(std::move(matrix)) {
+    residual_ = make_buffer<Scalar, Device>(make_shape(matrix_.rows()));
+  }
+  basic_iterative_solver(basic_iterative_solver&&) = default;
+  basic_iterative_solver& operator=(basic_iterative_solver&&) = default;
+  void vsolve_impl(matrix_view /* lhs */, const_matrix_view /* rhs */, const parameters_type& /* params */) {
+    throw std::runtime_error("Iterative solver does not support vectorized solve.");
+  }
+  const_vector residual() const noexcept { return residual_.view(); }
+  linear_operator_type& linear_operator() noexcept { return matrix_; }
 protected:
   linear_operator_type matrix_;
   contiguous_buffer<Scalar, shape_t<keep_dim>, Device> residual_;
