@@ -64,7 +64,7 @@ struct basic_gather_operator : public par::basic_task<basic_gather_operator<Scal
     parallel.run(dst_size, *this);
   }
 
-  MATHPRIM_PRIMFUNC void operator()(index_t outer) {
+  MATHPRIM_PRIMFUNC void operator()(index_t outer) const noexcept {
     const index_t start = desc_.outer_ptrs_(outer);
     const index_t end = desc_.outer_ptrs_(outer + 1);
     for (index_t i = start; i < end; ++i) {

@@ -182,6 +182,8 @@ protected:
 class seq : public parfor<seq> {
 public:
   friend class parfor<seq>;
+
+private:
   template <typename Fn, index_t... Sgrids, index_t... Sblocks>
   void run_impl(const index_pack<Sgrids...>& grid_dim, const index_pack<Sblocks...>& block_dim,
                 Fn&& fn) const noexcept {
