@@ -90,10 +90,7 @@ int main() {
   });
 
   start = std::chrono::high_resolution_clock::now();
-  cg.apply(d_bv, d_xv, {
-    .max_iterations_=n * 4,
-    .norm_tol_=1e-6
-  }, [] (index_t iter, float norm) {
+  cg.solve(d_bv, d_xv, {n * 4, 1e-6}, [](index_t iter, float norm) {
     if (iter % 1000 == 0) {
       std::cout << "Iter " << iter << " norm " << norm << std::endl;
     }

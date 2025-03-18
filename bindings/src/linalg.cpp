@@ -77,20 +77,20 @@ static std::pair<index_t, double> cg_host(const Eigen::SparseMatrix<Flt, Eigen::
   }
   auto view_A = eigen_support::view(A);
   Solver solver(LinearOp(view_A), Blas{}, Precond{view_A});
-  sparse::iterative::convergence_criteria<Flt> criteria{
-    .max_iterations_ = max_iter,
-    .norm_tol_ = rtol,
+  sparse::convergence_criteria<Flt> criteria{
+    max_iter,
+    rtol,
   };
-  sparse::iterative::convergence_result<Flt> result;
+  sparse::convergence_result<Flt> result;
   auto start = std::chrono::high_resolution_clock::now();
   if (verbose > 0) {
-    result = solver.apply(b_view, x_view, criteria, [verbose](index_t iter, Flt norm) {
+    result = solver.solve(x_view, b_view, criteria, [verbose](index_t iter, Flt norm) {
       if (iter % verbose == 0) {
         std::cout << "Iteration: " << iter << ", Norm: " << norm << std::endl;
       }
     });
   } else {
-    result = solver.apply(b_view, x_view, criteria);
+    result = solver.solve(x_view, b_view, criteria);
   }
   auto end = std::chrono::high_resolution_clock::now();
   auto duration = end - start;
@@ -124,13 +124,13 @@ static std::pair<index_t, double> cg_host_callback(const Eigen::SparseMatrix<Flt
   }
   auto view_A = eigen_support::view(A);
   Solver solver(LinearOp(view_A), Blas{}, Precond{view_A});
-  sparse::iterative::convergence_criteria<Flt> criteria{
-    .max_iterations_ = max_iter,
-    .norm_tol_ = rtol,
+  sparse::convergence_criteria<Flt> criteria{
+    max_iter,
+    rtol,
   };
-  sparse::iterative::convergence_result<Flt> result;
+  sparse::convergence_result<Flt> result;
   auto start = std::chrono::high_resolution_clock::now();
-  result = solver.apply(b_view, x_view, criteria, callback);
+  result = solver.solve(x_view, b_view, criteria, callback);
   auto end = std::chrono::high_resolution_clock::now();
   auto duration = end - start;
   double seconds = std::chrono::duration_cast<std::chrono::duration<double, std::ratio<1>>>(duration).count();
@@ -184,20 +184,20 @@ std::pair<index_t, double> pcg_with_ext_spai(const Eigen::SparseMatrix<Flt, Eige
     throw std::invalid_argument("b and x must have the same size as the matrix.");
   }
 
-  sparse::iterative::convergence_criteria<Flt> criteria{
-    .max_iterations_ = max_iter,
-    .norm_tol_ = rtol,
+  sparse::convergence_criteria<Flt> criteria{
+    max_iter,
+    rtol,
   };
-  sparse::iterative::convergence_result<Flt> result;
+  sparse::convergence_result<Flt> result;
   auto start = std::chrono::high_resolution_clock::now();
   if (verbose > 0) {
-    result = solver.apply(b_view, x_view, criteria, [verbose](index_t iter, Flt norm) {
+    result = solver.solve(x_view, b_view, criteria, [verbose](index_t iter, Flt norm) {
       if (iter % verbose == 0) {
         std::cout << "Iteration: " << iter << ", Norm: " << norm << std::endl;
       }
     });
   } else {
-    result = solver.apply(b_view, x_view, criteria);
+    result = solver.solve(x_view, b_view, criteria);
   }
   auto end = std::chrono::high_resolution_clock::now();
   auto duration = end - start;

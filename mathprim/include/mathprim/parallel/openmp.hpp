@@ -61,7 +61,7 @@ public:
   void run_impl(index_pack<sgrids...> grid_dim, index_pack<sblocks...> block_dim, Fn&& fn) const noexcept {
     const index_t total = grid_dim.numel();
     if (total < threshold_) {
-      seq{}.run_impl(grid_dim, block_dim, std::forward<Fn>(fn));
+      seq{}.run(grid_dim, block_dim, std::forward<Fn>(fn));
     } else {
       const index_t block_total = block_dim.numel();
 #pragma omp parallel for schedule(static)

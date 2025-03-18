@@ -65,10 +65,6 @@ int main() {
     xv[i] = (rand() % 100) / 100.0f;
   });
 
-  cg.apply(b.view(), x.view(),
-           {
-             .max_iterations_ = 100,
-             .norm_tol_ = 1e-6f,
-           });
+  cg.solve(x.view(), b.view());
   return 0;
 }

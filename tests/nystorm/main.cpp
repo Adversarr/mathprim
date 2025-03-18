@@ -53,7 +53,8 @@ void do_test_exact(benchmark::State& state) {
     par::seq().run(make_shape(n), [x_view](index_t i) {
       x_view[i] = 0.0f;
     });
-    auto result = cg.apply(b.const_view(), x.view(), {n, 1e-7f});
+    // auto result = cg.apply(b.const_view(), x.view(), {n, 1e-7f});
+    auto result = cg.solve(x.view(), b.const_view(), {n, 1e-7f});
     state.SetLabel(std::to_string(result.iterations_) + ": " + std::to_string(result.norm_ / 1e-7f));
   }
 }
@@ -80,7 +81,8 @@ void do_test_diagonal(benchmark::State& state) {
     par::seq().run(make_shape(n), [x_view](index_t i) {
       x_view[i] = 0.0f;
     });
-    auto result = cg.apply(b.const_view(), x.view(), {n, 1e-7f});
+    // auto result = cg.apply(b.const_view(), x.view(), {n, 1e-7f});
+    auto result = cg.solve(x.view(), b.const_view(), {n, 1e-7f});
     state.SetLabel(std::to_string(result.iterations_) + ": " + std::to_string(result.norm_ / 1e-7f));
   }
 }
@@ -153,7 +155,8 @@ void do_test_ana(benchmark::State& state) {
     par::seq().run(make_shape(n), [x_view](index_t i) {
       x_view[i] = 0.0f;
     });
-    auto result = cg.apply(b.const_view(), x.view(), {n, 1e-7f});
+    // auto result = cg.apply(b.const_view(), x.view(), {n, 1e-7f});
+    auto result = cg.solve(x.view(), b.const_view(), {n, 1e-7f});
     state.SetLabel(std::to_string(result.iterations_) + ": " + std::to_string(result.norm_ / 1e-7f));
   }
 }

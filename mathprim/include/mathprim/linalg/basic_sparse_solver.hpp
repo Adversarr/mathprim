@@ -6,7 +6,8 @@ template <typename Scalar>
 struct convergence_criteria {
   index_t max_iterations_;
   Scalar norm_tol_;
-  constexpr explicit convergence_criteria(index_t max_iterations = 1 << 10, Scalar norm_tol = 1e-3) :
+  convergence_criteria(index_t max_iterations = 1 << 10,  // NOLINT(google-explicit-constructor)
+                       Scalar norm_tol = 1e-3) :
       max_iterations_(max_iterations), norm_tol_(norm_tol) {}
   MATHPRIM_INTERNAL_COPY(convergence_criteria, default);
 };
@@ -16,7 +17,8 @@ struct convergence_result {
   index_t iterations_ = {1 << 10};                         ///< number of iterations.
   Scalar norm_ = {std::numeric_limits<float>::epsilon()};  ///< l2 norm of the residual. (norm(r))
 
-  explicit convergence_result(index_t iterations = 1 << 10, Scalar norm = std::numeric_limits<float>::epsilon()) :
+  convergence_result(index_t iterations = 1 << 10,  // NOLINT(google-explicit-constructor)
+                     Scalar norm = 1e-3) :
       iterations_(iterations), norm_(norm) {}
   MATHPRIM_INTERNAL_COPY(convergence_result, default);
 };

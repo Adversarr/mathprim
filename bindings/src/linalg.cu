@@ -62,20 +62,17 @@ std::pair<index_t, double> cg_cuda(const Eigen::SparseMatrix<Flt, Eigen::RowMajo
 
   auto d_A_view = d_A.const_view();
   Solver solver(LinearOp(d_A_view), Blas{}, Precond{d_A_view});
-  sparse::iterative::convergence_criteria<Flt> criteria{
-    .max_iterations_ = max_iter,
-    .norm_tol_ = rtol,
-  };
-  sparse::iterative::convergence_result<Flt> result;
+sparse::convergence_criteria<Flt> criteria{max_iter, rtol};
+  sparse::convergence_result<Flt> result;
   auto start = std::chrono::high_resolution_clock::now();
   if (verbose > 0) {
-    result = solver.apply(b_view, x_view, criteria, [verbose](index_t iter, Flt norm) {
+    result = solver.solve(x_view, b_view, criteria, [verbose](index_t iter, Flt norm) {
       if (iter % verbose == 0) {
         std::cout << "Iteration: " << iter << ", Norm: " << norm << std::endl;
       }
     });
   } else {
-    result = solver.apply(b_view, x_view, criteria);
+    result = solver.solve(x_view, b_view, criteria);
   }
 
   auto end = std::chrono::high_resolution_clock::now();
@@ -135,20 +132,17 @@ static std::pair<index_t, double> cg_cuda_csr_direct(                   //
   auto b_view = view<device::cuda>(b.data(), make_shape(b.size())).as_const();
   auto x_view = view<device::cuda>(x.data(), make_shape(x.size()));
 
-  sparse::iterative::convergence_criteria<Flt> criteria{
-    .max_iterations_ = max_iter,
-    .norm_tol_ = rtol,
-  };
-  sparse::iterative::convergence_result<Flt> result;
+sparse::convergence_criteria<Flt> criteria{max_iter, rtol};
+  sparse::convergence_result<Flt> result;
   auto start = std::chrono::high_resolution_clock::now();
   if (verbose > 0) {
-    result = solver.apply(b_view, x_view, criteria, [verbose](index_t iter, Flt norm) {
+    result = solver.solve(x_view, b_view, criteria, [verbose](index_t iter, Flt norm) {
       if (iter % verbose == 0) {
         std::cout << "Iteration: " << iter << ", Norm: " << norm << std::endl;
       }
     });
   } else {
-    result = solver.apply(b_view, x_view, criteria);
+    result = solver.solve(x_view, b_view, criteria);
   }
   auto end = std::chrono::high_resolution_clock::now();
   auto duration = end - start;
@@ -202,21 +196,18 @@ static std::pair<index_t, double> pcg_with_ext_spai(        //
   copy(d_x, h_x);
 
   // 3. Solve the system.
-  sparse::iterative::convergence_criteria<Flt> criteria{
-    .max_iterations_ = max_iter,
-    .norm_tol_ = rtol,
-  };
-  sparse::iterative::convergence_result<Flt> result;
+sparse::convergence_criteria<Flt> criteria{max_iter, rtol};
+  sparse::convergence_result<Flt> result;
 
   auto start = std::chrono::high_resolution_clock::now();
   if (verbose > 0) {
-    result = solver.apply(d_b, d_x, criteria, [verbose](index_t iter, Flt norm) {
+    result = solver.solve(d_b, d_x, criteria, [verbose](index_t iter, Flt norm) {
       if (iter % verbose == 0) {
         std::cout << "Iteration: " << iter << ", Norm: " << norm << std::endl;
       }
     });
   } else {
-    result = solver.apply(d_b, d_x, criteria);
+    result = solver.solve(d_b, d_x, criteria);
   }
   auto end = std::chrono::high_resolution_clock::now();
   auto duration = end - start;
@@ -281,20 +272,17 @@ static std::pair<index_t, double> cg_direct_with_ext_spai(                   //
   auto b_view = view<device::cuda>(b.data(), make_shape(b.size())).as_const();
   auto x_view = view<device::cuda>(x.data(), make_shape(x.size()));
 
-  sparse::iterative::convergence_criteria<Flt> criteria{
-    .max_iterations_ = max_iter,
-    .norm_tol_ = rtol,
-  };
-  sparse::iterative::convergence_result<Flt> result;
+sparse::convergence_criteria<Flt> criteria{max_iter, rtol};
+  sparse::convergence_result<Flt> result;
   auto start = std::chrono::high_resolution_clock::now();
   if (verbose > 0) {
-    result = solver.apply(b_view, x_view, criteria, [verbose](index_t iter, Flt norm) {
+    result = solver.solve(x_view, b_view, criteria, [verbose](index_t iter, Flt norm) {
       if (iter % verbose == 0) {
         std::cout << "Iteration: " << iter << ", Norm: " << norm << std::endl;
       }
     });
   } else {
-    result = solver.apply(b_view, x_view, criteria);
+    result = solver.solve(x_view, b_view, criteria);
   }
   auto end = std::chrono::high_resolution_clock::now();
   auto duration = end - start;

@@ -67,15 +67,17 @@ void work_cuda(benchmark::State &state) {
     });
     parfor.sync();
     state.ResumeTiming();
-    auto result = jacobi.apply(
-        d_b.view(), d_x.view(),
-        {
-            .max_iterations_ = dsize * 4,
-            .norm_tol_ = 1e-6f,
-        } //  , [](auto iter, auto norm) {
-          //   std::cout << "Iter: " << iter << " Norm: " << norm << std::endl;
-          //  }
-    );
+
+    // auto result = jacobi.apply(
+    //     d_b.view(), d_x.view(),
+    //     {
+    //         .max_iterations_ = dsize * 4,
+    //         .norm_tol_ = 1e-6f,
+    //     } //  , [](auto iter, auto norm) {
+    //       //   std::cout << "Iter: " << iter << " Norm: " << norm << std::endl;
+    //       //  }
+    // );
+    auto result = jacobi.solve(d_x.view(), d_b.view(), {dsize * 4, 1e-6f});
     parfor.sync();
     state.SetLabel(std::to_string(result.norm_));
   }

@@ -108,7 +108,7 @@ template <typename Blas> void do_test_exact(benchmark::State &state) {
     x.fill_bytes(0);
     cudaDeviceSynchronize();
     state.ResumeTiming();
-    auto result = cg.apply(b.const_view(), x.view(), {n, 1e-7f});
+    auto result = cg.solve(x.view(), b.view(), {n, 1e-7f});
     state.SetLabel(std::to_string(result.iterations_) + ": " +
                    std::to_string(result.norm_ / 1e-7f));
   }
@@ -136,7 +136,7 @@ template <typename Blas> void do_test_diagonal(benchmark::State &state) {
     cg.linear_operator().apply(1.0f, x.view(), 0.0f, b.view());
     x.fill_bytes(0);
 
-    auto result = cg.apply(b.const_view(), x.view(), {n, 1e-7f});
+    auto result = cg.solve(x.view(), b.view(), {n, 1e-7f});
     state.SetLabel(std::to_string(result.iterations_) + ": " +
                    std::to_string(result.norm_ / 1e-7f));
   }
@@ -209,7 +209,7 @@ void do_test_ana(benchmark::State &state) {
                     [x_view] __device__(index_t i) { x_view[i] = 1.0f; });
     cg.linear_operator().apply(1.0f, x.view(), 0.0f, b.view());
     x.fill_bytes(0);
-    auto result = cg.apply(b.const_view(), x.view(), {n, 1e-7f});
+    auto result = cg.solve(x.view(), b.view(), {n, 1e-7f});
 
     state.SetLabel(std::to_string(result.iterations_) + ": " +
                    std::to_string(result.norm_ / 1e-7f));

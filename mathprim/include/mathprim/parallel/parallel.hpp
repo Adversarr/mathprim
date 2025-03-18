@@ -181,7 +181,7 @@ protected:
 
 class seq : public parfor<seq> {
 public:
-  friend class parfor<seq>;
+  friend parfor<seq>;
 
 private:
   template <typename Fn, index_t... Sgrids, index_t... Sblocks>

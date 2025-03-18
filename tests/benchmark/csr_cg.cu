@@ -51,11 +51,8 @@ static void work(benchmark::State &state) {
       xv[i] = (i % 100 - 50) / 100.0f;
     });
     state.ResumeTiming();
-    auto result = cg.apply(b.view(), x.view(),
-                           {
-                             .max_iterations_ = dsize * dsize,
-                             .norm_tol_ = 1e-6f,
-                           });
+    sparse::convergence_criteria<float> criteria{dsize*dsize, 1e-6f};
+    auto result = cg.solve(x.view(), b.view(), criteria);
     state.SetLabel(std::to_string(result.iterations_));
     if (result.norm_ > 1e-6f) {
       state.SkipWithError("CG did not converge");
@@ -94,11 +91,9 @@ static void work_ic(benchmark::State &state) {
       xv[i] = (i % 100 - 50) / 100.0f;
     });
     state.ResumeTiming();
-    auto result = cg.apply(b.view(), x.view(),
-                           {
-                             .max_iterations_ = dsize * dsize,
-                             .norm_tol_ = 1e-6f,
-                           });
+
+    sparse::convergence_criteria<float> criteria{dsize*dsize, 1e-6f};
+    auto result = cg.solve(x.view(), b.view(), criteria);
     state.SetLabel(std::to_string(result.iterations_));
     if (result.norm_ > 1e-6f) {
       state.SkipWithError("CG did not converge");
@@ -155,11 +150,9 @@ void work_cuda(benchmark::State &state) {
     });
     parfor.sync();
     state.ResumeTiming();
-    auto result = cg.apply(d_b.view(), d_x.view(),
-                           {
-                             .max_iterations_ = dsize * 4,
-                             .norm_tol_ = 1e-6f,
-                           });
+
+    sparse::convergence_criteria<float> criteria{dsize*dsize, 1e-6f};
+    auto result = cg.solve(d_x.view(), d_b.view(), criteria);
     parfor.sync();
     state.SetLabel(std::to_string(result.iterations_));
     if (result.norm_ > 1e-6f) {
@@ -213,11 +206,8 @@ void work_cuda_no_prec(benchmark::State &state) {
     });
     parfor.sync();
     state.ResumeTiming();
-    auto result = cg.apply(d_b.view(), d_x.view(),
-                           {
-                             .max_iterations_ = dsize * 4,
-                             .norm_tol_ = 1e-6f,
-                           });
+    sparse::convergence_criteria<float> criteria{dsize*dsize, 1e-6f};
+    auto result = cg.solve(d_x.view(), d_b.view(), criteria);
     parfor.sync();
     state.SetLabel(std::to_string(result.iterations_));
     if (result.norm_ > 1e-6f) {
@@ -276,11 +266,9 @@ void work_cuda_ilu0(benchmark::State &state) {
     });
     parfor.sync();
     state.ResumeTiming();
-    auto result = cg.apply(d_b.view(), d_x.view(),
-                           {
-                             .max_iterations_ = dsize * 4,
-                             .norm_tol_ = 1e-6f,
-                           });
+
+    sparse::convergence_criteria<float> criteria{dsize*dsize, 1e-6f};
+    auto result = cg.solve(d_x.view(), d_b.view(), criteria);
     parfor.sync();
     state.SetLabel(std::to_string(result.iterations_));
     if (result.norm_ > 1e-6f) {
@@ -340,11 +328,9 @@ void work_cuda_ic(benchmark::State &state) {
     });
     parfor.sync();
     state.ResumeTiming();
-    auto result = cg.apply(d_b.view(), d_x.view(),
-                           {
-                             .max_iterations_ = dsize * 4,
-                             .norm_tol_ = 1e-6f,
-                           });
+
+    sparse::convergence_criteria<float> criteria{dsize*dsize, 1e-6f};
+    auto result = cg.solve(d_x.view(), d_b.view(), criteria);
     parfor.sync();
     state.SetLabel(std::to_string(result.iterations_));
     if (result.norm_ > 1e-6f) {
@@ -404,11 +390,9 @@ void work_cuda_ai(benchmark::State &state) {
     });
     parfor.sync();
     state.ResumeTiming();
-    auto result = cg.apply(d_b.view(), d_x.view(),
-                           {
-                             .max_iterations_ = dsize * 4,
-                             .norm_tol_ = 1e-6f,
-                           });
+
+    sparse::convergence_criteria<float> criteria{dsize*dsize, 1e-6f};
+    auto result = cg.solve(d_x.view(), d_b.view(), criteria);
     parfor.sync();
     state.SetLabel(std::to_string(result.iterations_));
     if (result.norm_ > 1e-6f) {

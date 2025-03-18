@@ -43,8 +43,8 @@ int main () {
   par::seq().run(make_shape(N * N), [&](index_t i) {
     x.view()[i] = 0;
   });
-  
-  auto result = solver.apply(b.const_view(), x.view(), {.max_iterations_ = 10240, .norm_tol_ = 1e-4});
+
+  auto result = solver.solve(x.view(), b.const_view(), {10240, 1e-4});
 
   printf("After %d iterations, got residual %f\n", result.iterations_, result.norm_);
   return 0;

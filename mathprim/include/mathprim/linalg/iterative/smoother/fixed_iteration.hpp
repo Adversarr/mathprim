@@ -13,7 +13,7 @@ private:
                                       Scalar, Device, LinearOperator>;
   friend base;
 
-  using vector_type = typename base::vector_type;
+  using vector_view = typename base::vector_view;
   using const_vector = typename base::const_vector;
   using linear_operator_type = typename base::linear_operator_type;
   using results_type = typename base::results_type;
@@ -23,9 +23,8 @@ public:
   basic_fixed_iteration(linear_operator_type matrix, Blas blas, Smoother smoother) :
       base(std::move(matrix)), blas_(std::move(blas)), smoother_(std::move(smoother)) {}
 
-private:
   template <typename Callback>
-  results_type apply_impl(const_vector b, vector_type x, const parameters_type& params, Callback&& callback) {
+  results_type solve_impl(vector_view x, const_vector b, const parameters_type& params, Callback&& callback) {
     auto& blas = blas_;
     auto& smoother = smoother_;
     auto& matrix = base::matrix_;
@@ -34,7 +33,7 @@ private:
       dx_ = make_buffer<Scalar, Device>(x.shape());
     }
 
-    vector_type r = residual_buffer.view(), dx = dx_.view();
+    vector_view r = residual_buffer.view(), dx = dx_.view();
     const_vector cx = x.as_const(), cr = r.as_const();
     const Scalar b_norm = blas.norm(b);
 

@@ -15,7 +15,7 @@ public:
   void solve(nb::ndarray<Flt, nb::ndim<1>, nb::device::cpu> b, nb::ndarray<Flt, nb::ndim<1>, nb::device::cpu> x) {
     auto x_view = mp::view(x.data(), make_shape(static_cast<index_t>(x.size())));
     auto b_view = mp::view(b.data(), make_shape(static_cast<index_t>(b.size())));
-    alg_.solve(x_view, b_view);
+    alg_.solve(b_view, x_view);
   }
 
   /// matrix version: A X = B
@@ -23,7 +23,7 @@ public:
               nb::ndarray<Flt, nb::ndim<2>, nb::device::cpu, nb::c_contig> X) {
     auto x_view = nbex::to_mp_view_standard(X);
     auto b_view = nbex::to_mp_view_standard(B);
-    alg_.vsolve(x_view, b_view);
+    alg_.vsolve(b_view, x_view);
   }
 
 private:

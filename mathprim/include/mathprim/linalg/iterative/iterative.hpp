@@ -91,6 +91,23 @@ public:
   void apply(vector_type y, const_vector x) {
     static_cast<Derived*>(this)->apply_impl(y, x);
   }
+
+  // TODO: Implement this logic.
+  template <typename SparseMatrixT>
+  void analyze(const SparseMatrixT& matrix) {
+    static_cast<Derived*>(this)->analyze_impl(matrix);
+  }
+
+  template <typename SparseMatrixT>
+  void factorize(const SparseMatrixT& matrix) {
+    static_cast<Derived*>(this)->factorize_impl(matrix);
+  }
+
+  template <typename SparseMatrixT>
+  void analyze_impl(const SparseMatrixT& /* matrix */) {}
+
+  template <typename SparseMatrixT>
+  void factorize_impl(const SparseMatrixT& /* matrix */) {}
 };
 
 template <typename Scalar, typename Device>
@@ -201,6 +218,7 @@ public:
   }
   const_vector residual() const noexcept { return residual_.view(); }
   linear_operator_type& linear_operator() noexcept { return matrix_; }
+
 protected:
   linear_operator_type matrix_;
   contiguous_buffer<Scalar, shape_t<keep_dim>, Device> residual_;
