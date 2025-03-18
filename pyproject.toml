@@ -1,0 +1,36 @@
+[project]
+name = "pymp"
+version = "0.1.0"
+description = "A lightweight tensor(view) library."
+authors = [
+    {name = "Adversarr",email = "1444781838@qq.com"}
+]
+license = { text = "MIT" }
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "numpy (>=2.0.0,<3.0.0)",
+    "scipy (>=1.13.0,<2.0.0)",
+    "setuptools (>=75.8.2,<76.0.0)",
+    "nanobind (>=2.5.0,<3.0.0)",
+    "torch (>=2.0.0,<3.0.0)"
+]
+
+[build-system]
+requires = [
+    "scikit-build-core >=0.10",
+    "nanobind >=2.5.0"
+]
+build-backend = "scikit_build_core.build"
+
+#### Build CMake.
+[tool.scikit-build]
+minimum-version = "build-system.requires"
+build-dir = "build"
+
+[tool.scikit-build.cmake]
+build-type = "RelWithDebInfo"
+define.CMAKE_EXPORT_COMPILE_COMMANDS = true
+define.MATHPRIM_BUILD_BINDINGS=true
+define.MATHPRIM_BUILD_TESTS=false
+define.MATHPRIM_ENABLE_WARNINGS=false
