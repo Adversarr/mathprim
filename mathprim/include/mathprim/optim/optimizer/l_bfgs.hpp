@@ -165,8 +165,9 @@ private:
       last_change = value - new_value;
       value = new_value;
       grad_norm = bl.norm(grads);
-      if (last_change < criteria.tol_change_ && last_change >= 0) {
-        converged = true;
+      converged = grad_norm < criteria.tol_grad_;
+      converged |= (last_change < criteria.tol_change_ && last_change >= 0);
+      if (converged) {
         break;
       }
 

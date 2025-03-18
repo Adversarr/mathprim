@@ -120,6 +120,7 @@ public:
   using index_vector_buffer = to_buffer_t<typename desc_type::index_vector>;
   using weight_buffer = to_buffer_t<typename desc_type::weight_view>;
 
+  basic_gather_info() = default;
   basic_gather_info(index_t num_outputs, index_t num_inputs, bool has_weights = false) noexcept :
       num_outputs_(num_outputs), num_inputs_(num_inputs), has_weights_(has_weights) {}
   MATHPRIM_INTERNAL_MOVE(basic_gather_info, default);
