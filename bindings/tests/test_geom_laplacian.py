@@ -2,7 +2,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from pymp.geometry import laplacian
-
+from time import time
 def mesh(rows, cols):
     # Create a simple 2D mesh
     n = rows * cols
@@ -18,13 +18,15 @@ def mesh(rows, cols):
                 faces.append([k + 1, k + cols + 1, k + cols])
     return vertices.astype(np.float32), np.array(faces).astype(np.int32)
 
-vert, face = mesh(3, 5)
-
-plt.figure()
-plt.triplot(vert[:, 0], vert[:, 1], face)
-plt.plot(vert[:, 0], vert[:, 1], 'o')
-
+vert, face = mesh(50, 50)
+start = time()
 L = laplacian(vert, face)
-
-print(L.todense())
+end = time()
+print('Elapsed time:', end - start)
+# plt.figure()
+# plt.triplot(vert[:, 0], vert[:, 1], face)
+# plt.plot(vert[:, 0], vert[:, 1], 'o')
+# print(L.todense())
+# plt.show()
+plt.spy(L, markersize=1)
 plt.show()

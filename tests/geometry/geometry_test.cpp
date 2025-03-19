@@ -24,7 +24,7 @@ GTEST_TEST(laplacian, manifold) {
   auto vert = view(vertices, make_shape(4, 3));
   auto face = view(faces, make_shape(2, 3));
   geometry::basic_mesh<float, 3, 3, device::cpu> mesh{vert, face};
-  auto lap = geometry::laplacian_builder<sparse::sparse_format::csr, float, 3, 3, device::cpu>::build(mesh);
+  auto lap = geometry::build_laplacian<sparse::sparse_format::csr, float, 3, 3>(mesh);
   auto dense = eigen_support::map(lap.view()).toDense();
   for (int i = 0; i < 4; i++) {
     for (int j = 0; j < 4; j++) {
@@ -43,7 +43,7 @@ GTEST_TEST(laplacian, plane) {
   auto vert = view(vertices, make_shape(4, 2));
   auto face = view(faces, make_shape(2, 3));
   geometry::basic_mesh<float, 2, 3, device::cpu> mesh{vert, face};
-  auto lap = geometry::laplacian_builder<sparse::sparse_format::csr, float, 2, 3, device::cpu>::build(mesh);
+  auto lap = geometry::build_laplacian<sparse::sparse_format::csr, float, 2, 3>(mesh);
   auto dense = eigen_support::map(lap.view()).toDense();
   for (int i = 0; i < 4; i++) {
     for (int j = 0; j < 4; j++) {

@@ -5,6 +5,7 @@
 
 #include "mathprim/geometry/laplacian.hpp"
 #include "mathprim/geometry/lumped_mass.hpp"
+#include "mathprim/parallel/openmp.hpp"
 #include "mathprim/supports/eigen_sparse.hpp"
 
 template <typename Flt>
@@ -27,17 +28,17 @@ Eigen::SparseMatrix<Flt, Eigen::RowMajor> laplacian(
   if (ndim == 2 && dsimplex == 3) {
     mp::geometry::basic_mesh<Flt, 2, 3, mp::device::cpu> mesh{mp::view(vertices.data(), mp::make_shape(nvert, 2_s)),
                                                               mp::view(faces.data(), mp::make_shape(nface, 3_s))};
-    auto matrix = mp::geometry::build_laplacian<mathprim::sparse::sparse_format::csr, Flt>(mesh);
+    auto matrix = mp::geometry::build_laplacian<mathprim::sparse::sparse_format::csr, Flt, 2, 3, mp::par::openmp>(mesh);
     return mp::eigen_support::map(matrix.view());
   } else if (ndim == 3 && dsimplex == 3) {
     mp::geometry::basic_mesh<Flt, 3, 3, mp::device::cpu> mesh{mp::view(vertices.data(), mp::make_shape(nvert, 3_s)),
                                                               mp::view(faces.data(), mp::make_shape(nface, 3_s))};
-    auto matrix = mp::geometry::build_laplacian<mathprim::sparse::sparse_format::csr, Flt>(mesh);
+    auto matrix = mp::geometry::build_laplacian<mathprim::sparse::sparse_format::csr, Flt, 3, 3, mp::par::openmp>(mesh);
     return mp::eigen_support::map(matrix.view());
   } else if (ndim == 3 && dsimplex == 4) {
     mp::geometry::basic_mesh<Flt, 3, 4, mp::device::cpu> mesh{mp::view(vertices.data(), mp::make_shape(nvert, 3_s)),
                                                               mp::view(faces.data(), mp::make_shape(nface, 4_s))};
-    auto matrix = mp::geometry::build_laplacian<mathprim::sparse::sparse_format::csr, Flt>(mesh);
+    auto matrix = mp::geometry::build_laplacian<mathprim::sparse::sparse_format::csr, Flt, 3, 4, mp::par::openmp>(mesh);
     return mp::eigen_support::map(matrix.view());
   } else {
     std::ostringstream oss;
@@ -74,17 +75,17 @@ Eigen::SparseMatrix<Flt, Eigen::RowMajor> weighted_laplacian(
   if (ndim == 2 && dsimplex == 3) {
     mp::geometry::basic_mesh<Flt, 2, 3, mp::device::cpu> mesh{mp::view(vertices.data(), mp::make_shape(nvert, 2_s)),
                                                               mp::view(faces.data(), mp::make_shape(nface, 3_s))};
-    auto matrix = mp::geometry::build_laplacian<mathprim::sparse::sparse_format::csr, Flt>(mesh, weights);
+    auto matrix = mp::geometry::build_laplacian<mathprim::sparse::sparse_format::csr, Flt, 2, 3, mp::par::openmp>(mesh, weights);
     return mp::eigen_support::map(matrix.view());
   } else if (ndim == 3 && dsimplex == 3) {
     mp::geometry::basic_mesh<Flt, 3, 3, mp::device::cpu> mesh{mp::view(vertices.data(), mp::make_shape(nvert, 3_s)),
                                                               mp::view(faces.data(), mp::make_shape(nface, 3_s))};
-    auto matrix = mp::geometry::build_laplacian<mathprim::sparse::sparse_format::csr, Flt>(mesh, weights);
+    auto matrix = mp::geometry::build_laplacian<mathprim::sparse::sparse_format::csr, Flt, 3, 3, mp::par::openmp>(mesh, weights);
     return mp::eigen_support::map(matrix.view());
   } else if (ndim == 3 && dsimplex == 4) {
     mp::geometry::basic_mesh<Flt, 3, 4, mp::device::cpu> mesh{mp::view(vertices.data(), mp::make_shape(nvert, 3_s)),
                                                               mp::view(faces.data(), mp::make_shape(nface, 4_s))};
-    auto matrix = mp::geometry::build_laplacian<mathprim::sparse::sparse_format::csr, Flt>(mesh, weights);
+    auto matrix = mp::geometry::build_laplacian<mathprim::sparse::sparse_format::csr, Flt, 3, 4, mp::par::openmp>(mesh, weights);
     return mp::eigen_support::map(matrix.view());
   } else {
     std::ostringstream oss;

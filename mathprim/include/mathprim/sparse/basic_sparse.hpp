@@ -33,6 +33,7 @@ struct entry {
   };
   Scalar value_;
 
+  entry() : row_(0), col_(0), value_(0) {}
   entry(index_t row, index_t col, Scalar value) : row_(row), col_(col), value_(value) {}
   entry(index_t row, index_t col) : row_(row), col_(col), value_(0) {}
 };
