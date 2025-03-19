@@ -29,6 +29,9 @@ struct convergence_result {
 template <typename Derived, typename Scalar, typename Device, sparse::sparse_format Compression>
 class basic_sparse_solver {
 public:
+  using scalar_type = Scalar;
+  using device_type = Device;
+  static constexpr sparse::sparse_format compression = Compression;
   using vector_view = contiguous_view<Scalar, dshape<1>, Device>;
   using const_vector = contiguous_view<const Scalar, dshape<1>, Device>;
   using matrix_view = contiguous_view<Scalar, dshape<2>, Device>;

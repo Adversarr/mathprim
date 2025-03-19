@@ -68,6 +68,8 @@ protected:
   void eval_gradients_impl() { eval_value_and_gradients_impl(); }
 
   std::vector<buffer_type> parameters_;
+
+public:
   std::vector<contiguous_matrix_buffer<Scalar, device::cpu>> A_;
 };
 

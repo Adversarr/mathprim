@@ -4,12 +4,13 @@
 #include "mathprim/optim/optimizer/adamw.hpp"
 #include "mathprim/optim/optimizer/gradient_descent.hpp"
 #include "mathprim/optim/optimizer/l_bfgs.hpp"
+#include "mathprim/optim/optimizer/newton.hpp"
 #include <iostream>
 
 using namespace mathprim;
 
 int main() {
-  optim::ex_probs::quad_problem<double> problem(10, 2);
+  optim::ex_probs::quad_problem<double> problem(10, 1);
   problem.setup();
   std::cout << problem.eval_value() << std::endl;
 
@@ -69,6 +70,25 @@ int main() {
     l_bfgs.memory_size_ = 5;
     l_bfgs.stopping_criteria_.max_iterations_ = 100;
     std::cout << l_bfgs.optimize(problem, [](auto& result) {
+      std::cout << result << std::endl;
+    }) << std::endl;
+  }
+
+  {
+    Eigen::SparseMatrix<double, Eigen::RowMajor> hessian(10, 10);
+    for (int i = 0; i < 10; ++i) {
+      for (int j = 0; j < 10; ++j) {
+        hessian.insert(i, j) = problem.A_[0].view()(i, j);
+      }
+    }
+    hessian.makeCompressed();
+    optim::newton_optimizer<double, device::cpu, blas::cpu_eigen<double>> newton;
+    newton.set_hessian_fn([&hessian]() {
+      return std::make_pair(false, eigen_support::view(hessian).as_const());
+    });
+    problem.setup();
+
+    std::cout << newton.optimize(problem, [](auto& result) {
       std::cout << result << std::endl;
     }) << std::endl;
   }

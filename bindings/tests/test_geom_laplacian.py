@@ -18,7 +18,7 @@ def mesh(rows, cols):
                 faces.append([k + 1, k + cols + 1, k + cols])
     return vertices.astype(np.float32), np.array(faces).astype(np.int32)
 
-vert, face = mesh(50, 50)
+vert, face = mesh(1024, 1024)
 start = time()
 L = laplacian(vert, face)
 end = time()
