@@ -210,11 +210,13 @@ public:
                                         const_view neg_search_dir, Scalar init_step,
                                         LinesearchCallback&& callback = {}) {
     backup_state(problem);
-
+    const Scalar cur_value = problem.current_value();
     neg_search_dir_ = neg_search_dir;
     step_size_ = init_step;
     auto result = base::template optimize<ProblemDerived, LinesearchCallback>(
         problem, std::forward<LinesearchCallback>(callback));
+    const Scalar next_value = problem.current_value();
+    MATHPRIM_ASSERT(next_value <= cur_value && "Linesearcher should decrease the value.");
 
     // Note: linesearcher should exit at the optimal point.
     // restore_state(problem, true);

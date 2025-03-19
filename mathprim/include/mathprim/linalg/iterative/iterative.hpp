@@ -113,6 +113,7 @@ public:
 
   void analyze_impl() {
     residual_ = make_buffer<Scalar, Device>(this->matrix().rows());
+    sp_blas_ = SparseBlas(this->matrix());
     // ugly.
     static_cast<Derived*>(this)->analyze_impl_impl();
   }

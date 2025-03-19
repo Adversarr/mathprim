@@ -8,7 +8,8 @@ namespace mathprim::optim {
 template <typename Scalar, typename Device, typename Blas,
           typename Linesearcher = backtracking_linesearcher<Scalar, Device, Blas>,
           typename SparseSolver = sparse::direct::eigen_simplicial_ldlt<Scalar, sparse::sparse_format::csr>>
-class newton_optimizer : public basic_optimizer<newton_optimizer<Scalar, Device, Blas, Linesearcher>, Scalar, Device> {
+class newton_optimizer
+    : public basic_optimizer<newton_optimizer<Scalar, Device, Blas, Linesearcher, SparseSolver>, Scalar, Device> {
 public:
   using base = basic_optimizer<newton_optimizer<Scalar, Device, Blas, Linesearcher, SparseSolver>, Scalar, Device>;
   friend base;
@@ -80,7 +81,10 @@ public:
       }
 
       // Solve the linear system: H dx = g
-      solver.solve(dx, g);
+      sparse::convergence_criteria<Scalar> solver_criteria;
+      solver_criteria.max_iterations_ = 1024;
+      solver_criteria.norm_tol_ = 1e-2 * blas.norm(g); // Inexact CG.
+      solver.solve(dx, g, solver_criteria);
 
       // Launch linesearcher.
       auto [ls_result, ls_step_size] = ls.search(problem, dx, 1);
@@ -107,6 +111,6 @@ protected:
   Blas blas_;
   sparse_view hessian_;
   hessian_fn update_hessian_;
-  contiguous_vector_buffer<Scalar, Device> dx_;
+  contiguous_vector_buffer<Scalar, Device> dx_{};
 };
 }

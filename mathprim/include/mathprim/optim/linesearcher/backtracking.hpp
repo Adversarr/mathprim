@@ -39,12 +39,17 @@ private:
     auto& iterations = result.iterations_;
     auto min_abs_step = step_size * this->min_rel_step_;
     bool &converged = result.converged_;
+    
+    auto grad = problem.fused_gradients().as_const();
+    auto neg_dir = this->neg_search_dir_;
+    const Scalar expected_descent = -blas_.dot(grad, neg_dir) * armijo_threshold_;
+    MATHPRIM_ASSERT(expected_descent < 0 && "Expected descent rate should be positive.");
 
     for (; iterations < criteria.max_iterations_ && min_abs_step < step_size; ++iterations) {
       // Step 1: Compute the new value.
       base::step(step_size, problem, blas_);
       Scalar new_value = problem.eval_value_and_gradients(); // Although gradients is not necessary here.
-      if (internal::satisfies_armijo(old_value, new_value, step_size, armijo_threshold_)) {
+      if (internal::satisfies_armijo(old_value, new_value, step_size, expected_descent)) {
         converged = true;
         break;
       }

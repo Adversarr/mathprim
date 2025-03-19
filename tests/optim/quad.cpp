@@ -1,10 +1,12 @@
 #include "mathprim/optim/ex_probs/quad.hpp"
 #include "mathprim/blas/cpu_eigen.hpp"
+#include "mathprim/linalg/iterative/solver/cg.hpp"
 #include "mathprim/optim/linesearcher/backtracking.hpp"
 #include "mathprim/optim/optimizer/adamw.hpp"
 #include "mathprim/optim/optimizer/gradient_descent.hpp"
 #include "mathprim/optim/optimizer/l_bfgs.hpp"
 #include "mathprim/optim/optimizer/newton.hpp"
+#include "mathprim/sparse/blas/eigen.hpp"
 #include <iostream>
 
 using namespace mathprim;
@@ -82,7 +84,11 @@ int main() {
       }
     }
     hessian.makeCompressed();
-    optim::newton_optimizer<double, device::cpu, blas::cpu_eigen<double>> newton;
+    using ls = optim::backtracking_linesearcher<double, device::cpu, blas::cpu_eigen<double>>;
+    using solver = sparse::iterative::cg<double, device::cpu,
+                                         mathprim::sparse::blas::eigen<double, mathprim::sparse::sparse_format::csr>,
+                                         blas::cpu_eigen<double>>;
+    optim::newton_optimizer<double, device::cpu, blas::cpu_eigen<double>, ls, solver> newton;
     newton.set_hessian_fn([&hessian]() {
       return std::make_pair(false, eigen_support::view(hessian).as_const());
     });
