@@ -3,87 +3,49 @@
 
 #include "mathprim/blas/cpu_handmade.hpp"
 #include "mathprim/linalg/iterative/iterative.hpp"
+#include "mathprim/sparse/blas/eigen.hpp"
 #include "mathprim/supports/eigen_dense.hpp"
-#include "mathprim/supports/eigen_sparse.hpp"
 
 namespace mathprim::sparse::iterative {
 
-template <typename Scalar, sparse::sparse_format Format>
-class wrap_eigen_sparse_map : public basic_linear_operator<wrap_eigen_sparse_map<Scalar, Format>, Scalar, device::cpu> {
-  using map_type = Eigen::Map<const eigen_support::internal::eigen_sparse_format_t<Scalar, Format>>;
-  using base = basic_linear_operator<wrap_eigen_sparse_map<Scalar, Format>, Scalar, device::cpu>;
-  friend base;
-  using vector_type = typename base::vector_type;
-  using const_vector = typename base::const_vector;
-  using const_sparse = basic_sparse_view<const Scalar, device::cpu, Format>;
-
-public:
-  wrap_eigen_sparse_map(const_sparse mat) :  // NOLINT(google-explicit-constructor)
-      base(mat.rows(), mat.cols()), mat_(eigen_support::map(mat)) {}
-
-  wrap_eigen_sparse_map(wrap_eigen_sparse_map&&) = default;
-
-  void apply_impl(Scalar alpha, const_vector x, Scalar beta, vector_type y) {
-    auto x_map = eigen_support::cmap(x);
-    auto y_map = eigen_support::cmap(y);
-    if (beta == 0) {
-      y_map.noalias() = mat_ * x_map;
-    } else {
-      y_map *= beta;
-      y_map.noalias() += alpha * mat_ * x_map;
-    }
-  }
-
-  void apply_transpose_impl(Scalar alpha, const_vector x, Scalar beta, vector_type y) {
-    auto x_map = eigen_support::cmap(x);
-    auto y_map = eigen_support::cmap(y);
-    if (beta == 0) {
-      y_map.noalias() = mat_.transpose() * x_map;
-    } else {
-      y_map *= beta;
-      y_map.noalias() += alpha * mat_.transpose() * x_map;
-    }
-  }
-
-  map_type matrix_map() const noexcept {
-    return mat_;
-  }
-
-private:
-  map_type mat_;  // Eigen sparse matrix map
-};
-
-template <typename EigenSolver, typename Scalar, sparse::sparse_format Format>
-class basic_eigen_iterative_solver
+template <typename EigenSolver, typename Scalar, sparse_format Format>
+class basic_eigen_iterative_solver final
     : public basic_iterative_solver<basic_eigen_iterative_solver<EigenSolver, Scalar, Format>, Scalar, device::cpu,
-                                    wrap_eigen_sparse_map<Scalar, Format>> {
+                                    sparse::blas::eigen<Scalar, Format>> {
 public:
-  using base = basic_iterative_solver<basic_eigen_iterative_solver<EigenSolver, Scalar, Format>, Scalar, device::cpu,
-                                      wrap_eigen_sparse_map<Scalar, Format>>;
+  using this_type = basic_eigen_iterative_solver<EigenSolver, Scalar, Format>;
+  using base = basic_iterative_solver<this_type, Scalar, device::cpu, sparse::blas::eigen<Scalar, Format>>;
+  using base2 = basic_sparse_solver<this_type, Scalar, device::cpu, Format>;
   friend base;
-  using vector_type = typename base::vector_type;
+  friend base2;
+  using vector_view = typename base::vector_view;
   using const_vector = typename base::const_vector;
-  using linear_operator_type = typename base::linear_operator_type;
-  using results_type = typename base::results_type;
-  using parameters_type = typename base::parameters_type;
-  explicit basic_eigen_iterative_solver(linear_operator_type matrix) :
-      base(std::move(matrix)) {
-    compute();
-  }
+  using sparse_view = typename base::sparse_view;
+  using const_sparse = typename base::const_sparse;
+  using matrix_view = typename base::matrix_view;
+  using const_matrix_view = typename base::const_matrix_view;
+  using results_type = convergence_result<Scalar>;
+  using parameters_type = convergence_criteria<Scalar>;
 
-  void compute() {
+  basic_eigen_iterative_solver() = default;
+  explicit basic_eigen_iterative_solver(const_sparse matrix) : base(matrix) { this->compute(); }
+
+protected:
+  void analyze_impl_impl() {
     solver_ = std::make_unique<EigenSolver>();
-    solver_->compute(base::linear_operator().matrix_map());
+    solver_->analyzePattern(eigen_support::map(this->matrix()));
   }
 
-private:
+  void factorize_impl_impl() { solver_->factorize(eigen_support::map(this->matrix())); }
+
   template <typename Callback>
-  MATHPRIM_NOINLINE results_type solve_impl(vector_type x, const_vector b, const parameters_type& params = {},
+  MATHPRIM_NOINLINE results_type solve_impl(vector_view x, const_vector b, const parameters_type& params = {},
                                             Callback&& /* cb */ = {}) {
     MATHPRIM_INTERNAL_CHECK_THROW(solver_, std::runtime_error, "The solver is not initialized.");
     results_type res;
     auto b_map = eigen_support::cmap(b);
     auto x_map = eigen_support::cmap(x);
+
     solver_->setMaxIterations(params.max_iterations_);
     solver_->setTolerance(params.norm_tol_);
     x_map = solver_->solveWithGuess(b_map, x_map).eval();

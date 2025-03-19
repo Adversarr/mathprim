@@ -10,35 +10,48 @@ namespace mathprim::sparse::iterative {
  * @tparam Scalar
  * @tparam Device
  */
-template <typename Derived, typename Scalar, typename Device>
+template <typename Derived, typename Scalar, typename Device, sparse_format Format>
 class basic_smoother {
 public:
   using vector_type = contiguous_view<Scalar, shape_t<keep_dim>, Device>;
   using const_vector = contiguous_view<const Scalar, shape_t<keep_dim>, Device>;
+  using const_sparse = basic_sparse_view<const Scalar, Device, Format>;
+  basic_smoother() = default;
+  explicit basic_smoother(const_sparse mat): mat_(mat) {}
 
-  explicit basic_smoother(index_t rows) : rows_(rows) {}
+  Derived& derived() noexcept { return *static_cast<Derived*>(this); }
+  const Derived& derived() const noexcept { return *static_cast<const Derived*>(this); }
 
-  void compute() {
-    static_cast<Derived*>(this)->compute_impl();
+  Derived& analyze(const_sparse mat) {
+    if (mat) {
+      mat_ = mat;
+    }
+    MATHPRIM_INTERNAL_CHECK_THROW(mat_, std::runtime_error, "No matrix provided.");
+    derived().analyze_impl();
+    return derived();
   }
+
+  Derived& factorize() {
+    MATHPRIM_INTERNAL_CHECK_THROW(mat_, std::runtime_error, "No matrix provided.");
+    derived().factorize_impl();
+    return derived();
+  }
+
+  Derived& compute(const_sparse mat) { return analyze(mat).factorize(); }
 
   // A x = b
   void apply(vector_type dx, const_vector residual) {
-    // check shape
-    MATHPRIM_INTERNAL_CHECK_THROW(dx.size() == rows_, shape_error,
-                                  "The size of dx is not equal to the number of rows.");
-    MATHPRIM_INTERNAL_CHECK_THROW(residual.size() == rows_, shape_error,
+    auto rows = mat_.rows();
+    MATHPRIM_INTERNAL_CHECK_THROW(dx.size() == rows, shape_error, "The size of dx is not equal to the number of rows.");
+    MATHPRIM_INTERNAL_CHECK_THROW(residual.size() == rows, shape_error,
                                   "The size of residual is not equal to the number of rows.");
-
-    // run
     static_cast<Derived*>(this)->apply_impl(dx, residual);
   }
 
-  index_t rows() const noexcept {
-    return rows_;
-  }
+  const_sparse matrix() const noexcept { return mat_; }
 
 protected:
-  index_t rows_;
+  const_sparse mat_;
 };
+
 }  // namespace mathprim::sparse::iterative

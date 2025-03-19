@@ -43,13 +43,12 @@ void work_cuda(benchmark::State &state) {
   copy(d_csr_col_idx.view(), col_idx);
   copy(d_csr_row_ptr.view(), row_ptr);
 
-  using linear_op = sparse::iterative::sparse_matrix<sparse::blas::cusparse<float, sparse::sparse_format::csr>>;
+  using linear_op = sparse::blas::cusparse<float, sparse::sparse_format::csr>;
   using blas_t = blas::cublas<float>;
   using smoother_t = sparse::iterative::jacobi_smoother<float, device::cuda, sparse::sparse_format::csr, blas_t>;
-  sparse::iterative::basic_fixed_iteration<float, device::cuda,
-                                           mathprim::sparse::sparse_format::csr,
-                                           linear_op, blas_t, smoother_t>
-      jacobi{linear_op{mat}, blas_t{}, smoother_t{mat}};
+  sparse::iterative::basic_fixed_iteration<float, device::cuda, mathprim::sparse::sparse_format::csr, linear_op, blas_t,
+                                           smoother_t>
+      jacobi{mat};
 
   auto d_b = make_cuda_buffer<float>(rows);
   auto d_x = make_cuda_buffer<float>(rows);
@@ -60,7 +59,7 @@ void work_cuda(benchmark::State &state) {
       d_xv[i] = 1.0f;
     });
     // b = A * x
-    jacobi.linear_operator().apply(1.0f, d_x.view(), 0.0f, d_b.view());
+    jacobi.linear_operator().gemv(1.0f, d_x.view(), 0.0f, d_b.view());
 
     parfor.run(make_shape(rows), [d_xv = d_x.view(), d_bv = d_b.view()] __device__(index_t i) {
       d_xv[i] = (i % 100 - 50) / 100.0f;

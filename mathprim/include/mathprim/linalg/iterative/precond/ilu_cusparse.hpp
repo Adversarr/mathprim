@@ -19,42 +19,40 @@ template <typename Scalar, typename Device, sparse::sparse_format SparseCompress
 class ilu;
 
 template <typename Scalar>
-class ilu<Scalar, device::cuda, sparse::sparse_format::csr>
-    : public basic_preconditioner<ilu<Scalar, device::cuda, sparse::sparse_format::csr>, Scalar, device::cuda> {
-
+class ilu<Scalar, device::cuda, sparse::sparse_format::csr> final
+    : public basic_preconditioner<ilu<Scalar, device::cuda, sparse::sparse_format::csr>, Scalar, device::cuda,
+                                  sparse_format::csr> {
 public:
-  using base = basic_preconditioner<ilu<Scalar, device::cuda, sparse::sparse_format::csr>, Scalar, device::cuda>;
+  using base = basic_preconditioner<ilu<Scalar, device::cuda, sparse::sparse_format::csr>, Scalar, device::cuda,
+                                    sparse_format::csr>;
   friend base;
   using vector_type = typename base::vector_type;
   using const_vector = typename base::const_vector;
-  using const_sparse_view = sparse::basic_sparse_view<const Scalar, device::cuda, sparse::sparse_format::csr>;
+  using const_sparse = sparse::basic_sparse_view<const Scalar, device::cuda, sparse::sparse_format::csr>;
   static constexpr bool is_float32 = std::is_same_v<Scalar, float>;
   static_assert(is_float32 || std::is_same_v<Scalar, double>, "Only float32 and float64 are supported.");
 
-  ilu();
-  ilu(const const_sparse_view& view, bool need_compute = true) :  // NOLINT(google-explicit-constructor)
-      matrix_(view) {
-    if (need_compute) {
-      compute();
-    }
-  }
+  ilu() = default;
+  explicit ilu(const_sparse view) : base(view) {}
 
-  ilu(ilu&& other): 
-    matrix_(other.matrix_),
-    descr_a_(other.descr_a_),
-    descr_sparse_a_(other.descr_sparse_a_),
-    descr_sparse_lower_(other.descr_sparse_lower_), 
-    descr_sparse_upper_(other.descr_sparse_upper_),
-    descr_lu_(other.descr_lu_),
-    info_ilu_(other.info_ilu_),
-    ilu_nnz_copy_(std::move(other.ilu_nnz_copy_)),
-    buffer_intern_(std::move(other.buffer_intern_)),
-    buffer_l_(std::move(other.buffer_l_)),
-    buffer_u_(std::move(other.buffer_u_)),
-    buffer_lu_(std::move(other.buffer_lu_)),
-    spsvDescrL_(other.spsvDescrL_),
-    spsvDescrU_(other.spsvDescrU_),
-    vec_x_(other.vec_x_), vec_y_(other.vec_y_), vec_intern_(other.vec_intern_) {
+  ilu(ilu&& other) :
+      base(other),
+      descr_a_(other.descr_a_),
+      descr_sparse_a_(other.descr_sparse_a_),
+      descr_sparse_lower_(other.descr_sparse_lower_),
+      descr_sparse_upper_(other.descr_sparse_upper_),
+      descr_lu_(other.descr_lu_),
+      info_ilu_(other.info_ilu_),
+      ilu_nnz_copy_(std::move(other.ilu_nnz_copy_)),
+      buffer_intern_(std::move(other.buffer_intern_)),
+      buffer_l_(std::move(other.buffer_l_)),
+      buffer_u_(std::move(other.buffer_u_)),
+      buffer_lu_(std::move(other.buffer_lu_)),
+      spsvDescrL_(other.spsvDescrL_),
+      spsvDescrU_(other.spsvDescrU_),
+      vec_x_(other.vec_x_),
+      vec_y_(other.vec_y_),
+      vec_intern_(other.vec_intern_) {
     other.descr_a_ = nullptr;
     other.descr_sparse_a_ = nullptr;
     other.descr_sparse_lower_ = nullptr;
@@ -72,11 +70,12 @@ public:
     reset();
   }
 
-  void analyze_pattern() {
+  void analyze_impl() {
     reset(); // clear all previous information
     cusparseHandle_t handle = sparse::blas::internal::get_cusparse_handle();
-    index_t rows = matrix_.rows();
-    index_t nnz = matrix_.nnz();
+    auto matrix = this->matrix();
+    index_t rows = matrix.rows();
+    index_t nnz = matrix.nnz();
     cudaDataType_t dtype = std::is_same_v<Scalar, float> ? CUDA_R_32F : CUDA_R_64F;
 
     /* Description of the A matrix */
@@ -106,9 +105,9 @@ public:
     cusparseFillMode_t fill_upper = CUSPARSE_FILL_MODE_UPPER;
     cusparseDiagType_t diag_non_unit = CUSPARSE_DIAG_TYPE_NON_UNIT;
     
-    index_t* row_offsets = const_cast<index_t*>(matrix_.outer_ptrs().data());
-    index_t* col_indices = const_cast<index_t*>(matrix_.inner_indices().data());
-    Scalar* values = const_cast<Scalar*>(matrix_.values().data());
+    index_t* row_offsets = const_cast<index_t*>(matrix.outer_ptrs().data());
+    index_t* col_indices = const_cast<index_t*>(matrix.inner_indices().data());
+    Scalar* values = const_cast<Scalar*>(matrix.values().data());
     MATHPRIM_CHECK_CUSPARSE(cusparseCreateCsr(                             //
         &descr_sparse_a_,                                                  // descr
         rows, rows, nnz,                                                   // shape
@@ -117,7 +116,7 @@ public:
         dtype));
 
     /* Copy A data to ILU(0) vals as input*/
-    copy(ilu_nnz_copy_.view(), matrix_.values().as_const());
+    copy(ilu_nnz_copy_.view(), matrix.values().as_const());
     // Lower Part
     MATHPRIM_INTERNAL_CHECK_THROW_CUSPARSE(cusparseCreateCsr(                                                     //
         &descr_sparse_lower_,                                              // descr
@@ -174,17 +173,18 @@ public:
     buffer_u_ = make_cuda_buffer<char>(buf_size_u);
   }
 
-  void factorize() {
+  void factorize_impl() {
     cusparseHandle_t handle = sparse::blas::internal::get_cusparse_handle();
-    index_t rows = matrix_.rows();
-    index_t nnz = matrix_.nnz();
+    auto matrix = this->matrix();
+    index_t rows = matrix.rows();
+    index_t nnz = matrix.nnz();
     cudaDataType_t dtype = std::is_same_v<Scalar, float> ? CUDA_R_32F : CUDA_R_64F;
-    index_t* row_offsets = const_cast<index_t*>(matrix_.outer_ptrs().data());
-    index_t* col_indices = const_cast<index_t*>(matrix_.inner_indices().data());
+    index_t* row_offsets = const_cast<index_t*>(matrix.outer_ptrs().data());
+    index_t* col_indices = const_cast<index_t*>(matrix.inner_indices().data());
     Scalar* values = ilu_nnz_copy_.data();
     Scalar floatone = 1;
     /* Copy A data to Cholesky vals as input*/
-    copy(ilu_nnz_copy_.view(), matrix_.values().as_const());
+    copy(ilu_nnz_copy_.view(), matrix.values().as_const());
     /* Perform analysis for ILU(0) */
     if constexpr (is_float32) {
       MATHPRIM_CHECK_CUSPARSE(cusparseScsrilu02_analysis(  //
@@ -222,15 +222,6 @@ public:
         CUSPARSE_SPSV_ALG_DEFAULT, spsvDescrU_, buffer_u_.data()));
     buffer_intern_ = make_cuda_buffer<Scalar>(rows);
     MATHPRIM_CHECK_CUSPARSE(cusparseCreateDnVec(&vec_intern_, rows, buffer_intern_.data(), dtype));
-  }
-
-  const const_sparse_view& matrix() {
-    return matrix_;
-  }
-
-  void set_matrix(const const_sparse_view& view) {
-    matrix_ = view;
-    reset();
   }
 
   void reset() noexcept {
@@ -280,11 +271,6 @@ public:
     }
   }
 
-  void compute() {
-    analyze_pattern();
-    factorize();
-  }
-
 private:
   void apply_impl(vector_type y, const_vector x) {
     cusparseHandle_t handle = sparse::blas::internal::get_cusparse_handle();
@@ -306,7 +292,6 @@ private:
   }
 
   // Matrix A:
-  const_sparse_view matrix_;
   cusparseMatDescr_t descr_a_{nullptr};
   cusparseSpMatDescr_t descr_sparse_a_{nullptr};
   // Matrix L: A = L U
@@ -318,7 +303,6 @@ private:
   contiguous_buffer<Scalar, dshape<1>, device::cuda> ilu_nnz_copy_;
   contiguous_buffer<Scalar, dshape<1>, device::cuda> buffer_intern_;
   contiguous_buffer<char, dshape<1>, device::cuda> buffer_l_, buffer_u_, buffer_lu_;
-
 
   // solver
   cusparseSpSVDescr_t spsvDescrL_{nullptr}, spsvDescrU_{nullptr};

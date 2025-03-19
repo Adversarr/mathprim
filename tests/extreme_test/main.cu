@@ -72,14 +72,11 @@ int main() {
   auto gpu = matrix_cpu.to<device::cuda>();
   using sp_blas_t = sparse::blas::cusparse<float, mathprim::sparse::sparse_format::csr>;
   using blas_t = blas::cublas<float>;
-  using lin_t = sparse::iterative::sparse_matrix<sp_blas_t>;
   using prec_t = sparse::iterative::approx_inverse_preconditioner<sp_blas_t>;
   // using prec_t = sparse::iterative::diagonal_preconditioner<
   //     float, device::cuda, sparse::sparse_format::csr, blas_t>;
   report_time("Transfer GPU");
-  sparse::iterative::cg<float, device::cuda, lin_t, blas_t, prec_t> cg(
-      lin_t(gpu.const_view()), {}, prec_t(gpu.const_view()));
-  cg.preconditioner().compute();
+  sparse::iterative::cg<float, device::cuda, sp_blas_t, blas_t, prec_t> cg(gpu.const_view());
   report_time("FSAI precompute");
   auto d_x = make_cuda_buffer<float>(n), d_b = make_cuda_buffer<float>(n);
   auto d_xv = d_x.view(), d_bv = d_b.view();
@@ -90,11 +87,10 @@ int main() {
   });
 
   start = std::chrono::high_resolution_clock::now();
-  cg.solve(d_bv, d_xv, {n * 4, 1e-6}, [](index_t iter, float norm) {
+  cg.solve(d_xv, d_bv, {n * 4, 1e-6}, [](index_t iter, float norm) {
     if (iter % 1000 == 0) {
       std::cout << "Iter " << iter << " norm " << norm << std::endl;
     }
-    // std::cout << "Iter " << iter << " norm " << norm << std::endl;
   });
   report_time("Solve CG");
 

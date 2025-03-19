@@ -73,10 +73,10 @@ void fsai_compute(sparse::basic_sparse_view<const Scalar, device::cpu, sparse::s
 template <typename SparseBlas>
 class approx_inverse_preconditioner
     : public basic_preconditioner<approx_inverse_preconditioner<SparseBlas>, typename SparseBlas::scalar_type,
-                                  typename SparseBlas::device_type> {
+                                  typename SparseBlas::device_type, SparseBlas::compression> {
 public:
   using base = basic_preconditioner<approx_inverse_preconditioner<SparseBlas>, typename SparseBlas::scalar_type,
-                                    typename SparseBlas::device_type>;
+                                    typename SparseBlas::device_type, SparseBlas::compression>;
   using Scalar = typename base::scalar_type;
   using Device = typename base::device_type;
 
@@ -91,27 +91,22 @@ public:
   using sparse_cpu_matrix = sparse::basic_sparse_matrix<Scalar, device::cpu, sparse::sparse_format::csr>;
 
   approx_inverse_preconditioner() = default;
-  approx_inverse_preconditioner(const const_sparse_view& view,  // NOLINT(google-explicit-constructor)
-                                bool need_compute = true) :
-      matrix_(view) {
-    if (need_compute) {
-      compute();
-    }
-  }
+  explicit approx_inverse_preconditioner(const const_sparse_view& view) : base(view) { this->compute({}); }
 
-  approx_inverse_preconditioner(const approx_inverse_preconditioner&) = delete;
   approx_inverse_preconditioner(approx_inverse_preconditioner&&) = default;
+  approx_inverse_preconditioner(const approx_inverse_preconditioner&) = delete;
 
-  void compute() {
-    auto n = matrix_.rows(), nnz = matrix_.nnz();
+  void factorize_impl() {
+    auto matrix = this->matrix();
+    auto n = matrix.rows(), nnz = matrix.nnz();
     auto cpu_matrix = sparse_cpu_matrix(n, n, nnz);
     auto orig_outer = cpu_matrix.outer_ptrs().view();
     auto orig_inner = cpu_matrix.inner_indices().view();
     auto orig_values = cpu_matrix.values().view();
     // copy the matrix to cpu.
-    copy(orig_outer, matrix_.outer_ptrs());
-    copy(orig_inner, matrix_.inner_indices());
-    copy(orig_values, matrix_.values());
+    copy(orig_outer, matrix.outer_ptrs());
+    copy(orig_inner, matrix.inner_indices());
+    copy(orig_values, matrix.values());
 
     // create the lower triangular matrix.
     index_t lo_nnz = 0;
@@ -152,7 +147,7 @@ public:
     // after that, copy the lo to device.
     lo_ = lo.to(Device());
     buffer_intern_ = make_buffer<Scalar, Device>(n);
-    bl_ = std::make_unique<SparseBlas>(lo_.const_view());
+    bl_ = SparseBlas(lo_.const_view());
   }
 
   const_sparse_view ainv() const noexcept { return lo_.const_view(); }
@@ -161,13 +156,12 @@ private:
   void apply_impl(vector_type y, const_vector x) {
     // z = lo.T * x.
     auto z = buffer_intern_.view();
-    bl_->gemv(1, x, 0, z, true);
+    bl_.gemv(1, x, 0, z, true);
     // y = lo * y.
-    bl_->gemv(1, z, 0, y, false);
+    bl_.gemv(1, z, 0, y, false);
   }
 
-  std::unique_ptr<SparseBlas> bl_;
-  const_sparse_view matrix_;                                    // matrix to decompose.
+  SparseBlas bl_;
   sparse_matrix lo_;                                            // the approx inverse decomposition of A.
   contiguous_buffer<Scalar, dshape<1>, Device> buffer_intern_;  // buffer for intermediate computation.
 };

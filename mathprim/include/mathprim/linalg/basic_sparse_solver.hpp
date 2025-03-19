@@ -1,4 +1,7 @@
 #pragma once
+#include <stdexcept>
+
+#include "mathprim/core/defines.hpp"
 #include "mathprim/sparse/basic_sparse.hpp"
 namespace mathprim::sparse {
 
@@ -46,7 +49,7 @@ public:
     inline void operator()(index_t /* iter */, Scalar /* norm */) const noexcept {}
   };
 
-  // Solve the linear system.
+  /// @brief Solve the linear system.
   template <typename Callback = no_op>
   results_type solve(vector_view x, const_vector b, const parameters_type& params = {}, Callback&& cb = {}) {
     MATHPRIM_INTERNAL_CHECK_THROW(mat_.cols() == x.size(), std::runtime_error, "Invalid size of x");
@@ -66,22 +69,31 @@ public:
     throw std::runtime_error("This solver does not support vectorized solve.");
   }
 
-  // Analyze the non-zero pattern of matrix.
-  Derived& analyze(const const_sparse& mat) {
-    mat_ = mat;
+  /// @brief Shortcut to analyze and factorize the matrix.
+  Derived& compute(const const_sparse& mat = {}) { return analyze(mat).factorize(); }
+
+  /// @brief Analyze the non-zero pattern of matrix.
+  Derived& analyze(const const_sparse& mat = {}) {
+    if (mat) {
+      mat_ = mat;
+    }
+    MATHPRIM_INTERNAL_CHECK_THROW(mat_, std::runtime_error, "No matrix is provided.");
     derived().analyze_impl();
     return derived();
   }
 
+  /// @brief Factorize numerically.
   Derived& factorize() {
+    MATHPRIM_INTERNAL_CHECK_THROW(mat_, std::runtime_error, "No matrix is provided.");
     derived().factorize_impl();
     return derived();
   }
 
-  Derived& compute(const const_sparse& mat) { return analyze(mat).factorize(); }
-
   Derived& derived() { return *static_cast<Derived*>(this); }
   const Derived& derived() const { return *static_cast<const Derived*>(this); }
+  const_sparse& matrix() noexcept { return mat_; }
+
+protected:
   const_sparse mat_;
 };
 }  // namespace mathprim::sparse

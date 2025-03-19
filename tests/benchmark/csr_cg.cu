@@ -30,11 +30,10 @@ static void work(benchmark::State &state) {
   auto rows = mat.rows();
 
   using linear_op
-      = sparse::iterative::sparse_matrix<sparse::blas::naive<float, sparse::sparse_format::csr, par::openmp>>;
+      = sparse::blas::naive<float, sparse::sparse_format::csr, par::openmp>;
   using preconditioner
       = sparse::iterative::diagonal_preconditioner<float, device::cpu, sparse::sparse_format::csr, BlasImpl>;
-  sparse::iterative::cg<float, device::cpu, linear_op, BlasImpl, preconditioner> cg{linear_op{mat}, BlasImpl{},
-                                                                                   preconditioner{mat}};
+  sparse::iterative::cg<float, device::cpu, linear_op, BlasImpl, preconditioner> cg{mat};
 
   auto b = make_buffer<float>(rows);
   auto x = make_buffer<float>(rows);
@@ -45,7 +44,7 @@ static void work(benchmark::State &state) {
       xv[i] = 1.0f;
     });
     // b = A * x
-    cg.linear_operator().apply(1.0f, x.view(), 0.0f, b.view());
+    cg.linear_operator().gemv(1.0f, x.view(), 0.0f, b.view());
 
     par::seq().run(make_shape(rows), [xv = x.view(), bv = b.view()](index_t i) {
       xv[i] = (i % 100 - 50) / 100.0f;
@@ -70,11 +69,9 @@ static void work_ic(benchmark::State &state) {
   auto mat = mat_buf.const_view();
   auto rows = mat.rows();
 
-  using linear_op
-      = sparse::iterative::sparse_matrix<sparse::blas::naive<float, sparse::sparse_format::csr, par::openmp>>;
-  using preconditioner = sparse::iterative::eigen_ichol<float>;
-  sparse::iterative::cg<float, device::cpu, linear_op, BlasImpl, preconditioner> cg{linear_op{mat}, BlasImpl{},
-                                                                                   preconditioner{mat}};
+  using linear_op = sparse::blas::naive<float, sparse::sparse_format::csr, par::openmp>;
+  using preconditioner = sparse::iterative::eigen_ichol<float, mathprim::sparse::sparse_format::csr>;
+  sparse::iterative::cg<float, device::cpu, linear_op, BlasImpl, preconditioner> cg{mat};
 
   auto b = make_buffer<float>(rows);
   auto x = make_buffer<float>(rows);
@@ -85,7 +82,7 @@ static void work_ic(benchmark::State &state) {
       xv[i] = 1.0f;
     });
     // b = A * x
-    cg.linear_operator().apply(1.0f, x.view(), 0.0f, b.view());
+    cg.linear_operator().gemv(1.0f, x.view(), 0.0f, b.view());
 
     par::seq().run(make_shape(rows), [xv = x.view(), bv = b.view()](index_t i) {
       xv[i] = (i % 100 - 50) / 100.0f;
@@ -127,12 +124,11 @@ void work_cuda(benchmark::State &state) {
   copy(d_csr_col_idx.view(), col_idx);
   copy(d_csr_row_ptr.view(), row_ptr);
 
-  using linear_op = sparse::iterative::sparse_matrix<sparse::blas::cusparse<float, sparse::sparse_format::csr>>;
+  using linear_op = sparse::blas::cusparse<float, sparse::sparse_format::csr>;
   using blas_t = blas::cublas<float>;
   using preconditioner
       = sparse::iterative::diagonal_preconditioner<float, device::cuda, sparse::sparse_format::csr, blas_t>;
-  sparse::iterative::cg<float, device::cuda, linear_op, blas::cublas<float>, preconditioner> cg{linear_op{mat}, blas_t{},
-                                                                                               preconditioner{mat}};
+  sparse::iterative::cg<float, device::cuda, linear_op, blas::cublas<float>, preconditioner> cg{mat};
 
   auto d_b = make_cuda_buffer<float>(rows);
   auto d_x = make_cuda_buffer<float>(rows);
@@ -143,7 +139,7 @@ void work_cuda(benchmark::State &state) {
       d_xv[i] = 1.0f;
     });
     // b = A * x
-    cg.linear_operator().apply(1.0f, d_x.view(), 0.0f, d_b.view());
+    cg.linear_operator().gemv(1.0f, d_x.view(), 0.0f, d_b.view());
 
     parfor.run(make_shape(rows), [d_xv = d_x.view(), d_bv = d_b.view()] __device__(index_t i) {
       d_xv[i] = (i % 100 - 50) / 100.0f;
@@ -186,9 +182,9 @@ void work_cuda_no_prec(benchmark::State &state) {
   copy(d_csr_col_idx.view(), col_idx);
   copy(d_csr_row_ptr.view(), row_ptr);
 
-  using linear_op = sparse::iterative::sparse_matrix<sparse::blas::cusparse<float, sparse::sparse_format::csr>>;
+  using linear_op = sparse::blas::cusparse<float, sparse::sparse_format::csr>;
   using blas_t = blas::cublas<float>;
-  sparse::iterative::cg<float, device::cuda, linear_op, blas::cublas<float>> cg{linear_op{mat}, blas_t{}};
+  sparse::iterative::cg<float, device::cuda, linear_op, blas::cublas<float>> cg{mat};
 
   auto d_b = make_cuda_buffer<float>(rows);
   auto d_x = make_cuda_buffer<float>(rows);
@@ -199,7 +195,7 @@ void work_cuda_no_prec(benchmark::State &state) {
       d_xv[i] = 1.0f;
     });
     // b = A * x
-    cg.linear_operator().apply(1.0f, d_x.view(), 0.0f, d_b.view());
+    cg.linear_operator().gemv(1.0f, d_x.view(), 0.0f, d_b.view());
 
     parfor.run(make_shape(rows), [d_xv = d_x.view(), d_bv = d_b.view()] __device__(index_t i) {
       d_xv[i] = (i % 100 - 50) / 100.0f;
@@ -240,15 +236,10 @@ void work_cuda_ilu0(benchmark::State &state) {
   copy(d_csr_col_idx.view(), col_idx);
   copy(d_csr_row_ptr.view(), row_ptr);
 
-  using linear_op = sparse::iterative::sparse_matrix<
-      sparse::blas::cusparse<float, sparse::sparse_format::csr>>;
+  using linear_op = sparse::blas::cusparse<float, sparse::sparse_format::csr>;
   using blas_t = blas::cublas<float>;
-  using preconditioner =
-      sparse::iterative::ilu<float, device::cuda, sparse::sparse_format::csr>;
-  sparse::iterative::cg<float, device::cuda, linear_op, blas::cublas<float>,
-                       preconditioner>
-      cg{linear_op{mat}, blas_t{}, preconditioner{mat}};
-  cg.preconditioner().compute();
+  using preconditioner = sparse::iterative::ilu<float, device::cuda, sparse::sparse_format::csr>;
+  sparse::iterative::cg<float, device::cuda, linear_op, blas::cublas<float>, preconditioner> cg{mat};
 
   auto d_b = make_cuda_buffer<float>(rows);
   auto d_x = make_cuda_buffer<float>(rows);
@@ -259,7 +250,7 @@ void work_cuda_ilu0(benchmark::State &state) {
       d_xv[i] = 1.0f;
     });
     // b = A * x
-    cg.linear_operator().apply(1.0f, d_x.view(), 0.0f, d_b.view());
+    cg.linear_operator().gemv(1.0f, d_x.view(), 0.0f, d_b.view());
 
     parfor.run(make_shape(rows), [d_xv = d_x.view(), d_bv = d_b.view()] __device__(index_t i) {
       d_xv[i] = (i % 100 - 50) / 100.0f;
@@ -302,15 +293,10 @@ void work_cuda_ic(benchmark::State &state) {
   copy(d_csr_col_idx.view(), col_idx);
   copy(d_csr_row_ptr.view(), row_ptr);
 
-  using linear_op = sparse::iterative::sparse_matrix<
-      sparse::blas::cusparse<float, sparse::sparse_format::csr>>;
+  using linear_op = sparse::blas::cusparse<float, sparse::sparse_format::csr>;
   using blas_t = blas::cublas<float>;
-  using preconditioner =
-      sparse::iterative::cusparse_ichol<float, device::cuda, sparse::sparse_format::csr>;
-  sparse::iterative::cg<float, device::cuda, linear_op, blas::cublas<float>,
-                       preconditioner>
-      cg{linear_op{mat}, blas_t{}, preconditioner{mat}};
-  cg.preconditioner().compute();
+  using preconditioner = sparse::iterative::cusparse_ichol<float, device::cuda, sparse::sparse_format::csr>;
+  sparse::iterative::cg<float, device::cuda, linear_op, blas::cublas<float>, preconditioner> cg{mat};
 
   auto d_b = make_cuda_buffer<float>(rows);
   auto d_x = make_cuda_buffer<float>(rows);
@@ -321,7 +307,7 @@ void work_cuda_ic(benchmark::State &state) {
       d_xv[i] = 1.0f;
     });
     // b = A * x
-    cg.linear_operator().apply(1.0f, d_x.view(), 0.0f, d_b.view());
+    cg.linear_operator().gemv(1.0f, d_x.view(), 0.0f, d_b.view());
 
     parfor.run(make_shape(rows), [d_xv = d_x.view(), d_bv = d_b.view()] __device__(index_t i) {
       d_xv[i] = (i % 100 - 50) / 100.0f;
@@ -364,15 +350,11 @@ void work_cuda_ai(benchmark::State &state) {
   copy(d_csr_col_idx.view(), col_idx);
   copy(d_csr_row_ptr.view(), row_ptr);
 
-  using linear_op = sparse::iterative::sparse_matrix<
-      sparse::blas::cusparse<float, sparse::sparse_format::csr>>;
+  using linear_op = sparse::blas::cusparse<float, sparse::sparse_format::csr>;
   using blas_t = blas::cublas<float>;
   using preconditioner = sparse::iterative::approx_inverse_preconditioner<
       sparse::blas::cusparse<float, mathprim::sparse::sparse_format::csr>>;
-  sparse::iterative::cg<float, device::cuda, linear_op, blas::cublas<float>,
-                       preconditioner>
-      cg{linear_op{mat}, blas_t{}, preconditioner{mat}};
-  cg.preconditioner().compute();
+  sparse::iterative::cg<float, device::cuda, linear_op, blas::cublas<float>, preconditioner> cg{mat};
 
   auto d_b = make_cuda_buffer<float>(rows);
   auto d_x = make_cuda_buffer<float>(rows);
@@ -383,7 +365,7 @@ void work_cuda_ai(benchmark::State &state) {
       d_xv[i] = 1.0f;
     });
     // b = A * x
-    cg.linear_operator().apply(1.0f, d_x.view(), 0.0f, d_b.view());
+    cg.linear_operator().gemv(1.0f, d_x.view(), 0.0f, d_b.view());
 
     parfor.run(make_shape(rows), [d_xv = d_x.view(), d_bv = d_b.view()] __device__(index_t i) {
       d_xv[i] = (i % 100 - 50) / 100.0f;

@@ -5,21 +5,21 @@
 
 namespace mathprim::sparse::iterative {
 
-template <typename Scalar, typename EigenPreconditioner>
-class eigen_preconditioner
-    : public basic_preconditioner<eigen_preconditioner<Scalar, EigenPreconditioner>, Scalar, device::cpu> {
+template <typename Scalar, typename EigenPreconditioner, sparse_format Compression>
+class eigen_preconditioner final
+    : public basic_preconditioner<eigen_preconditioner<Scalar, EigenPreconditioner, Compression>, Scalar, device::cpu,
+                                  Compression> {
 public:
-  using base_type = basic_preconditioner<eigen_preconditioner<Scalar, EigenPreconditioner>, Scalar, device::cpu>;
-  using vector_type = typename base_type::vector_type;
-  using const_vector = typename base_type::const_vector;
-  friend base_type;
+  using base = basic_preconditioner<eigen_preconditioner<Scalar, EigenPreconditioner, Compression>, Scalar, device::cpu,
+                                    Compression>;
+  using vector_type = typename base::vector_type;
+  using const_vector = typename base::const_vector;
+  using const_sparse = typename base::const_sparse;
+
+  friend base;
 
   eigen_preconditioner() = default;
-  template <typename MatType>
-  explicit eigen_preconditioner(const MatType& mat, bool need_compute = true) {
-    if (need_compute)
-      compute(mat);
-  }
+  explicit eigen_preconditioner(const_sparse mat) : base(mat) { this->compute({}); }
 
   eigen_preconditioner(eigen_preconditioner&&) = default;
 
@@ -33,21 +33,20 @@ public:
     return impl_;
   }
 
-  template <typename MatType>
-  MATHPRIM_NOINLINE void compute(const MatType& mat) {
+protected:
+  void analyze_impl() {
+    auto mat = this->matrix();
     auto mat_map = eigen_support::map(mat).eval();
-    if (!impl_) {
-      impl_ = std::make_unique<EigenPreconditioner>(mat_map);
-    } else {
-      impl_->compute(mat_map);
-    }
-
-    if (impl().info() != Eigen::Success) {
-      throw std::runtime_error("Eigen preconditioner failed to compute: " + eigen_support::to_string(impl().info()));
-    }
+    impl_ = std::make_unique<EigenPreconditioner>();
+    impl_->analyzePattern(mat_map);
   }
 
-protected:
+  void factorize_impl() {
+    auto mat = this->matrix();
+    auto mat_map = eigen_support::map(mat).eval();
+    impl_->factorize(mat_map);
+  }
+
   void apply_impl(vector_type y, const_vector x) {
     auto map_y = eigen_support::cmap(y);
     auto map_x = eigen_support::cmap(x);
@@ -57,18 +56,18 @@ protected:
   std::unique_ptr<EigenPreconditioner> impl_;
 };
 
-template <typename Scalar>
-using eigen_ichol = eigen_preconditioner<Scalar, Eigen::IncompleteCholesky<Scalar>>;
+template <typename Scalar, sparse_format Compression>
+using eigen_ichol = eigen_preconditioner<Scalar, Eigen::IncompleteCholesky<Scalar>, Compression>;
 
-template <typename Scalar>
-using eigen_ilu = eigen_preconditioner<Scalar, Eigen::IncompleteLUT<Scalar>>;
+template <typename Scalar, sparse_format Compression>
+using eigen_ilu = eigen_preconditioner<Scalar, Eigen::IncompleteLUT<Scalar>, Compression>;
 
-///! Use diagonal_preconditioner instead
-template <typename Scalar>
-using eigen_diagonal_preconditioner = eigen_preconditioner<Scalar, Eigen::DiagonalPreconditioner<Scalar>>;
+///! Use diagonal_preconditioner instead, this class is reserved for debug use
+template <typename Scalar, sparse_format Compression>
+using eigen_diagonal_preconditioner = eigen_preconditioner<Scalar, Eigen::DiagonalPreconditioner<Scalar>, Compression>;
 
-///! Use none_preconditioner instead
-template <typename Scalar>
-using eigen_identity_preconditioner = eigen_preconditioner<Scalar, Eigen::IdentityPreconditioner>;
+///! Use none_preconditioner instead, this class is reserved for debug use
+template <typename Scalar, sparse_format Compression>
+using eigen_identity_preconditioner = eigen_preconditioner<Scalar, Eigen::IdentityPreconditioner, Compression>;
 
 }  // namespace mathprim::sparse::iterative

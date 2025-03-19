@@ -24,13 +24,13 @@ int main () {
   using blas_t = blas::cpu_blas<float>;
   using prec_t = sparse::iterative::sparse_preconditioner<spblas_t, blas_t>;
   using ainv_t = sparse::iterative::approx_inverse_preconditioner<spblas_t>;
-  using linop = sparse::iterative::sparse_matrix<spblas_t>;
-  using cg_t = sparse::iterative::cg<float, device::cpu, linop, blas_t, prec_t>;
+  using cg_t = sparse::iterative::cg<float, device::cpu, spblas_t, blas_t, prec_t>;
   index_t N = 128;
   auto matrix = sparse::laplace_operator<float, 2>(make_shape(N, N)).matrix<mathprim::sparse::sparse_format::csr>();
   ainv_t ainv(matrix.const_view());
 
-  cg_t solver(linop(matrix.const_view()), blas_t{}, prec_t(ainv.ainv(), 1e-6));
+  cg_t solver(matrix.const_view());
+  solver.preconditioner().derived().set_approximation(ainv.ainv(), 1e-4);
 
   auto b = make_buffer<float, device::cpu>(N * N);
   auto x = make_buffer<float, device::cpu>(N * N);
@@ -39,7 +39,7 @@ int main () {
   par::seq().run(make_shape(N * N), [&](index_t i) {
     x.view()[i] = 1;
   });
-  solver.linear_operator().apply(1., x.view(), 0., b.view()); // b = A * x
+  solver.linear_operator().gemv(1., x.view(), 0., b.view()); // b = A * x
   par::seq().run(make_shape(N * N), [&](index_t i) {
     x.view()[i] = 0;
   });

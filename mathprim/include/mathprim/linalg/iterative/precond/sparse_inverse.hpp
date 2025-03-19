@@ -8,32 +8,34 @@ namespace mathprim::sparse::iterative {
 template <typename SparseBlas, typename Blas>
 class sparse_preconditioner
     : public basic_preconditioner<sparse_preconditioner<SparseBlas, Blas>, typename SparseBlas::scalar_type,
-                                  typename SparseBlas::device_type> {
+                                  typename SparseBlas::device_type, SparseBlas::compression> {
 public:
   using base = basic_preconditioner<sparse_preconditioner<SparseBlas, Blas>, typename SparseBlas::scalar_type,
-                                    typename SparseBlas::device_type>;
+                                    typename SparseBlas::device_type, SparseBlas::compression>;
   using Scalar = typename base::scalar_type;
   using Device = typename base::device_type;
-
   using vector_type = typename base::vector_type;
   using const_vector = typename base::const_vector;
+  using const_sparse = typename base::const_sparse;
+  using sparse_view = sparse::basic_sparse_matrix<Scalar, Device, sparse::sparse_format::csr>;
+
   friend base;
-  using const_sparse_view = sparse::basic_sparse_view<const Scalar, Device, sparse::sparse_format::csr>;
-  using sparse_matrix = sparse::basic_sparse_matrix<Scalar, Device, sparse::sparse_format::csr>;
 
   sparse_preconditioner() = default;
-  sparse_preconditioner(const const_sparse_view& view,  // NOLINT(google-explicit-constructor)
-                        Scalar eps) :
-      bl_(view), eps_(eps) {
-    index_t n = view.rows();
-    buffer_intern_ = make_buffer<Scalar, Device>(n);
-  }
+  explicit sparse_preconditioner(const_sparse mat) : base(mat) {}
 
   sparse_preconditioner(const sparse_preconditioner&) = delete;
   sparse_preconditioner(sparse_preconditioner&&) = default;
 
+  void set_approximation(const_sparse mat, Scalar eps) {
+    bl_ = SparseBlas(mat);
+    buffer_intern_ = make_buffer<Scalar, Device>(mat.rows());
+    eps_ = eps;
+  }
+
 private:
   void apply_impl(vector_type y, const_vector x) {
+    MATHPRIM_INTERNAL_CHECK_THROW(buffer_intern_, std::runtime_error, "Preconditioner not initialized.");
     // z = lo.T * x.
     auto z = buffer_intern_.view();
     bl_.gemv(1, x, 0, z, true);

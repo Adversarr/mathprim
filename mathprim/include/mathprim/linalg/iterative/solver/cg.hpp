@@ -3,43 +3,49 @@
 
 namespace mathprim::sparse::iterative {
 
-template <typename Scalar, typename Device, typename LinearOperatorT, typename BlasT,
-          typename PreconditionerT = none_preconditioner<Scalar, Device>>
-class cg : public basic_iterative_solver<cg<Scalar, Device, LinearOperatorT, BlasT, PreconditionerT>, Scalar, Device,
-                                         LinearOperatorT> {
+template <typename Scalar, typename Device, typename SparseBlas, typename BlasT,
+          typename PreconditionerT = none_preconditioner<Scalar, Device, SparseBlas::compression>>
+class cg : public basic_iterative_solver<cg<Scalar, Device, SparseBlas, BlasT, PreconditionerT>, Scalar, Device,
+                                         SparseBlas> {
 public:
-  using base = basic_iterative_solver<cg<Scalar, Device, LinearOperatorT, BlasT, PreconditionerT>, Scalar, Device,
-                                      LinearOperatorT>;
+  using this_type = cg<Scalar, Device, SparseBlas, BlasT, PreconditionerT>;
+  using base = basic_iterative_solver<this_type, Scalar, Device, SparseBlas>;
   friend base;
-  using scalar_type = Scalar;
-  using linear_operator_type = typename base::linear_operator_type;
-  using results_type = typename base::results_type;
-  using parameters_type = typename base::parameters_type;
+  static constexpr sparse_format compression = SparseBlas::compression;
+  using base2 = basic_sparse_solver<this_type, Scalar, Device, SparseBlas::compression>;
+  friend base2;
+
   using vector_view = typename base::vector_view;
   using const_vector = typename base::const_vector;
+  using sparse_view = typename base::sparse_view;
+  using const_sparse = typename base::const_sparse;
+  using matrix_view = typename base::matrix_view;
+  using const_matrix_view = typename base::const_matrix_view;
+  using results_type = convergence_result<Scalar>;
+  using parameters_type = convergence_criteria<Scalar>;
+  using scalar_type = Scalar;
+
   using blas_type = BlasT;
   using preconditioner_type = PreconditionerT;
 
-  explicit cg(linear_operator_type matrix, blas_type blas = {}, preconditioner_type preconditioner = {}) :
-      base(std::move(matrix)),
-      blas_(std::move(blas)),
-      preconditioner_(std::move(preconditioner)),
-      q_(make_buffer<scalar_type, Device>(make_shape(base::matrix_.rows()))),
-      d_(make_buffer<scalar_type, Device>(make_shape(base::matrix_.rows()))) {}
+  using precond_ref = basic_preconditioner<preconditioner_type, Scalar, Device, compression>&;
+  using precond_const_ref = const basic_preconditioner<preconditioner_type, Scalar, Device, compression>&;
 
-  blas_type& blas() noexcept {
-    return blas_;
-  }
+  cg() = default;
+  explicit cg(const_sparse matrix) : base(matrix) { this->compute({}); }
+  MATHPRIM_INTERNAL_MOVE(cg, default);
+  MATHPRIM_INTERNAL_COPY(cg, delete);
 
-  preconditioner_type& preconditioner() noexcept {
-    return preconditioner_;
-  }
+  blas_type& blas() noexcept { return blas_; }
+
+  precond_ref preconditioner() noexcept { return preconditioner_; }
+  precond_const_ref preconditioner() const noexcept { return preconditioner_; }
 
   template <typename Callback>
   results_type solve_impl(vector_view x, const_vector b, const parameters_type& params, Callback&& cb) {
     auto& blas = blas_;
     auto& preconditioner = preconditioner_;
-    auto& matrix = base::matrix_;
+    auto& matrix = this->linear_operator();
     auto& residual_buffer = base::residual_;
     const_vector cx = x.as_const();
     vector_view r = residual_buffer.view(), q = q_.view(), d = d_.view();
@@ -48,7 +54,7 @@ public:
 
     // r = b - A * x
     blas.copy(r, b);             // r = b
-    matrix.apply(-1, cx, 1, r);  // r = b - A * x
+    matrix.gemv(-1, cx, 1, r);  // r = b - A * x
 
     // Initialize.
     results_type results;
@@ -66,7 +72,7 @@ public:
     // Main loop.
     for (; iterations < params.max_iterations_; ++iterations) {
       // q = A * d
-      matrix.apply(1, cd, 0, q);  // q = A * d
+      matrix.gemv(1, cd, 0, q);  // q = A * d
 
       // alpha = (r, d) / (d, q)
       Scalar d_q = blas.dot(cd, cq);
@@ -102,7 +108,16 @@ public:
     return results;
   }
 
-private:
+protected:
+  void analyze_impl_impl() {
+    auto mat = this->matrix();
+    preconditioner().analyze(mat);
+    q_ = make_buffer<scalar_type, Device>(mat.rows());
+    d_ = make_buffer<scalar_type, Device>(mat.rows());
+  }
+
+  void factorize_impl_impl() { preconditioner_.factorize(); }
+
   blas_type blas_;
   preconditioner_type preconditioner_;
   contiguous_buffer<Scalar, shape_t<keep_dim>, Device> q_;  // temporary buffer

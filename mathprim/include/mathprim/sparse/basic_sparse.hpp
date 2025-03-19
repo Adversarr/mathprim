@@ -135,6 +135,10 @@ public:
     return {*this, std::forward<Fn>(fn)};
   }
 
+  explicit operator bool() const noexcept {
+    return values_ && outer_ptrs_ && inner_indices_;
+  }
+
 private:
   values_view values_;
   ptrs_view outer_ptrs_;
