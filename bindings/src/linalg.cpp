@@ -59,7 +59,7 @@ static std::pair<index_t, double> cg_host(const Eigen::SparseMatrix<Flt, Eigen::
                                           index_t max_iter,                                    //
                                           int verbose) {
   using SparseBlas = mp::sparse::blas::eigen<Flt, sparse::sparse_format::csr>;
-  using LinearOp = sparse::iterative::sparse_matrix<SparseBlas>;
+  using LinearOp = SparseBlas;
   using Blas = mp::blas::cpu_blas<Flt>;
   using Solver = mp::sparse::iterative::cg<Flt, mp::device::cpu, LinearOp, Blas, Precond>;
 
@@ -76,7 +76,7 @@ static std::pair<index_t, double> cg_host(const Eigen::SparseMatrix<Flt, Eigen::
     max_iter = A.rows();
   }
   auto view_A = eigen_support::view(A);
-  Solver solver(LinearOp(view_A), Blas{}, Precond{view_A});
+  Solver solver(view_A);
   sparse::convergence_criteria<Flt> criteria{
     max_iter,
     rtol,
@@ -106,9 +106,8 @@ static std::pair<index_t, double> cg_host_callback(const Eigen::SparseMatrix<Flt
                                                    index_t max_iter,                                    //
                                                    std::function<void(index_t, Flt)> callback) {
   using SparseBlas = mp::sparse::blas::eigen<Flt, sparse::sparse_format::csr>;
-  using LinearOp = sparse::iterative::sparse_matrix<SparseBlas>;
   using Blas = mp::blas::cpu_blas<Flt>;
-  using Solver = mp::sparse::iterative::cg<Flt, mp::device::cpu, LinearOp, Blas, Precond>;
+  using Solver = mp::sparse::iterative::cg<Flt, mp::device::cpu, SparseBlas, Blas, Precond>;
 
   if (b.ndim() != 1 || x.ndim() != 1) {
     throw std::invalid_argument("b and x must be 1D arrays.");
@@ -123,7 +122,7 @@ static std::pair<index_t, double> cg_host_callback(const Eigen::SparseMatrix<Flt
     max_iter = A.rows();
   }
   auto view_A = eigen_support::view(A);
-  Solver solver(LinearOp(view_A), Blas{}, Precond{view_A});
+  Solver solver(view_A);
   sparse::convergence_criteria<Flt> criteria{
     max_iter,
     rtol,
@@ -142,13 +141,13 @@ using diagonal = sparse::iterative::diagonal_preconditioner<Scalar, device::cpu,
                                                             blas::cpu_blas<Scalar>>;
 
 template <typename Scalar>
-using no = sparse::iterative::none_preconditioner<Scalar, device::cpu>;
+using no = sparse::iterative::none_preconditioner<Scalar, device::cpu, mathprim::sparse::sparse_format::csr>;
 
 template <typename Scalar>
 using ainv = sparse::iterative::approx_inverse_preconditioner<sparse::blas::eigen<Scalar, sparse::sparse_format::csr>>;
 
 template <typename Scalar>
-using ic = sparse::iterative::eigen_ichol<Scalar>;
+using ic = sparse::iterative::eigen_ichol<Scalar, sparse::sparse_format::csr>;
 
 template <typename Flt = float>
 Eigen::SparseMatrix<Flt, Eigen::RowMajor> ainv_content(const Eigen::SparseMatrix<Flt, Eigen::RowMajor>& A) {
@@ -168,11 +167,12 @@ std::pair<index_t, double> pcg_with_ext_spai(const Eigen::SparseMatrix<Flt, Eige
                                              index_t max_iter,                                       //
                                              int verbose) {
   using SparseBlas = mp::sparse::blas::eigen<Flt, sparse::sparse_format::csr>;
-  using LinearOp = sparse::iterative::sparse_matrix<SparseBlas>;
   using Blas = mp::blas::cpu_blas<Flt>;
   using Precond = mp::sparse::iterative::sparse_preconditioner<SparseBlas, Blas>;
-  using Solver = mp::sparse::iterative::cg<Flt, mp::device::cpu, LinearOp, Blas, Precond>;
-  Solver solver(LinearOp(eigen_support::view(A)), Blas{}, Precond(eigen_support::view(ainv), epsilon));
+  using Solver = mp::sparse::iterative::cg<Flt, mp::device::cpu, SparseBlas, Blas, Precond>;
+  Solver solver(eigen_support::view(A));
+
+  solver.preconditioner().derived().set_approximation(eigen_support::view(ainv), epsilon);
 
   if (b.ndim() != 1 || x.ndim() != 1) {
     throw std::invalid_argument("b and x must be 1D arrays.");

@@ -61,7 +61,7 @@ protected:
   const_sparse matrix_;
 };
 
-template <typename Scalar, typename Device, sparse_format Compression>
+template <typename Scalar, typename Device, sparse_format Compression = mathprim::sparse::sparse_format::csr>
 class none_preconditioner final
     : public basic_preconditioner<none_preconditioner<Scalar, Device, Compression>, Scalar, Device, Compression> {
 public:

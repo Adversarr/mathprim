@@ -19,7 +19,7 @@ using namespace mathprim;
 ////////////////////////////////////////////////
 /// CPU->GPU->CPU
 ////////////////////////////////////////////////
-template <typename Flt, typename Precond = sparse::iterative::none_preconditioner<Flt, device::cuda>>
+template <typename Flt, typename Precond>
 std::pair<index_t, double> cg_cuda(const Eigen::SparseMatrix<Flt, Eigen::RowMajor>& A,  //
                                    nb::ndarray<Flt, nb::shape<-1>, nb::device::cpu> b,  //
                                    nb::ndarray<Flt, nb::shape<-1>, nb::device::cpu> x,  //
@@ -27,7 +27,7 @@ std::pair<index_t, double> cg_cuda(const Eigen::SparseMatrix<Flt, Eigen::RowMajo
                                    index_t max_iter,                                    //
                                    int verbose) {
   using SparseBlas = mp::sparse::blas::cusparse<Flt, sparse::sparse_format::csr>;
-  using LinearOp = sparse::iterative::sparse_matrix<SparseBlas>;
+  using LinearOp = SparseBlas;
   using Blas = blas::cublas<Flt>;
   using Solver = mp::sparse::iterative::cg<Flt, mp::device::cuda, LinearOp, Blas, Precond>;
 
@@ -61,8 +61,8 @@ std::pair<index_t, double> cg_cuda(const Eigen::SparseMatrix<Flt, Eigen::RowMajo
   copy(d_A.values().view(), view_A.values());
 
   auto d_A_view = d_A.const_view();
-  Solver solver(LinearOp(d_A_view), Blas{}, Precond{d_A_view});
-sparse::convergence_criteria<Flt> criteria{max_iter, rtol};
+  Solver solver(d_A_view);
+  sparse::convergence_criteria<Flt> criteria{max_iter, rtol};
   sparse::convergence_result<Flt> result;
   auto start = std::chrono::high_resolution_clock::now();
   if (verbose > 0) {
@@ -97,7 +97,7 @@ static std::pair<index_t, double> cg_cuda_csr_direct(                   //
     index_t max_iter,                                                   //
     int verbose) {
   using SparseBlas = mp::sparse::blas::cusparse<Flt, sparse::sparse_format::csr>;
-  using LinearOp = sparse::iterative::sparse_matrix<SparseBlas>;
+  using LinearOp = SparseBlas;
   using Blas = blas::cublas<Flt>;
   using Solver = mp::sparse::iterative::cg<Flt, mp::device::cuda, LinearOp, Blas, Precond>;
   using SpView = sparse::basic_sparse_view<const Flt, device::cuda, mathprim::sparse::sparse_format::csr>;
@@ -127,12 +127,12 @@ static std::pair<index_t, double> cg_cuda_csr_direct(                   //
 
   SpView view_A(p_values, p_outer, p_inner, rows, cols, nnz, sparse::sparse_property::symmetric);
 
-  Solver solver(LinearOp(view_A), Blas{}, Precond{view_A});
+  Solver solver(view_A);
 
   auto b_view = view<device::cuda>(b.data(), make_shape(b.size())).as_const();
   auto x_view = view<device::cuda>(x.data(), make_shape(x.size()));
 
-sparse::convergence_criteria<Flt> criteria{max_iter, rtol};
+  sparse::convergence_criteria<Flt> criteria{max_iter, rtol};
   sparse::convergence_result<Flt> result;
   auto start = std::chrono::high_resolution_clock::now();
   if (verbose > 0) {
@@ -161,7 +161,7 @@ static std::pair<index_t, double> pcg_with_ext_spai(        //
     index_t max_iter,                                       //
     int verbose) {
   using SparseBlas = mp::sparse::blas::cusparse<Flt, sparse::sparse_format::csr>;
-  using LinearOp = sparse::iterative::sparse_matrix<SparseBlas>;
+  using LinearOp = SparseBlas;
   using Blas = mp::blas::cublas<Flt>;
   using Precond = mp::sparse::iterative::sparse_preconditioner<SparseBlas, Blas>;
   using Solver = mp::sparse::iterative::cg<Flt, mp::device::cuda, LinearOp, Blas, Precond>;
@@ -183,7 +183,8 @@ static std::pair<index_t, double> pcg_with_ext_spai(        //
   copy(view_ainv.inner_indices(), ainv_host.inner_indices());
   copy(view_ainv.values(), ainv_host.values());
 
-  Solver solver(LinearOp{view_device.as_const()}, Blas{}, Precond(view_ainv.as_const(), epsilon));
+  Solver solver(view_device.as_const());
+  solver.preconditioner().derived().set_approximation(view_ainv.as_const(), epsilon);
 
   // 2. Prepare the buffers.
   auto h_b = view(b.data(), make_shape(b.size()));
@@ -196,7 +197,7 @@ static std::pair<index_t, double> pcg_with_ext_spai(        //
   copy(d_x, h_x);
 
   // 3. Solve the system.
-sparse::convergence_criteria<Flt> criteria{max_iter, rtol};
+  sparse::convergence_criteria<Flt> criteria{max_iter, rtol};
   sparse::convergence_result<Flt> result;
 
   auto start = std::chrono::high_resolution_clock::now();
@@ -218,7 +219,7 @@ sparse::convergence_criteria<Flt> criteria{max_iter, rtol};
 }
 
 template <typename Flt>
-static std::pair<index_t, double> cg_direct_with_ext_spai(                   //
+static std::pair<index_t, double> pcg_with_ext_spai_cuda_direct(                   //
     nb::ndarray<index_t, nb::ndim<1>, nb::device::cuda> outer_ptrs,          //
     nb::ndarray<index_t, nb::ndim<1>, nb::device::cuda> inner_indices,       //
     nb::ndarray<Flt, nb::ndim<1>, nb::device::cuda> values,                  //
@@ -233,7 +234,7 @@ static std::pair<index_t, double> cg_direct_with_ext_spai(                   //
     index_t max_iter,                                                        //
     int verbose) {
   using SparseBlas = mp::sparse::blas::cusparse<Flt, sparse::sparse_format::csr>;
-  using LinearOp = sparse::iterative::sparse_matrix<SparseBlas>;
+  using LinearOp = SparseBlas;
   using Blas = blas::cublas<Flt>;
   using Precond = mp::sparse::iterative::sparse_preconditioner<SparseBlas, Blas>;
   using Solver = mp::sparse::iterative::cg<Flt, mp::device::cuda, LinearOp, Blas, Precond>;
@@ -266,13 +267,14 @@ static std::pair<index_t, double> cg_direct_with_ext_spai(                   //
 
   SpView view_a(p_values, p_outer, p_inner, rows, cols, nnz, sparse::sparse_property::symmetric);
   SpView view_ainv(p_ainv_values, p_ainv_outer, p_ainv_inner, rows, cols, ainv_nnz, sparse::sparse_property::general);
-  Solver solver(LinearOp(view_a), Blas{}, Precond{view_ainv, eps});
+  Solver solver(view_a);
+  solver.preconditioner().derived().set_approximation(view_ainv, eps);
 
   // 2. Setup working vectors.
   auto b_view = view<device::cuda>(b.data(), make_shape(b.size())).as_const();
   auto x_view = view<device::cuda>(x.data(), make_shape(x.size()));
 
-sparse::convergence_criteria<Flt> criteria{max_iter, rtol};
+  sparse::convergence_criteria<Flt> criteria{max_iter, rtol};
   sparse::convergence_result<Flt> result;
   auto start = std::chrono::high_resolution_clock::now();
   if (verbose > 0) {
@@ -302,7 +304,7 @@ template <typename Scalar>
 using ic = sparse::iterative::cusparse_ichol<Scalar, device::cuda, mathprim::sparse::sparse_format::csr>;
 
 template <typename Scalar>
-using no = sparse::iterative::none_preconditioner<Scalar, device::cuda>;
+using no = sparse::iterative::none_preconditioner<Scalar, device::cuda, mathprim::sparse::sparse_format::csr>;
 
 #define BIND_TRANSFERING_GPU_TYPE(flt, preconditioning)                                                            \
   m.def(TOSTR(pcg_##preconditioning##_cuda), &cg_cuda<flt, preconditioning<flt>>,                                  \
@@ -337,7 +339,7 @@ static void bind_extra(nb::module_& m) {
         nb::arg("ainv").noconvert(), nb::arg("epsilon"),  // Approximate inverse
         nb::arg("rtol") = 1e-4f, nb::arg("max_iter") = 0, nb::arg("verbose") = 0);
 
-  m.def("pcg_with_ext_spai_cuda_direct", &cg_direct_with_ext_spai<Flt>,                                          //
+  m.def("pcg_with_ext_spai_cuda_direct", &pcg_with_ext_spai_cuda_direct<Flt>,                                          //
         "Preconditioned CG on GPU (direct) (with SPAI precond.)",                                                //
         nb::arg("outer_ptrs").noconvert(), nb::arg("inner_indices").noconvert(), nb::arg("values").noconvert(),  //
         nb::arg("rows"), nb::arg("cols"),                                                                        //

@@ -33,4 +33,4 @@ build-type = "RelWithDebInfo"
 define.CMAKE_EXPORT_COMPILE_COMMANDS = true
 define.MATHPRIM_BUILD_BINDINGS=true
 define.MATHPRIM_BUILD_TESTS=false
-define.MATHPRIM_ENABLE_WARNINGS=false
+define.MATHPRIM_ENABLE_WARNINGS=true
