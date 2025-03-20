@@ -61,6 +61,8 @@ public:
       // lucky path.
       return result;
     }
+    MATHPRIM_INTERNAL_CHECK_THROW(std::isfinite(value), std::runtime_error, "Initial value is not finite.");
+    MATHPRIM_INTERNAL_CHECK_THROW(std::isfinite(grad_norm), std::runtime_error, "Initial gradient norm is not finite.");
 
     // 3. main loop.
     dx_ = make_buffer<Scalar, Device>(problem.fused_gradients().shape());
@@ -81,9 +83,7 @@ public:
       }
 
       // Solve the linear system: H dx = g
-      sparse::convergence_criteria<Scalar> solver_criteria;
-      solver_criteria.max_iterations_ = 1024;
-      solver_criteria.norm_tol_ = 1e-2 * blas.norm(g); // Inexact CG.
+      sparse::convergence_criteria<Scalar> solver_criteria{solver_max_iter_, inexact_};
       solver.solve(dx, g, solver_criteria);
 
       // Launch linesearcher.
@@ -97,6 +97,12 @@ public:
       grad_norm = blas.norm(grads);
       converged = grad_norm < criteria.tol_grad_;
       converged |= (last_change < criteria.tol_change_ && last_change >= 0);
+
+      MATHPRIM_INTERNAL_CHECK_THROW(std::isfinite(value), std::runtime_error,
+                                    "At step " + std::to_string(iteration) + ", value is not finite.");
+      MATHPRIM_INTERNAL_CHECK_THROW(std::isfinite(grad_norm), std::runtime_error,
+                                    "At step " + std::to_string(iteration) + ", gradient norm is not finite.");
+
       if (converged) {
         break;
       }
@@ -105,8 +111,22 @@ public:
     return result;
   }
 
+  void set_inexact(Scalar inexact) { inexact_ = inexact; }
+  void set_solver_max_iter(index_t max_iter) { solver_max_iter_ = max_iter; }
+  SparseSolver& solver() { return solver_; }
+  const SparseSolver& solver() const { return solver_; }
+  Blas& blas() { return blas_; }
+  const Blas& blas() const { return blas_; }
+  Linesearcher& linesearcher() { return linesearcher_; }
+  const Linesearcher& linesearcher() const { return linesearcher_; }
+
 protected:
   SparseSolver solver_;
+
+  // Inexact CG.
+  Scalar inexact_ = 1e-2;
+  index_t solver_max_iter_ = 1024;
+
   Linesearcher linesearcher_;
   Blas blas_;
   sparse_view hessian_;

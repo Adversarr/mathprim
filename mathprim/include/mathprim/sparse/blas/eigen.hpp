@@ -62,7 +62,11 @@ protected:
     auto mat = eigen_support::map(this->mat_);
     auto x_map = eigen_support::cmap(x);
     auto y_map = eigen_support::cmap(y);
-    y_map *= beta;
+    if (beta == 0) {
+      y_map.setZero();
+    } else {
+      y_map = y_map * beta;
+    }
     if (transpose_actual) {
       y_map += alpha * mat.transpose() * x_map;
     } else {

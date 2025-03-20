@@ -109,7 +109,7 @@ struct basic_blas {
   template </* ScalarDst == Scalar */ typename SshapeDst, typename SstrideDst,  // dst
             typename ScalarSrc, typename SshapeSrc, typename SstrideSrc,        // src
             typename = enable_if_same_scalar_t<ScalarSrc>>
-  MATHPRIM_NOINLINE void copy(view_type<SshapeDst, SstrideDst> dst,
+  void copy(view_type<SshapeDst, SstrideDst> dst,
                               generic_type<ScalarSrc, SshapeSrc, SstrideSrc> src) {
     MATHPRIM_INTERNAL_CHECK_THROW(internal::is_capable_vector(dst), std::runtime_error,
                                   "Incompatible views for BLAS copy. (dst)");
@@ -129,7 +129,7 @@ struct basic_blas {
    * @param x
    */
   template <typename Sshape, typename Sstride>
-  MATHPRIM_NOINLINE void scal(Scalar alpha, view_type<Sshape, Sstride> x) {
+  void scal(Scalar alpha, view_type<Sshape, Sstride> x) {
     MATHPRIM_INTERNAL_CHECK_THROW(internal::is_capable_vector(x), std::runtime_error,
                                   "Incompatible views for BLAS scal.");
 
@@ -143,7 +143,7 @@ struct basic_blas {
    * @param y
    */
   template <typename Sshape, typename Sstride>
-  MATHPRIM_NOINLINE void swap(view_type<Sshape, Sstride> x, view_type<Sshape, Sstride> y) {
+  void swap(view_type<Sshape, Sstride> x, view_type<Sshape, Sstride> y) {
     MATHPRIM_INTERNAL_CHECK_THROW(internal::is_capable_vector(x), std::runtime_error,
                                   "Incompatible views for BLAS swap. (x)");
     MATHPRIM_INTERNAL_CHECK_THROW(internal::is_capable_vector(y), std::runtime_error,
@@ -165,7 +165,7 @@ struct basic_blas {
   template <typename ScalarX, typename SshapeX, typename SstrideX,  // x
             typename SshapeY, typename SstrideY,                    // y
             typename = enable_if_same_scalar_t<ScalarX>>
-  MATHPRIM_NOINLINE void axpy(Scalar alpha, generic_type<ScalarX, SshapeX, SstrideX> x,
+  void axpy(Scalar alpha, generic_type<ScalarX, SshapeX, SstrideX> x,
                               view_type<SshapeY, SstrideY> y) {
     MATHPRIM_INTERNAL_CHECK_THROW(internal::is_capable_vector(x), std::runtime_error,
                                   "Incompatible views for BLAS axpy. (x)");
@@ -187,7 +187,7 @@ struct basic_blas {
   template <typename ScalarX, typename SshapeX, typename SstrideX,  // x
             typename ScalarY, typename SshapeY, typename SstrideY,  // y
             typename = enable_if_same_scalar_t<ScalarX, ScalarY>>
-  MATHPRIM_NOINLINE Scalar dot(generic_type<ScalarX, SshapeX, SstrideX> x, generic_type<ScalarY, SshapeY, SstrideY> y) {
+  Scalar dot(generic_type<ScalarX, SshapeX, SstrideX> x, generic_type<ScalarY, SshapeY, SstrideY> y) {
     MATHPRIM_INTERNAL_CHECK_THROW(internal::is_capable_vector(x), std::runtime_error,
                                   "Incompatible views for BLAS dot. (x)");
     MATHPRIM_INTERNAL_CHECK_THROW(internal::is_capable_vector(y), std::runtime_error,
@@ -206,7 +206,7 @@ struct basic_blas {
    */
   template <typename ScalarX, typename Sshape, typename Sstride,  // x
             typename = enable_if_same_scalar_t<ScalarX>>
-  MATHPRIM_NOINLINE Scalar norm(generic_type<ScalarX, Sshape, Sstride> x) {
+  Scalar norm(generic_type<ScalarX, Sshape, Sstride> x) {
     MATHPRIM_INTERNAL_CHECK_THROW(internal::is_capable_vector(x), std::runtime_error,
                                   "Incompatible views for BLAS norm.");
 
@@ -215,7 +215,7 @@ struct basic_blas {
 
   template <typename ScalarX, typename Sshape, typename Sstride,  // x
             typename = enable_if_same_scalar_t<ScalarX>>
-  MATHPRIM_NOINLINE Scalar asum(generic_type<ScalarX, Sshape, Sstride> x) {
+  Scalar asum(generic_type<ScalarX, Sshape, Sstride> x) {
     MATHPRIM_INTERNAL_CHECK_THROW(internal::is_capable_vector(x), std::runtime_error,
                                   "Incompatible views for BLAS asum.");
 
@@ -230,7 +230,7 @@ struct basic_blas {
    */
   template <typename ScalarX, typename Sshape, typename Sstride,  // x
             typename = enable_if_same_scalar_t<ScalarX>>
-  MATHPRIM_NOINLINE index_t amax(generic_type<ScalarX, Sshape, Sstride> x) {
+  index_t amax(generic_type<ScalarX, Sshape, Sstride> x) {
     MATHPRIM_INTERNAL_CHECK_THROW(internal::is_capable_vector(x), std::runtime_error,
                                   "Incompatible views for BLAS amax.");
 
@@ -245,7 +245,7 @@ struct basic_blas {
   template <typename ScalarX, typename SshapeX, typename SstrideX,  // x
             typename SshapeY, typename SstrideY,                    // y
             typename = enable_if_same_scalar_t<ScalarX>>
-  MATHPRIM_NOINLINE void emul(generic_type<ScalarX, SshapeX, SstrideX> x, view_type<SshapeY, SstrideY> y) {
+  void emul(generic_type<ScalarX, SshapeX, SstrideX> x, view_type<SshapeY, SstrideY> y) {
     MATHPRIM_INTERNAL_CHECK_THROW(internal::is_capable_vector(x), std::runtime_error,
                                   "Incompatible views for BLAS emul. (x)");
     MATHPRIM_INTERNAL_CHECK_THROW(internal::is_capable_vector(y), std::runtime_error,
@@ -269,7 +269,7 @@ struct basic_blas {
             typename ScalarX, typename SshapeX, typename SstrideX,  // vector x
             typename SshapeY, typename SstrideY,                    // vector y
             typename = enable_if_same_scalar_t<ScalarA, ScalarX>>
-  MATHPRIM_NOINLINE void gemv(Scalar alpha, generic_type<ScalarA, SshapeA, SstrideA> mat_a,
+  void gemv(Scalar alpha, generic_type<ScalarA, SshapeA, SstrideA> mat_a,
                               generic_type<ScalarX, SshapeX, SstrideX> x, Scalar beta, view_type<SshapeY, SstrideY> y) {
     // check for shapes
     internal::check_mv_shapes(mat_a.shape(), x.shape(), y.shape());
@@ -299,7 +299,7 @@ struct basic_blas {
             typename ScalarB, typename SshapeB, typename SstrideB,  // matrix B
             typename SshapeC, typename SstrideC,                    // matrix C
             typename = enable_if_same_scalar_t<ScalarA, ScalarB>>
-  MATHPRIM_NOINLINE void gemm(Scalar alpha, generic_type<ScalarA, SshapeA, SstrideA> A,
+  void gemm(Scalar alpha, generic_type<ScalarA, SshapeA, SstrideA> A,
                               generic_type<ScalarB, SshapeB, SstrideB> B, Scalar beta, view_type<SshapeC, SstrideC> C) {
     // check for shapes
     internal::check_mm_shapes(A.shape(), B.shape(), C.shape());
@@ -321,7 +321,7 @@ struct basic_blas {
             typename ScalarB, typename SshapeB, typename SstrideB,  // batched matrix B
             typename SshapeC, typename SstrideC,                    // batched matrix C
             typename = enable_if_same_scalar_t<ScalarA, ScalarB>>
-  MATHPRIM_NOINLINE void gemm_batch_strided(Scalar alpha, generic_type<ScalarA, SshapeA, SstrideA> A,
+  void gemm_batch_strided(Scalar alpha, generic_type<ScalarA, SshapeA, SstrideA> A,
                                             generic_type<ScalarB, SshapeB, SstrideB> B, Scalar beta,
                                             view_type<SshapeC, SstrideC> C) {
     // check for shapes
@@ -346,7 +346,7 @@ struct basic_blas {
   template <typename ScalarX, typename SshapeX, typename SstrideX,  // x
             typename SshapeY, typename SstrideY,                    // y
             typename = enable_if_same_scalar_t<ScalarX, Scalar>>
-  MATHPRIM_NOINLINE void axpby(const Scalar &alpha, const generic_type<ScalarX, SshapeX, SstrideX> &x,
+  void axpby(const Scalar &alpha, const generic_type<ScalarX, SshapeX, SstrideX> &x,
                                const Scalar &beta, const view_type<SshapeY, SstrideY> &y) {
     MATHPRIM_INTERNAL_CHECK_THROW(internal::is_capable_vector(x), std::runtime_error,
                                   "Incompatible views for BLAS axpby. (x)");

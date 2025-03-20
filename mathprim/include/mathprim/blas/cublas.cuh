@@ -233,7 +233,7 @@ protected:
   // Y <- alpha * A * X + beta * Y
   template <typename SshapeX, typename SstrideX, typename SshapeY,
             typename SstrideY>
-  MATHPRIM_NOINLINE void emul_impl(const_type<SshapeX, SstrideX> x,
+  void emul_impl(const_type<SshapeX, SstrideX> x,
                                    view_type<SshapeY, SstrideY> y) {
     auto total = x.shape(0);
     auto block_size = 256;
@@ -371,7 +371,7 @@ protected:
 
   template <typename SshapeA, typename SstrideA, typename SshapeB,
             typename SstrideB, typename SshapeC, typename SstrideC>
-  MATHPRIM_NOINLINE void
+  void
   gemm_batch_strided_impl(Scalar alpha, const_type<SshapeA, SstrideA> A,
                     const_type<SshapeB, SstrideB> B, Scalar beta,
                     view_type<SshapeC, SstrideC> C) {

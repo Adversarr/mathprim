@@ -28,7 +28,7 @@ struct format_convert<Scalar, sparse_format::csr, device::cpu> {
   using const_view_type = basic_sparse_view<const Scalar, device::cpu, sparse_format::csr>;
   using coo_matrix = basic_sparse_matrix<Scalar, device::cpu, sparse_format::coo>;
   using const_coo_view = basic_sparse_view<const Scalar, device::cpu, sparse_format::coo>;
-  static MATHPRIM_NOINLINE coo_matrix to_coo(const const_view_type& csr) {
+  static coo_matrix to_coo(const const_view_type& csr) {
     auto [rows, cols] = csr.shape();
     auto nnz = csr.nnz();
     coo_matrix result(rows, cols, nnz, csr.property());
@@ -52,7 +52,7 @@ struct format_convert<Scalar, sparse_format::csr, device::cpu> {
     return result;
   }
 
-  static MATHPRIM_NOINLINE matrix_type from_coo(const const_coo_view& coo) {
+  static matrix_type from_coo(const const_coo_view& coo) {
     auto [rows, cols] = coo.shape();
     auto nnz = coo.nnz();
     matrix_type result(rows, cols, nnz, coo.property());
@@ -102,7 +102,7 @@ struct format_convert<Scalar, sparse_format::csc, device::cpu> {
   using coo_matrix = basic_sparse_matrix<Scalar, device::cpu, sparse_format::coo>;
   using coo_const_view = basic_sparse_view<const Scalar, device::cpu, sparse_format::coo>;
 
-  static MATHPRIM_NOINLINE coo_matrix to_coo(const const_view_type& csc) {
+  static coo_matrix to_coo(const const_view_type& csc) {
     auto [rows, cols] = csc.shape();
     auto nnz = csc.nnz();
     coo_matrix result(rows, cols, nnz, csc.property());
@@ -126,7 +126,7 @@ struct format_convert<Scalar, sparse_format::csc, device::cpu> {
     return result;
   }
 
-  static MATHPRIM_NOINLINE matrix_type from_coo(const coo_const_view& coo) {
+  static matrix_type from_coo(const coo_const_view& coo) {
     auto [rows, cols] = coo.shape();
     auto nnz = coo.nnz();
     matrix_type result(rows, cols, nnz, coo.property());

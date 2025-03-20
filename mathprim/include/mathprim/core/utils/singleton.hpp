@@ -46,7 +46,7 @@ public:
   }
 
 private:
-  explicit MATHPRIM_NOINLINE basic_singleton(Handle handle, bool responsibility) {
+  explicit basic_singleton(Handle handle, bool responsibility) {
     if (static_cast<bool>(handle)) /* external handle is valid */ {
       handle_ = std::move(handle);
       responsibility_ = responsibility;
@@ -56,7 +56,7 @@ private:
     }
   }
 
-  MATHPRIM_NOINLINE ~basic_singleton() noexcept {
+  ~basic_singleton() noexcept {
     static_cast<Derived*>(this)->destroy_impl(handle_);
     handle_ = Handle{};  // reset handle to default state
   }

@@ -20,11 +20,11 @@
  *       - s y is the last avaialble history
  */
 #pragma once
+#include <cmath>
+
 #include "mathprim/blas/blas.hpp"
 #include "mathprim/optim/basic_optim.hpp"
 #include "mathprim/optim/linesearcher/backtracking.hpp"
-#include <algorithm>
-#include <cmath>
 
 namespace mathprim::optim {
 
@@ -106,7 +106,7 @@ public:
 
 private:
   template <typename ProblemDerived, typename Callback>
-  MATHPRIM_NOINLINE result_type optimize_impl(basic_problem<ProblemDerived, Scalar, Device>& problem, Callback&& callback) {
+  result_type optimize_impl(basic_problem<ProblemDerived, Scalar, Device>& problem, Callback&& callback) {
     blas::basic_blas<Blas, Scalar, Device>& bl = blas_;
     l_bfgs_preconditioner<Preconditioner, Scalar, Device>& prec = preconditioner_;
     basic_linesearcher<Linesearcher, Scalar, Device>& ls = linesearcher_;
@@ -130,6 +130,8 @@ private:
       // lucky path.
       return result;
     }
+    MATHPRIM_INTERNAL_CHECK_THROW(std::isfinite(value), std::runtime_error, "Initial value is not finite.");
+    MATHPRIM_INTERNAL_CHECK_THROW(std::isfinite(grad_norm), std::runtime_error, "Initial gradient norm is not finite.");
 
     // 3. main loop.
     auto q = q_.view();
@@ -167,6 +169,12 @@ private:
       grad_norm = bl.norm(grads);
       converged = grad_norm < criteria.tol_grad_;
       converged |= (last_change < criteria.tol_change_ && last_change >= 0);
+
+      MATHPRIM_INTERNAL_CHECK_THROW(std::isfinite(value), std::runtime_error,
+                                    "At step " + std::to_string(iteration) + ", value is not finite.");
+      MATHPRIM_INTERNAL_CHECK_THROW(std::isfinite(grad_norm), std::runtime_error,
+                                    "At step " + std::to_string(iteration) + ", gradient norm is not finite.");
+
       if (converged) {
         break;
       }
@@ -182,7 +190,7 @@ private:
     return result;
   }
 
-  MATHPRIM_NOINLINE void two_loop_step_in(){
+  void two_loop_step_in(){
     // operates on q
     auto q = q_.view();
     auto s = s_.const_view(), y = y_.const_view();
@@ -195,7 +203,7 @@ private:
     }
   }
 
-  MATHPRIM_NOINLINE void two_loop_step_out() {
+  void two_loop_step_out() {
     // operates on z
     auto z = z_.view();
     auto s = s_.const_view(), y = y_.const_view();
@@ -209,7 +217,7 @@ private:
     }
   }
 
-  MATHPRIM_NOINLINE void push_memory() {
+  void push_memory() {
     index_t targ;
     if (memory_avail_ < memory_size_) {
       MATHPRIM_ASSERT(memory_start_ == 0 && "Internal logic error.");

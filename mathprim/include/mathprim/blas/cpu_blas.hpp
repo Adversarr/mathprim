@@ -55,7 +55,7 @@ struct cpu_blas : public basic_blas<cpu_blas<T>, T, device::cpu> {
 
 protected:
   template <typename SshapeDst, typename SstrideDst, typename SshapeSrc, typename SstrideSrc>
-  MATHPRIM_NOINLINE void copy_impl(const view_type<SshapeDst, SstrideDst>& dst,
+  void copy_impl(const view_type<SshapeDst, SstrideDst>& dst,
                                    const const_type<SshapeSrc, SstrideSrc>& src) {
     auto dst_stride = internal::vec_stride(dst);
     auto src_stride = internal::vec_stride(src);
@@ -71,7 +71,7 @@ protected:
   }
 
   template <typename Sshape, typename Sstride>
-  MATHPRIM_NOINLINE void scal_impl(T alpha, const view_type<Sshape, Sstride>& src) {
+  void scal_impl(T alpha, const view_type<Sshape, Sstride>& src) {
     auto stride = internal::vec_stride(src);
     CBLAS_INT numel = static_cast<CBLAS_INT>(src.numel());
 
@@ -164,7 +164,7 @@ protected:
   }
 
   template <typename Sshape, typename Sstride>
-  MATHPRIM_NOINLINE index_t amax_impl(const const_type<Sstride, Sshape>& x) {
+  index_t amax_impl(const const_type<Sstride, Sshape>& x) {
     const auto stride = internal::vec_stride(x);
     const auto numel = static_cast<CBLAS_INT>(x.numel());
     const Scalar* data = x.data();
@@ -182,7 +182,7 @@ protected:
   // element-wise operatons
   // y = x * y
   template <typename SshapeX, typename SstrideX, typename SshapeY, typename SstrideY>
-  MATHPRIM_NOINLINE void emul_impl(const_type<SshapeX, SstrideX> x, view_type<SshapeY, SstrideY> y) {
+  void emul_impl(const_type<SshapeX, SstrideX> x, view_type<SshapeY, SstrideY> y) {
     auto total = x.shape(0);
     MATHPRIM_PRAGMA_UNROLL_HOST
     for (index_t i = 0; i < total; ++i) {
@@ -265,7 +265,7 @@ protected:
 
   template <typename SshapeA, typename SstrideA, typename SshapeB, typename SstrideB, typename SshapeC,
             typename SstrideC>
-  MATHPRIM_NOINLINE void gemm_batch_strided_impl(Scalar alpha, const_type<SshapeA, SstrideA> A,
+  void gemm_batch_strided_impl(Scalar alpha, const_type<SshapeA, SstrideA> A,
                                            const_type<SshapeB, SstrideB> B, Scalar beta,
                                            view_type<SshapeC, SstrideC> C) {
 #if (defined(MATHPRIM_BLAS_VENDOR_INTEL_MKL))

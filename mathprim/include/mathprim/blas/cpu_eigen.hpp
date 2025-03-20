@@ -89,7 +89,7 @@ protected:
   // element-wise operatons
   // Y <- alpha * A * X + beta * Y
   template <typename SshapeX, typename SstrideX, typename SshapeY, typename SstrideY>
-  MATHPRIM_NOINLINE void emul_impl(const_type<SshapeX, SstrideX> x, view_type<SshapeY, SstrideY> y) {
+  void emul_impl(const_type<SshapeX, SstrideX> x, view_type<SshapeY, SstrideY> y) {
     auto map_x = eigen_support::amap(x);
     auto map_y = eigen_support::amap(y);
     map_y = map_x.cwiseProduct(map_y);
@@ -159,7 +159,7 @@ protected:
 
   template <typename SshapeA, typename SstrideA, typename SshapeB, typename SstrideB, typename SshapeC,
             typename SstrideC>
-  MATHPRIM_NOINLINE void gemm_batch_strided_impl(Scalar alpha, const_type<SshapeA, SstrideA> A,
+  void gemm_batch_strided_impl(Scalar alpha, const_type<SshapeA, SstrideA> A,
                                            const_type<SshapeB, SstrideB> B, Scalar beta,
                                            view_type<SshapeC, SstrideC> C) {
     if (A.is_contiguous() && B.is_contiguous() && C.is_contiguous()) {

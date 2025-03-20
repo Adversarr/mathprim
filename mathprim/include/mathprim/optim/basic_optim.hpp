@@ -37,19 +37,19 @@ public:
   Derived& derived() noexcept { return static_cast<Derived&>(*this); }
   const Derived& derived() const noexcept { return static_cast<const Derived&>(*this); }
 
-  MATHPRIM_NOINLINE Scalar eval_value() {
+  Scalar eval_value() {
     loss_ = 0;
     derived().eval_value_impl();
     return loss_;
   }
 
-  MATHPRIM_NOINLINE void eval_gradients() {
+  void eval_gradients() {
     zero_gradients();
     derived().eval_gradients_impl();
   }
 
   // Fused evaluation of value and gradients
-  MATHPRIM_NOINLINE Scalar eval_value_and_gradients() {
+  Scalar eval_value_and_gradients() {
     loss_ = 0;
     zero_gradients();
     derived().eval_value_and_gradients_impl();
@@ -217,6 +217,8 @@ public:
         problem, std::forward<LinesearchCallback>(callback));
     const Scalar next_value = problem.current_value();
     MATHPRIM_ASSERT(next_value <= cur_value && "Linesearcher should decrease the value.");
+    MATHPRIM_UNUSED(cur_value);
+    MATHPRIM_UNUSED(next_value);
 
     // Note: linesearcher should exit at the optimal point.
     // restore_state(problem, true);

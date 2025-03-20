@@ -91,6 +91,15 @@
 
 #define MATHPRIM_UNUSED(x) ((void)(x))
 
+// define unlikely and likely if cxx > 20
+#if __cplusplus > 201703L
+#  define MATHPRIM_UNLIKELY [[unlikely]]
+#  define MATHPRIM_LIKELY [[likely]]
+#else
+#  define MATHPRIM_UNLIKELY
+#  define MATHPRIM_LIKELY
+#endif
+
 /**
  * @brief Throw options:
  * -1: do not throw exception, print file/line information to stderr and exit
@@ -114,7 +123,7 @@
 #elif MATHPRIM_OPTION_EXIT_ON_THROW == 0
 #  define MATHPRIM_INTERNAL_CHECK_THROW(cond, error_type, msg)          \
     do {                                                                \
-      if (!(cond)) {                                                    \
+      if (!(cond)) MATHPRIM_UNLIKELY {                                                    \
         fprintf(stderr, "Check Failed: (" #cond ") at %s:%d\n", __FILE__, __LINE__); \
         throw error_type(msg);                                          \
       }                                                                 \

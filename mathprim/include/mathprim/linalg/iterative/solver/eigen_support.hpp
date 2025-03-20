@@ -39,7 +39,7 @@ protected:
   void factorize_impl_impl() { solver_->factorize(eigen_support::map(this->matrix())); }
 
   template <typename Callback>
-  MATHPRIM_NOINLINE results_type solve_impl(vector_view x, const_vector b, const parameters_type& params = {},
+  results_type solve_impl(vector_view x, const_vector b, const parameters_type& params = {},
                                             Callback&& /* cb */ = {}) {
     MATHPRIM_INTERNAL_CHECK_THROW(solver_, std::runtime_error, "The solver is not initialized.");
     results_type res;

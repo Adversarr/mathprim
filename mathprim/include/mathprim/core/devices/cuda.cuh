@@ -50,7 +50,7 @@ template <> struct device_traits<cuda> {
 };
 
 template <> struct basic_memcpy<cuda, cpu> {
-  MATHPRIM_NOINLINE void operator()(void *dst, const void *src,
+  void operator()(void *dst, const void *src,
                                     size_t size) const {
     if (const auto status = cudaMemcpy(dst, src, size, cudaMemcpyDeviceToHost);
         status != cudaSuccess) {
@@ -60,7 +60,7 @@ template <> struct basic_memcpy<cuda, cpu> {
 };
 
 template <> struct basic_memcpy<cpu, cuda> {
-  MATHPRIM_NOINLINE void operator()(void *dst, const void *src,
+  void operator()(void *dst, const void *src,
                                     size_t size) const {
     if (const auto status = cudaMemcpy(dst, src, size, cudaMemcpyHostToDevice);
         status != cudaSuccess) {
@@ -70,7 +70,7 @@ template <> struct basic_memcpy<cpu, cuda> {
 };
 
 template <> struct basic_memcpy<cuda, cuda> {
-  MATHPRIM_NOINLINE void operator()(void *dst, const void *src,
+  void operator()(void *dst, const void *src,
                                     size_t size) const {
     if (const auto status =
             cudaMemcpy(dst, src, size, cudaMemcpyDeviceToDevice);
@@ -109,7 +109,7 @@ auto make_cuda_buffer(Args... shape) {
  *
  */
 template <typename Scalar, index_t SshapeX, index_t SshapeY>
-MATHPRIM_NOINLINE basic_buffer<Scalar, shape_t<SshapeX, SshapeY>,
+basic_buffer<Scalar, shape_t<SshapeX, SshapeY>,
                                stride_t<keep_dim, 1>, device::cuda>
 make_cuda_pitched_buffer(const shape_t<SshapeX, SshapeY> &shape) {
   Scalar *ptr = nullptr;
