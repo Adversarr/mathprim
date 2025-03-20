@@ -83,7 +83,7 @@ public:
     if (total < threshold_) {
       seq{}.run(grid_dim, std::forward<Fn>(fn));
     } else {
-      const index_t n = total / grain_size_;
+      const index_t n = (total + grain_size_ - 1) / grain_size_;
       const int threads = get_num_threads();
       const index_t chunk_size = (n + threads - 1) / (threads);
       MATHPRIM_UNUSED(chunk_size);
