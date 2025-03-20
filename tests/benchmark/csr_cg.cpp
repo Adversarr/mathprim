@@ -72,7 +72,8 @@ static void work_ic(benchmark::State &state) {
 
   using SparseBlas = sparse::blas::naive<Scalar, sparse::sparse_format::csr>;
   using preconditioner = sparse::iterative::eigen_ichol<Scalar, sparse::sparse_format::csr>;
-  sparse::iterative::cg<Scalar, device::cpu, SparseBlas, BlasImpl, preconditioner> cg{mat};
+  sparse::iterative::cg<Scalar, device::cpu, SparseBlas, BlasImpl, preconditioner> cg;
+  cg.compute(mat);
 
   auto b = make_buffer<Scalar>(rows); b.fill_bytes(0);
   auto x = make_buffer<Scalar>(rows);
@@ -112,7 +113,7 @@ static void work2(benchmark::State &state) {
 
   sparse::iterative::cg<Scalar, device::cpu, SparseBlas, BlasImpl, preconditioner> cg{mat};
 
-  auto b = make_buffer<Scalar>(rows); b.fill_bytes(0); b.fill_bytes(0);
+  auto b = make_buffer<Scalar>(rows); b.fill_bytes(0);
   auto x = make_buffer<Scalar>(rows);
   // GT = ones.
   for (auto _ : state) {
@@ -258,12 +259,10 @@ constexpr index_t lower = 1 << 4, upper = 1 << 6;
 BENCHMARK_TEMPLATE(work, blas::cpu_blas<Scalar>)->Range(lower, upper);
 BENCHMARK_TEMPLATE(work, blas::cpu_eigen<Scalar>)->Range(lower, upper);
 BENCHMARK_TEMPLATE(work, blas::cpu_handmade<Scalar>)->Range(lower, upper);
-
 BENCHMARK(work_eigen_naive)->Range(lower, upper);
 BENCHMARK(work_eigen_wrapped)->Range(lower, upper);
 BENCHMARK(work_chol)->Range(lower, upper);
 BENCHMARK_TEMPLATE(work_ic, blas::cpu_eigen<Scalar>)->Range(lower, upper);
-
 BENCHMARK_TEMPLATE(work2, blas::cpu_blas<Scalar>)->Range(lower, upper);
 BENCHMARK_TEMPLATE(work2, blas::cpu_handmade<Scalar>)->Range(lower, upper);
 BENCHMARK_TEMPLATE(work2, blas::cpu_eigen<Scalar>)->Range(lower, upper);

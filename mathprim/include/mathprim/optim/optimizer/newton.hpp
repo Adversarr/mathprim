@@ -2,7 +2,6 @@
 #include "mathprim/linalg/direct/eigen_support.hpp"
 #include "mathprim/optim/basic_optim.hpp"
 #include "mathprim/optim/linesearcher/backtracking.hpp"
-// #include "mathprim/linalg/"
 namespace mathprim::optim {
 
 template <typename Scalar, typename Device, typename Blas,
@@ -52,7 +51,7 @@ public:
     Scalar& last_change = result.last_change_;
     Scalar& grad_norm = result.grad_norm_;
     index_t& iteration = result.iterations_;
-    bool &converged = result.converged_;
+    bool& converged = result.converged_;
 
     value = problem.eval_value_and_gradients();
     grad_norm = blas.norm(grads);
@@ -83,8 +82,15 @@ public:
       }
 
       // Solve the linear system: H dx = g
-      sparse::convergence_criteria<Scalar> solver_criteria{solver_max_iter_, inexact_};
-      solver.solve(dx, g, solver_criteria);
+      try {
+        sparse::convergence_criteria<Scalar> solver_criteria{solver_max_iter_, inexact_};
+        solver.solve(dx, g, solver_criteria);
+      } catch (const std::exception& e) {
+        double grad_norm = blas.norm(g);
+        double dx_norm = blas.norm(dx);
+        fprintf(stderr, "Trace: |g| = %g, |dx| = %g\n", grad_norm, dx_norm);
+        throw;
+      }
 
       // Launch linesearcher.
       auto [ls_result, ls_step_size] = ls.search(problem, dx, 1);
@@ -133,4 +139,4 @@ protected:
   hessian_fn update_hessian_;
   contiguous_vector_buffer<Scalar, Device> dx_{};
 };
-}
+}  // namespace mathprim::optim
