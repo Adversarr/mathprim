@@ -3,6 +3,9 @@
 
 #include <cstdio>
 #include <iostream>
+#include <mathprim/supports/eigen_dense.hpp>
+
+#include "mathprim/core/functional.hpp"
 
 #define MATHPRIM_VERBOSE_MALLOC 1
 #include <mathprim/core/buffer.hpp>
@@ -125,6 +128,36 @@ int main() {
     }
   });
   parfor_default.sync();
+
+  auto buf3 = make_buffer<float, device::cuda>(10, 3_s);
+  buf3.fill_bytes(0);
+  parfor_default.run(10, [view = buf3.view()] __device__(index_t i) {
+    view(i, 0) = i;
+    view(i, 1) = i + 1;
+    view(i, 2) = i + 2;
+  });
+  parfor_default.sync();
+
+  Eigen::Matrix<float, 3, 3> mat;
+  mat << 1, 0, 0,  //
+  0, 2, 0,     //
+  0, 0, 3;
+  auto aft = functional::affine_transform<float, device::cuda, 3>(eigen_support::view(mat).as_const());
+  aft.bias_[0] = 3;
+  aft.bias_[1] = 2;
+  aft.bias_[2] = 1;
+  parfor_default.vmap(aft, buf3.view());
+  parfor_default.run(10, [view = buf3.view()] __device__(index_t i) {
+    // should be:
+    // i * 1 + 3
+    // (i+1) * 2 + 2
+    // (i+2) * 3 + 1
+    if (view(i, 0) != i + 3 || view(i, 1) != (i + 1) * 2 + 2 || view(i, 2) != (i + 2) * 3 + 1) {
+      printf("Error: buf3[%d] = (%f, %f, %f)\n", i, view(i, 0), view(i, 1), view(i, 2));
+    } else {
+      printf("Ok: buf3[%d] = (%f, %f, %f)\n", i, view(i, 0), view(i, 1), view(i, 2));
+    }
+  });
 
   // for (int i = 10; i < 20; ++i) {
   //   index_t total = 1 << i;
