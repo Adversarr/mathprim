@@ -132,7 +132,7 @@ public:
    * @return visitor<Fn, Scalar, Device, SparseCompression> 
    */
   template <typename Fn>
-  sparse_visit_task<Fn, Scalar, Device, SparseCompression> visit(Fn&& fn) {
+  sparse_visit_task<std::remove_reference_t<Fn>, Scalar, Device, SparseCompression> visit(Fn&& fn) {
     return {*this, std::forward<Fn>(fn)};
   }
 
@@ -428,14 +428,14 @@ void visit(const basic_sparse_view<Scalar, device::cuda, SparseCompression>& vie
 
 template <typename Fn, typename Scalar, typename Device, sparse_format SparseCompression>
 struct sparse_visit_task : public par::basic_task<sparse_visit_task<Fn, Scalar, Device, SparseCompression>> {
-  Fn fn_;
+  mutable Fn fn_;
   basic_sparse_view<Scalar, Device, SparseCompression> view_;
   sparse_visit_task(basic_sparse_view<Scalar, Device, SparseCompression> view, Fn fn) : fn_(fn), view_(view) {}
 
   MATHPRIM_INTERNAL_COPY(sparse_visit_task, default);
   MATHPRIM_INTERNAL_MOVE(sparse_visit_task, default);
 
-  MATHPRIM_PRIMFUNC void operator()(index_t outer_entry) {
+  MATHPRIM_PRIMFUNC void operator()(index_t outer_entry) const noexcept {
     auto outer = view_.outer_ptrs();
     auto inner = view_.inner_indices();
     auto values = view_.values();
