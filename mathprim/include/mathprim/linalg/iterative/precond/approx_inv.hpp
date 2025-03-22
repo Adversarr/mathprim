@@ -39,7 +39,9 @@ void fsai_compute(sparse::basic_sparse_view<const Scalar, device::cpu, sparse::s
     DoubleMatrix mat(row_size, row_size);
     mat.setIdentity();
     mat *= static_cast<double>(std::numeric_limits<Scalar>::epsilon());
-    DoubleVector b = DoubleVector::Unit(row_size, row_size - 1);
+    // DoubleVector b = DoubleVector::Unit(row_size, row_size - 1);
+    DoubleVector b = DoubleVector::Zero(row_size);
+    b(row_size - 1) = 1;
 
     for (int j = 0; j < row_size; ++j) {
       auto g_j_coresp_col = col_ind_out[row_start + j];
@@ -54,7 +56,11 @@ void fsai_compute(sparse::basic_sparse_view<const Scalar, device::cpu, sparse::s
     // solve the linear system.
     Scalar& row_start_value = lo_values[row_start];
     Eigen::Map<Eigen::Vector<Scalar, Eigen::Dynamic>> x(&row_start_value, row_size);
-    x.noalias() = mat.ldlt().solve(b).cast<Scalar>();
+    auto llt = mat.llt();
+    if (llt.info() != Eigen::Success) {
+      throw std::runtime_error("Submatrix cholesky decomposition failed.");
+    }
+    x.noalias() = llt.solve(b).cast<Scalar>();
 
     Scalar x_last = x(row_size - 1);
     x /= (::std::sqrt(x_last) + std::numeric_limits<Scalar>::epsilon());

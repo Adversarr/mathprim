@@ -80,6 +80,31 @@ def pcg_ainv(
         return libpymp.linalg.pcg_ainv(A, b, x, rtol, max_iter, verbose)
 
 
+def pcg_ic(
+    A: csr_matrix,
+    b: np.ndarray,
+    x: np.ndarray,
+    rtol: float = 1e-4,
+    max_iter: int = 0,
+    verbose: int = 0,
+    callback: Union[None, Callable] = None,
+) -> Tuple[int, float]:
+    """
+    Solve the linear system Ax = b using the conjugate gradient method with Incomplete Cholesky preconditioner.
+
+    Returns
+    -------
+    int
+        The number of iterations.
+    float
+        The time taken to solve the linear system.
+    """
+    if callback:
+        return libpymp.linalg.pcg_cb_ic(A, b, x, rtol, max_iter, callback)
+    else:
+        return libpymp.linalg.pcg_ic(A, b, x, rtol, max_iter, verbose)
+
+
 def pcg_with_ext_spai(
     A: csr_matrix,
     b: np.ndarray,

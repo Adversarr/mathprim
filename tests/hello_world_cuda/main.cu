@@ -3,15 +3,14 @@
 
 #include <cstdio>
 #include <iostream>
-#include <mathprim/supports/eigen_dense.hpp>
-
-#include "mathprim/core/functional.hpp"
-
 #define MATHPRIM_VERBOSE_MALLOC 1
 #include <mathprim/core/buffer.hpp>
 #include <mathprim/core/devices/cuda.cuh>
 #include <mathprim/parallel/cuda.cuh>
+#include <mathprim/supports/eigen_dense.hpp>
 #include <mathprim/supports/stringify.hpp>
+
+#include "mathprim/core/functional.hpp"
 
 using namespace mathprim;
 using namespace mathprim::literal;
@@ -69,8 +68,7 @@ int main() {
   std::cout << "pitched_ptr_cuda.ptr = " << pitched_ptr_cuda.ptr
             << ", pitched_ptr_cuda.pitch = " << pitched_ptr_cuda.pitch
             << ", pitched_ptr_cuda.xsize = " << pitched_ptr_cuda.xsize
-            << ", pitched_ptr_cuda.ysize = " << pitched_ptr_cuda.ysize
-            << std::endl;
+            << ", pitched_ptr_cuda.ysize = " << pitched_ptr_cuda.ysize << std::endl;
   // create view.
   auto view_pitched = from_cuda_pitched_ptr<float>(pitched_ptr_cuda);
   std::cout << "view_pitched=" << view_pitched << std::endl;
@@ -80,8 +78,7 @@ int main() {
   std::cout << "pitched_ptr_cuda_back.ptr = " << pitched_ptr_cuda_back.ptr
             << ", pitched_ptr_cuda_back.pitch = " << pitched_ptr_cuda_back.pitch
             << ", pitched_ptr_cuda_back.xsize = " << pitched_ptr_cuda_back.xsize
-            << ", pitched_ptr_cuda_back.ysize = " << pitched_ptr_cuda_back.ysize
-            << std::endl;
+            << ", pitched_ptr_cuda_back.ysize = " << pitched_ptr_cuda_back.ysize << std::endl;
 
   // Free the memory
   cudaFree(ptr);
@@ -93,7 +90,8 @@ int main() {
   cudaDeviceSynchronize();
 
   // cuda streams.
-  cudaStream_t stream; cudaStreamCreate(&stream);
+  cudaStream_t stream;
+  cudaStreamCreate(&stream);
 
   par::cuda parfor_stream(stream);
   par::cuda parfor_default;
@@ -140,8 +138,8 @@ int main() {
 
   Eigen::Matrix<float, 3, 3> mat;
   mat << 1, 0, 0,  //
-  0, 2, 0,     //
-  0, 0, 3;
+      0, 2, 0,     //
+      0, 0, 3;
   auto aft = functional::affine_transform<float, device::cuda, 3>(eigen_support::view(mat).as_const());
   aft.bias_[0] = 3;
   aft.bias_[1] = 2;

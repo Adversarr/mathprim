@@ -14,6 +14,7 @@
 #include <mathprim/sparse/blas/naive.hpp>
 #include <mathprim/sparse/systems/laplace.hpp>
 
+#include "mathprim/linalg/iterative/precond/approx_inv.hpp"
 #include "mathprim/linalg/iterative/precond/eigen_support.hpp"
 #include "mathprim/linalg/iterative/solver/eigen_support.hpp"
 
@@ -105,11 +106,11 @@ static void work2(benchmark::State &state) {
   int dsize = state.range(0);
   sparse::laplace_operator<Scalar, 2> lap(make_shape(dsize, dsize));
   auto mat_buf = lap.matrix<mathprim::sparse::sparse_format::csr>();
-  auto mat = mat_buf.const_view();
+  auto mat = mat_buf.view();
   auto rows = mat.rows();
 
   using SparseBlas = sparse::blas::naive<Scalar, sparse::sparse_format::csr>;
-  using preconditioner = sparse::iterative::eigen_ichol<Scalar, sparse::sparse_format::csr>;
+  using preconditioner = sparse::iterative::approx_inverse_preconditioner<SparseBlas>;
 
   sparse::iterative::cg<Scalar, device::cpu, SparseBlas, BlasImpl, preconditioner> cg{mat};
 

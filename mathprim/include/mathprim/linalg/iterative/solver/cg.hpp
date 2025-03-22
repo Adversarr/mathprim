@@ -1,7 +1,8 @@
 #pragma once
 #include <cmath>
 
-#include "mathprim/blas/blas.hpp" // IWYU pragma: export
+#include "mathprim/blas/blas.hpp"  // IWYU pragma: export
+#include "mathprim/core/defines.hpp"
 #include "mathprim/linalg/iterative/iterative.hpp"
 
 namespace mathprim::sparse::iterative {
@@ -54,7 +55,9 @@ public:
     const Scalar b_norm = blas.norm(b);
     MATHPRIM_INTERNAL_CHECK_THROW(b_norm > 0, std::runtime_error,
                                   "Norm of b is invalid, |b|=" + std::to_string(b_norm));
-
+    const Scalar x_norm = blas.norm(x);
+    MATHPRIM_INTERNAL_CHECK_THROW(x_norm > 0, std::runtime_error,
+                                  "Norm of x is invalid, |x|=" + std::to_string(x_norm));
 
     // Initialize.
     results_type results;
@@ -67,19 +70,19 @@ public:
     // Scalar delta_new = blas.dot(r, d);  // delta_new = (r, d)
     Scalar delta_new = std::numeric_limits<Scalar>::max();  // delta_new = (r, d)
     bool cg_restart = true;
+    index_t restart_cnt = 0;
     bool converged = false;
     norm = std::numeric_limits<Scalar>::max();
     Scalar alpha = 0, beta = 0;
     // Main loop.
     for (; iterations < params.max_iterations_; ++iterations) {
       if (cg_restart) {
-        // r = b - A * x
-        if (iterations != 0) {
-          double b = beta, a = alpha;
-          fprintf(stderr, "Warning: CG restart at iteration %d, alpha = %g, beta = %g, |Ax-b|/|b|=%g\n", iterations, a,
-                  b, norm);
+        if (restart_cnt >= cg_restart_threshold_) {
+          fprintf(stderr, "Warning: CG restart threshold reached at iteration %d, |Ax-b|/|b|=%g\n", iterations, norm);
+          break;
         }
 
+        // r = b - A * x
         blas.copy(r, b);           // r = b
         matrix.gemv(-1, x, 1, r);  // r = b - A * x
         norm = blas.norm(r) / b_norm;
@@ -87,6 +90,7 @@ public:
         preconditioner.apply(d, r);  // d = M^-1 * r
         delta_new = blas.dot(r, d);  // delta_new = (r, d)
         cg_restart = false;
+        restart_cnt += 1;
       }
 
       // q = A * d
@@ -152,6 +156,7 @@ protected:
 
   void factorize_impl_impl() { preconditioner_.factorize(); }
 
+  index_t cg_restart_threshold_ = 50;  ///< Maximum number of CG restart trials.
   blas_type blas_;
   preconditioner_type preconditioner_;
   contiguous_buffer<Scalar, shape_t<keep_dim>, Device> q_;  // temporary buffer

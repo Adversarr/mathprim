@@ -13,6 +13,7 @@
 #include <mathprim/sparse/basic_sparse.hpp>
 #include <mathprim/sparse/blas/eigen.hpp>
 #include <mathprim/sparse/systems/laplace.hpp>
+#include "mathprim/sparse/blas/naive.hpp"
 
 using namespace mathprim;
 
@@ -58,7 +59,7 @@ static std::pair<index_t, double> cg_host(const Eigen::SparseMatrix<Flt, Eigen::
                                           const Flt rtol,                                      //
                                           index_t max_iter,                                    //
                                           int verbose) {
-  using SparseBlas = mp::sparse::blas::eigen<Flt, sparse::sparse_format::csr>;
+  using SparseBlas = mp::sparse::blas::naive<Flt, sparse::sparse_format::csr>;
   using LinearOp = SparseBlas;
   using Blas = mp::blas::cpu_blas<Flt>;
   using Solver = mp::sparse::iterative::cg<Flt, mp::device::cpu, LinearOp, Blas, Precond>;

@@ -62,6 +62,15 @@ public:
     }
   }
 
+  MATHPRIM_INTERNAL_COPY(basic_sparse_view, default);
+  MATHPRIM_INTERNAL_MOVE(basic_sparse_view, default);
+
+  template <typename Scalar2, typename = std::enable_if_t<std::is_same_v<std::remove_const_t<Scalar>, Scalar2>
+                                                          && std::is_same_v<std::add_const_t<Scalar2>, Scalar>>>
+  MATHPRIM_PRIMFUNC basic_sparse_view(  // NOLINT(google-explicit-constructor): non-const -> const.
+      const basic_sparse_view<Scalar2, Device, SparseCompression>& other) :
+      basic_sparse_view(other.as_const()) {}
+
   MATHPRIM_PRIMFUNC basic_sparse_view(Scalar* values, index_type* outer_ptrs, index_type* inner_indices, index_t rows,
                                       index_t cols, index_t nnz, sparse_property property) :
       basic_sparse_view(view<Device>(values, make_shape(nnz)),
@@ -69,8 +78,6 @@ public:
                         view<Device>(inner_indices, make_shape(nnz)), rows, cols, nnz, property) {}
 
   basic_sparse_view() = default;
-  basic_sparse_view(const basic_sparse_view&) = default;
-  basic_sparse_view& operator=(const basic_sparse_view&) = default;
 
   MATHPRIM_PRIMFUNC
   basic_sparse_view(values_view values, ptrs_view outer_ptrs, ptrs_view inner_indices, index_t rows, index_t cols,
