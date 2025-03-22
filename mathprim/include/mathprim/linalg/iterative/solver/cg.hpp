@@ -56,7 +56,7 @@ public:
     MATHPRIM_INTERNAL_CHECK_THROW(b_norm > 0, std::runtime_error,
                                   "Norm of b is invalid, |b|=" + std::to_string(b_norm));
     const Scalar x_norm = blas.norm(x);
-    MATHPRIM_INTERNAL_CHECK_THROW(x_norm > 0, std::runtime_error,
+    MATHPRIM_INTERNAL_CHECK_THROW(std::isfinite(x_norm), std::runtime_error,
                                   "Norm of x is invalid, |x|=" + std::to_string(x_norm));
 
     // Initialize.
@@ -79,6 +79,7 @@ public:
       if (cg_restart) {
         if (restart_cnt >= cg_restart_threshold_) {
           fprintf(stderr, "Warning: CG restart threshold reached at iteration %d, |Ax-b|/|b|=%g\n", iterations, norm);
+          iterations = params.max_iterations_;
           break;
         }
 
