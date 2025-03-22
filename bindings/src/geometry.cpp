@@ -64,7 +64,7 @@ Eigen::SparseMatrix<Flt, Eigen::RowMajor> weighted_laplacian(
   auto ndim = static_cast<mp::index_t>(vertices.shape(1));
   auto dsimplex = static_cast<mp::index_t>(faces.shape(1));
   auto nweights = static_cast<mp::index_t>(elem_weights.shape(0));
-  auto weights = nbex::to_mp_view_standard(elem_weights).as_const();
+  auto weights = nbex::to_mathprim(elem_weights).as_const();
 
   if (nweights != nface) {
     throw std::runtime_error("elem_weights must have the same length as the number of faces");

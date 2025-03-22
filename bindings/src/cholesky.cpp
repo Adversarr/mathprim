@@ -21,8 +21,8 @@ public:
   /// matrix version: A X = B
   void vsolve(nb::ndarray<Flt, nb::ndim<2>, nb::device::cpu, nb::c_contig> B,
               nb::ndarray<Flt, nb::ndim<2>, nb::device::cpu, nb::c_contig> X) {
-    auto x_view = nbex::to_mp_view_standard(X);
-    auto b_view = nbex::to_mp_view_standard(B);
+    auto x_view = nbex::to_mathprim(X);
+    auto b_view = nbex::to_mathprim(B);
     alg_.vsolve(b_view, x_view);
   }
 

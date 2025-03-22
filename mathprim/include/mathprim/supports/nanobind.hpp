@@ -136,13 +136,17 @@ to_mp_view_standard_t<nb::ndarray<Args...>> make_mp_view_standard(nb::ndarray<Ar
 
 }  // namespace internal
 
+/// @brief Convert mathprim view to nanobind ndarray.
 template <typename T, typename Sshape, typename Sstride, typename Dev>
-auto to_nb_array_standard(mp::basic_view<T, Sshape, Sstride, Dev> view) {
+auto make_nb(mp::basic_view<T, Sshape, Sstride, Dev> view) {
+  MATHPRIM_INTERNAL_CHECK_THROW(view.is_contiguous(), std::invalid_argument, "view must be contiguous");
   return internal::make_nb_array_standard(view);
 }
 
-template <typename NbView>
-auto to_mp_view_standard(NbView view) {
+/// @brief Convert nanobind ndarray to mathprim view.
+template <typename... Args>
+auto to_mathprim(nb::ndarray<Args...> view) {
+  MATHPRIM_INTERNAL_CHECK_THROW(view.is_valid(), std::invalid_argument, "view must be valid");
   return internal::make_mp_view_standard(view);
 }
 
