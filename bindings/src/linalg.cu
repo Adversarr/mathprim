@@ -16,11 +16,25 @@
 
 using namespace mathprim;
 
+template <typename Scalar>
+using diagonal = sparse::iterative::diagonal_preconditioner<Scalar, device::cuda, sparse::sparse_format::csr,
+                                                            blas::cublas<Scalar>>;
+
+template <typename Scalar>
+using ainv
+    = sparse::iterative::approx_inverse_preconditioner<sparse::blas::cusparse<Scalar, sparse::sparse_format::csr>>;
+
+template <typename Scalar>
+using ic = sparse::iterative::cusparse_ichol<Scalar, device::cuda, mathprim::sparse::sparse_format::csr>;
+
+template <typename Scalar>
+using no = sparse::iterative::none_preconditioner<Scalar, device::cuda, mathprim::sparse::sparse_format::csr>;
+
 ////////////////////////////////////////////////
 /// CPU->GPU->CPU
 ////////////////////////////////////////////////
 template <typename Flt, typename Precond>
-std::pair<index_t, double> cg_cuda(const Eigen::SparseMatrix<Flt, Eigen::RowMajor>& A,  //
+std::pair<index_t, double> cg_cuda(Eigen::SparseMatrix<Flt, Eigen::RowMajor> A,  //
                                    nb::ndarray<Flt, nb::shape<-1>, nb::device::cpu> b,  //
                                    nb::ndarray<Flt, nb::shape<-1>, nb::device::cpu> x,  //
                                    const Flt rtol,                                      //
@@ -65,14 +79,14 @@ std::pair<index_t, double> cg_cuda(const Eigen::SparseMatrix<Flt, Eigen::RowMajo
   sparse::convergence_criteria<Flt> criteria{max_iter, rtol};
   sparse::convergence_result<Flt> result;
   auto start = std::chrono::high_resolution_clock::now();
-  if (verbose > 0) {
-    result = solver.solve(x_view, b_view, criteria, [verbose](index_t iter, Flt norm) {
-      if (iter % verbose == 0) {
-        std::cout << "Iteration: " << iter << ", Norm: " << norm << std::endl;
-      }
-    });
-  } else {
-    result = solver.solve(x_view, b_view, criteria);
+    if (verbose > 0) {
+      result = solver.solve(x_view, b_view, criteria, [verbose](index_t iter, Flt norm) {
+        if (iter % verbose == 0) {
+          std::cout << "Iteration: " << iter << ", Norm: " << norm << std::endl;
+        }
+      });
+    } else {
+      result = solver.solve(x_view, b_view, criteria);
   }
 
   auto end = std::chrono::high_resolution_clock::now();
@@ -151,20 +165,22 @@ static std::pair<index_t, double> cg_cuda_csr_direct(                   //
 }
 
 template <typename Flt = float>
-static std::pair<index_t, double> pcg_with_ext_spai(        //
-    const Eigen::SparseMatrix<Flt, Eigen::RowMajor>& A,     //
-    nb::ndarray<Flt, nb::ndim<1>, nb::device::cpu> b,       //
-    nb::ndarray<Flt, nb::ndim<1>, nb::device::cpu> x,       //
-    const Eigen::SparseMatrix<Flt, Eigen::RowMajor>& ainv,  //
-    Flt epsilon,                                            //
-    const Flt& rtol,                                        //
-    index_t max_iter,                                       //
+static std::pair<index_t, double> pcg_with_ext_spai(   //
+    Eigen::SparseMatrix<Flt, Eigen::RowMajor> A,       //
+    nb::ndarray<Flt, nb::ndim<1>, nb::device::cpu> b,  //
+    nb::ndarray<Flt, nb::ndim<1>, nb::device::cpu> x,  //
+    Eigen::SparseMatrix<Flt, Eigen::RowMajor> ainv,    //
+    Flt epsilon,                                       //
+    const Flt& rtol,                                   //
+    index_t max_iter,                                  //
     int verbose) {
   using SparseBlas = mp::sparse::blas::cusparse<Flt, sparse::sparse_format::csr>;
   using LinearOp = SparseBlas;
   using Blas = mp::blas::cublas<Flt>;
   using Precond = mp::sparse::iterative::sparse_preconditioner<SparseBlas, Blas>;
   using Solver = mp::sparse::iterative::cg<Flt, mp::device::cuda, LinearOp, Blas, Precond>;
+  A.makeCompressed();
+  ainv.makeCompressed();
 
   // 1. Setup Solver & Preconditioner.
   auto matrix_host = eigen_support::view(A);
@@ -202,13 +218,13 @@ static std::pair<index_t, double> pcg_with_ext_spai(        //
 
   auto start = std::chrono::high_resolution_clock::now();
   if (verbose > 0) {
-    result = solver.solve(d_b, d_x, criteria, [verbose](index_t iter, Flt norm) {
+    result = solver.solve(d_x, d_b, criteria, [verbose](index_t iter, Flt norm) {
       if (iter % verbose == 0) {
         std::cout << "Iteration: " << iter << ", Norm: " << norm << std::endl;
       }
     });
   } else {
-    result = solver.solve(d_b, d_x, criteria);
+    result = solver.solve(d_x, d_b, criteria);
   }
   auto end = std::chrono::high_resolution_clock::now();
   auto duration = end - start;
@@ -291,20 +307,6 @@ static std::pair<index_t, double> pcg_with_ext_spai_cuda_direct(                
   double seconds = std::chrono::duration_cast<std::chrono::duration<double, std::ratio<1>>>(duration).count();
   return std::make_pair(result.iterations_, seconds);
 }
-
-template <typename Scalar>
-using diagonal = sparse::iterative::diagonal_preconditioner<Scalar, device::cuda, sparse::sparse_format::csr,
-                                                            blas::cublas<Scalar>>;
-
-template <typename Scalar>
-using ainv
-    = sparse::iterative::approx_inverse_preconditioner<sparse::blas::cusparse<Scalar, sparse::sparse_format::csr>>;
-
-template <typename Scalar>
-using ic = sparse::iterative::cusparse_ichol<Scalar, device::cuda, mathprim::sparse::sparse_format::csr>;
-
-template <typename Scalar>
-using no = sparse::iterative::none_preconditioner<Scalar, device::cuda, mathprim::sparse::sparse_format::csr>;
 
 #define BIND_TRANSFERING_GPU_TYPE(flt, preconditioning)                                                            \
   m.def(TOSTR(pcg_##preconditioning##_cuda), &cg_cuda<flt, preconditioning<flt>>,                                  \

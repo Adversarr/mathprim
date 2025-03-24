@@ -2,6 +2,7 @@
 #include <cmath>
 
 #include "mathprim/blas/blas.hpp"  // IWYU pragma: export
+#include "mathprim/blas/cpu_eigen.hpp"
 #include "mathprim/core/defines.hpp"
 #include "mathprim/linalg/iterative/iterative.hpp"
 
@@ -48,101 +49,111 @@ public:
   template <typename Callback>
   results_type solve_impl(vector_view x, const_vector b, const parameters_type& params, Callback&& cb) {
     mathprim::blas::basic_blas<blas_type, Scalar, Device>& blas = blas_;
-    auto& preconditioner = preconditioner_;
+    auto& preconditioner = this->preconditioner();
     auto& matrix = this->linear_operator();
     auto& residual_buffer = base::residual_;
     vector_view r = residual_buffer.view(), q = q_.view(), d = d_.view();
+    zeros(r);
+    zeros(q);
+    zeros(d);
+
     const Scalar b_norm = blas.norm(b);
     MATHPRIM_INTERNAL_CHECK_THROW(b_norm > 0, std::runtime_error,
                                   "Norm of b is invalid, |b|=" + std::to_string(b_norm));
-    const Scalar x_norm = blas.norm(x);
-    MATHPRIM_INTERNAL_CHECK_THROW(std::isfinite(x_norm), std::runtime_error,
-                                  "Norm of x is invalid, |x|=" + std::to_string(x_norm));
+    const Scalar x0_norm = blas.norm(x);
+    MATHPRIM_INTERNAL_CHECK_THROW(std::isfinite(x0_norm), std::runtime_error,
+                                  "Norm of x is invalid, |x|=" + std::to_string(x0_norm));
 
     // Initialize.
     results_type results;
     auto& iterations = results.iterations_;
     auto& norm = results.norm_;
-    // auto& max_norm = results.amax_;
     iterations = 0;
+    // r = b - A * x
+    copy(r, b);                // r = b
+    matrix.gemv(-1, x, 1, r);  // r = b - A * x
     // Set initial search direction.
-    // preconditioner.apply(d, r);           // d = M^-1 * r
-    // Scalar delta_new = blas.dot(r, d);  // delta_new = (r, d)
-    Scalar delta_new = std::numeric_limits<Scalar>::max();  // delta_new = (r, d)
-    bool cg_restart = true;
-    index_t restart_cnt = 0;
+    preconditioner.apply(d, r);         // d = M^-1 * r
+    Scalar delta_new = blas.dot(r, d);  // delta_new = (r, d)
     bool converged = false;
-    norm = std::numeric_limits<Scalar>::max();
-    Scalar alpha = 0, beta = 0;
-    // Main loop.
+    // Check convergence.
+    norm = blas.norm(r) / b_norm;
+#define MATHPRIM_INTERNAL_CG_CHECK(x) \
+  do {                                \
+    if (!std::isfinite(x))            \
+      throw_traced(#x "not finite");  \
+  } while (0)
+    converged = norm <= params.norm_tol_;
+    if (converged) {
+      return results;
+    }
+    Scalar d_q = 0, alpha = 0;
+    auto throw_traced = [&](const char* msg) -> void {
+      throw std::runtime_error(                                   //
+          "check \"" + std::string(msg) +                         //
+          "\" failed at iteration " + std::to_string(iterations)  //
+          + ", |r|=" + std::to_string(norm)                       //
+          + ", |x|=" + std::to_string(blas.norm(x))               //
+          + ", |x0|=" + std::to_string(x0_norm)                   //
+          + ", |b|=" + std::to_string(b_norm)                     //
+          + ", |d|=" + std::to_string(blas.norm(d))               //
+          + ", |q|=" + std::to_string(blas.norm(q))               //
+          + ", <d,q>=" + std::to_string(d_q)                      //
+          + ", alpha=" + std::to_string(alpha)                    //
+          + ", delta=" + std::to_string(delta_new)                //
+      );
+    };
+    if (!(delta_new > 0)) {
+      throw_traced("!(delta_new > 0)");
+    }
+    MATHPRIM_INTERNAL_CG_CHECK(norm);
+
     for (; iterations < params.max_iterations_; ++iterations) {
-      if (cg_restart) {
-        if (restart_cnt >= cg_restart_threshold_) {
-          fprintf(stderr, "Warning: CG restart threshold reached at iteration %d, |Ax-b|/|b|=%g\n", iterations, norm);
-          iterations = params.max_iterations_;
-          break;
-        }
-
-        // r = b - A * x
-        blas.copy(r, b);           // r = b
-        matrix.gemv(-1, x, 1, r);  // r = b - A * x
-        norm = blas.norm(r) / b_norm;
-        converged = norm <= params.norm_tol_;
-        preconditioner.apply(d, r);  // d = M^-1 * r
-        delta_new = blas.dot(r, d);  // delta_new = (r, d)
-        cg_restart = false;
-        restart_cnt += 1;
-      }
-
       // q = A * d
       matrix.gemv(1, d, 0, q);  // q = A * d
 
       // alpha = (r, d) / (d, q)
-      Scalar d_q = blas.dot(d, q);
+      d_q = blas.dot(d, q);
+      MATHPRIM_INTERNAL_CG_CHECK(d_q);
       alpha = delta_new / d_q;
-      if (!std::isfinite(alpha)) {
-        cg_restart = true;
-        continue;
-      }
+      MATHPRIM_INTERNAL_CG_CHECK(alpha);
 
       // x = x + alpha * d
       blas.axpy(alpha, d, x);  // x = x + alpha * d
 
       // r = r - alpha * q
-      // if ((1 + iterations) % 50 == 0) {
-      //   blas.copy(r, b);           // r = b
-      //   matrix.gemv(-1, x, 1, r);  // r = b - A * x
-      // } else {
-      //   blas.axpy(-alpha, q, r);  // r = r - alpha * q
-      // }
-      blas.axpy(-alpha, q, r);  // r = r - alpha * q
+      if constexpr (std::is_same_v<Scalar, double>) {
+        if ((1 + iterations) % 50 == 0) {
+          blas.copy(r, b);           // r = b
+          matrix.gemv(-1, x, 1, r);  // r = b - A * x
+        } else {
+          blas.axpy(-alpha, q, r);  // r = r - alpha * q
+        }
+      } else {
+        blas.axpy(-alpha, q, r);  // r = r - alpha * q
+      }
 
       // Check convergence.
       norm = blas.norm(r) / b_norm;
-      MATHPRIM_INTERNAL_CHECK_THROW(
-          std::isfinite(norm), std::runtime_error,
-          "Norm is not finite at iteration " + std::to_string(iterations) + ", |r|=" + std::to_string(norm));
-      // max_norm = blas.amax(cr);
-      converged = norm <= params.norm_tol_ /* || max_norm <= params.amax_tol_ */;
+      converged = norm <= params.norm_tol_;
       cb(iterations, norm);
       if (converged) {
         break;
       }
 
       // Update search direction.
-      Scalar delta_old = delta_new;  // delta_old = delta_new
+      const Scalar delta_old = delta_new;  // delta_old = delta_new
       // q is not needed anymore, so we can use it as a temporary buffer.
-      preconditioner.apply(q, r);    // q = M^-1 * r
-      delta_new = blas.dot(r, q);    // delta_new = (r, q)
-      beta = delta_new / delta_old;  // beta = delta_new / delta_old
-      if (!std::isfinite(beta)) {
-        cg_restart = true;
-        continue;
-      }
+      preconditioner.apply(q, r);           // q = M^-1 * r
+      delta_new = blas.dot(r, q);           // delta_new = (r, q)
+      Scalar beta = delta_new / delta_old;  // beta = delta_new / delta_old
+      MATHPRIM_INTERNAL_CG_CHECK(beta);
+
       // update the search direction: d = q + beta * d
       blas.axpy(beta, d, q);  // q = q + beta * d
       d.swap(q);
     }
+#undef MATHPRIM_INTERNAL_CG_CHECK
 
     return results;
   }

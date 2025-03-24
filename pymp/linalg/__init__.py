@@ -210,6 +210,28 @@ def pcg_ainv_cuda(
     """
     return libpymp.linalg.pcg_ainv_cuda(A, b, x, rtol, max_iter, verbose)
 
+def pcg_ic_cuda(
+    A: csr_matrix,
+    b: np.ndarray,
+    x: np.ndarray,
+    rtol: float = 1e-4,
+    max_iter: int = 0,
+    verbose: int = 0,
+    callback: Union[None, Callable] = None,
+) -> Tuple[int, float]:
+    """
+    Solve the linear system Ax = b using the conjugate gradient method with Incomplete Cholesky preconditioner.
+
+    Returns
+    -------
+    int
+        The number of iterations.
+    float
+        The time taken to solve the linear system.
+    """
+    return libpymp.linalg.pcg_ic_cuda(A, b, x, rtol, max_iter, verbose)
+
+
 def ainv(A: csr_matrix) -> csr_matrix:
     """
     Compute the content of the Approximated Inverse preconditioner.

@@ -52,7 +52,15 @@ if(MATHPRIM_ENABLE_CUDA)
   find_package(CUDAToolkit REQUIRED)
   message(STATUS "Enabling CUDA")
 
-  target_link_libraries(mathprim INTERFACE CUDA::cudart CUDA::cublas CUDA::cusparse)
+  if(MATHPRIM_CUDA_LINK_DYNAMIC)
+    message(STATUS "Linking to dynamic CUDA libraries. Please check if your application support this.")
+    target_link_libraries(mathprim INTERFACE CUDA::cudart CUDA::cublas CUDA::cusparse)
+  else()
+    target_link_libraries(mathprim INTERFACE
+      CUDA::cudart_static
+      CUDA::cublas_static
+      CUDA::cusparse_static)
+  endif()
   target_compile_definitions(mathprim INTERFACE MATHPRIM_ENABLE_CUDA)
   target_compile_options(mathprim INTERFACE $<$<COMPILE_LANGUAGE:CUDA>:--extended-lambda>)
   target_compile_options(mathprim INTERFACE $<$<COMPILE_LANGUAGE:CUDA>:--expt-relaxed-constexpr>)

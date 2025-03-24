@@ -257,13 +257,11 @@ constexpr index_t lower = 1 << 4, upper = 1 << 8;
 #else
 constexpr index_t lower = 1 << 4, upper = 1 << 6;
 #endif
-BENCHMARK_TEMPLATE(work, blas::cpu_blas<Scalar>)->Range(lower, upper);
-BENCHMARK_TEMPLATE(work, blas::cpu_eigen<Scalar>)->Range(lower, upper);
-BENCHMARK_TEMPLATE(work, blas::cpu_handmade<Scalar>)->Range(lower, upper);
-BENCHMARK(work_eigen_naive)->Range(lower, upper);
-BENCHMARK(work_eigen_wrapped)->Range(lower, upper);
-BENCHMARK(work_chol)->Range(lower, upper);
-BENCHMARK_TEMPLATE(work_ic, blas::cpu_eigen<Scalar>)->Range(lower, upper);
+BENCHMARK_TEMPLATE(work , blas::cpu_handmade<Scalar>)->Range(lower, upper);
+// BENCHMARK(work_eigen_naive)->Range(lower, upper);
+// BENCHMARK(work_eigen_wrapped)->Range(lower, upper);
+// BENCHMARK(work_chol)->Range(lower, upper);
+// BENCHMARK_TEMPLATE(work_ic, blas::cpu_eigen<Scalar>)->Range(lower, upper);
 BENCHMARK_TEMPLATE(work2, blas::cpu_blas<Scalar>)->Range(lower, upper);
 BENCHMARK_TEMPLATE(work2, blas::cpu_handmade<Scalar>)->Range(lower, upper);
 BENCHMARK_TEMPLATE(work2, blas::cpu_eigen<Scalar>)->Range(lower, upper);

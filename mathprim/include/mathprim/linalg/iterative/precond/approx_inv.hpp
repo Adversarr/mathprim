@@ -31,8 +31,8 @@ void fsai_compute(sparse::basic_sparse_view<const Scalar, device::cpu, sparse::s
   };
 
   auto job_of_row = [&](index_t row) mutable {
-    auto row_start = static_cast<size_t>(row_ptr_out(row));
-    index_t row_size = row_ptr_out(row + 1) - row_ptr_out(row);
+    const auto row_start = static_cast<size_t>(row_ptr_out(row));
+    const index_t row_size = row_ptr_out(row + 1) - row_ptr_out(row);
     using DoubleMatrix = Eigen::MatrixX<double>;
     using DoubleVector = Eigen::Vector<double, Eigen::Dynamic>;
 
@@ -56,14 +56,14 @@ void fsai_compute(sparse::basic_sparse_view<const Scalar, device::cpu, sparse::s
     // solve the linear system.
     Scalar& row_start_value = lo_values[row_start];
     Eigen::Map<Eigen::Vector<Scalar, Eigen::Dynamic>> x(&row_start_value, row_size);
-    auto llt = mat.llt();
+    auto llt = mat.ldlt();
     if (llt.info() != Eigen::Success) {
       throw std::runtime_error("Submatrix cholesky decomposition failed.");
     }
-    x.noalias() = llt.solve(b).cast<Scalar>();
-
-    Scalar x_last = x(row_size - 1);
-    x /= (::std::sqrt(x_last) + std::numeric_limits<Scalar>::epsilon());
+    Eigen::VectorXd x_double = llt.solve(b);
+    double x_last = x_double(row_size - 1);
+    x_double /= (::std::sqrt(x_last) + std::numeric_limits<double>::epsilon());
+    x = x_double.cast<Scalar>();
   };
 
 #if MATHPRIM_ENABLE_OPENMP
@@ -143,6 +143,7 @@ public:
         }
       }
       lo_outer[n] = counter;
+      MATHPRIM_ASSERT(counter == lo_nnz && "Counter is not equal to nnz.");
     }
 
     // fill in the values.
@@ -153,20 +154,24 @@ public:
     // after that, copy the lo to device.
     lo_ = lo.to(Device());
     buffer_intern_ = make_buffer<Scalar, Device>(n);
+    buffer_intern_.fill_bytes(0);
     bl_ = SparseBlas(lo_.const_view());
+    has_compute_ = true;
   }
 
   const_sparse_view ainv() const noexcept { return lo_.const_view(); }
 
 private:
   void apply_impl(vector_type y, const_vector x) {
-    // z = lo.T * x.
+    MATHPRIM_INTERNAL_CHECK_THROW(has_compute_, std::runtime_error, "The preconditioner has not been computed.");
     auto z = buffer_intern_.view();
+    // z = lo.T * x.
     bl_.gemv(1, x, 0, z, true);
     // y = lo * y.
     bl_.gemv(1, z, 0, y, false);
   }
 
+  bool has_compute_ = false;
   SparseBlas bl_;
   sparse_matrix lo_;                                            // the approx inverse decomposition of A.
   contiguous_buffer<Scalar, dshape<1>, Device> buffer_intern_;  // buffer for intermediate computation.

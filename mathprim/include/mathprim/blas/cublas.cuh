@@ -1,6 +1,5 @@
 #pragma once
 #include <cublas_v2.h>
-
 #include <library_types.h>
 #include <thrust/execution_policy.h>
 #include <thrust/for_each.h>
@@ -11,37 +10,49 @@
 #include "mathprim/core/utils/cuda_utils.cuh"
 #include "mathprim/core/utils/singleton.hpp"
 
-#define MATHPRIM_INTERNAL_CUBLAS_CHECK(expr)                                   \
-  do {                                                                         \
-    auto status = (expr);                                                      \
-    if (status != CUBLAS_STATUS_SUCCESS) {                                     \
-      throw std::runtime_error("CUBLAS error at" + std::string(__FILE__) +     \
-                               ":" + std::to_string(__LINE__) + ": " +         \
-                               std::string(cublasGetStatusName(status)));      \
-    }                                                                          \
+#define MATHPRIM_INTERNAL_CUBLAS_CHECK(expr)                                                                     \
+  do {                                                                                                           \
+    auto status = (expr);                                                                                        \
+    if (status != CUBLAS_STATUS_SUCCESS) {                                                                       \
+      throw std::runtime_error("CUBLAS error at" + std::string(__FILE__) + ":" + std::to_string(__LINE__) + ": " \
+                               + std::string(cublasGetStatusName(status)));                                      \
+    }                                                                                                            \
   } while (0)
 
-#define MATHPRIM_INTERNAL_CUBLAS_CHECK_EXIT(expr)                              \
-  do {                                                                         \
-    auto status = (expr);                                                      \
-    if (status != CUBLAS_STATUS_SUCCESS) {                                     \
-      std::cerr << "CUBLAS error at" << __FILE__ << ":" << __LINE__ << ": "    \
-                << cublasGetStatusName(status) << std::endl;                   \
-      std::exit(EXIT_FAILURE);                                                 \
-    }                                                                          \
+#define MATHPRIM_INTERNAL_CUBLAS_CHECK_EXIT(expr)                                                          \
+  do {                                                                                                     \
+    auto status = (expr);                                                                                  \
+    if (status != CUBLAS_STATUS_SUCCESS) {                                                                 \
+      std::cerr << "CUBLAS error at" << __FILE__ << ":" << __LINE__ << ": " << cublasGetStatusName(status) \
+                << std::endl;                                                                              \
+      std::exit(EXIT_FAILURE);                                                                             \
+    }                                                                                                      \
   } while (0)
 
 namespace mathprim {
 namespace singletons {
 
-class cublas_context final
-    : public internal::basic_singleton<cublas_context, cublasHandle_t> {
+class cublas_context final : public internal::basic_singleton<cublas_context, cublasHandle_t> {
   using base = internal::basic_singleton<cublas_context, cublasHandle_t>;
   friend base;
   void create_impl(cublasHandle_t &handle) {
     MATHPRIM_INTERNAL_CUBLAS_CHECK_EXIT(cublasCreate(&handle));
-    MATHPRIM_INTERNAL_CUBLAS_CHECK_EXIT(
-        cublasSetMathMode(handle, CUBLAS_TENSOR_OP_MATH));
+    constexpr int version_compiled = CUBLAS_VERSION;
+    // Check the version is equal to compiled one.
+    int version_dynamic = 0;
+    MATHPRIM_INTERNAL_CUBLAS_CHECK_EXIT(cublasGetVersion(handle, &version_dynamic));
+    if (version_compiled != version_dynamic) {
+      std::cerr << "================================================================================"  //
+                << "cuBLAS version mismatch:\n"                                                        //
+                << "  - compiled=" << version_compiled << std::endl                                    //
+                << "  - dynamic=" << version_dynamic << std::endl                                      //
+                << "Consider static linking, or upgrade your dynamic library to match the compiled\n"  //
+                   "version.\n"                                                                        //
+                << "================================================================================\n";
+      std::exit(EXIT_FAILURE);
+    }
+
+    MATHPRIM_INTERNAL_CUBLAS_CHECK_EXIT(cublasSetMathMode(handle, CUBLAS_TENSOR_OP_MATH));
     MATHPRIM_INTERNAL_CUBLAS_CHECK_EXIT(
         cublasSetAtomicsMode(handle, CUBLAS_ATOMICS_ALLOWED));
   }
@@ -51,7 +62,7 @@ class cublas_context final
   }
 };
 
-} // namespace singletons
+}  // namespace singletons
 
 namespace blas {
 namespace internal {
@@ -472,4 +483,4 @@ template <typename Scalar> struct default_blas_selector<Scalar, device::cuda> {
 } // namespace blas
 #undef MATHPRIM_INTERNAL_CUBLAS_CHECK
 
-} // namespace mathprim
+}  // namespace mathprim

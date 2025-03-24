@@ -1,4 +1,17 @@
-from pymp.linalg import pcg, pcg_cuda, pcg_diagonal, pcg_ainv, pcg_diagonal_cuda, pcg_ainv_cuda, ainv, grid_laplacian_nd_dbc, pcg_with_ext_spai, pcg_with_ext_spai_cuda
+from pymp.linalg import (
+    pcg,
+    pcg_cuda,
+    pcg_diagonal,
+    pcg_ainv,
+    pcg_diagonal_cuda,
+    pcg_ainv_cuda,
+    ainv,
+    grid_laplacian_nd_dbc,
+    pcg_with_ext_spai,
+    pcg_with_ext_spai_cuda,
+    pcg_ic,
+    pcg_ic_cuda
+)
 
 import numpy as np
 from scipy.sparse import csr_matrix
@@ -26,7 +39,7 @@ print(pcg_cuda(A, b, x, 1e-4, 20, 1))
 print(x)
 print(A @ x - b)
 
-for method in [pcg, pcg_cuda, pcg_diagonal, pcg_ainv, pcg_diagonal_cuda, pcg_ainv_cuda]:
+for method in [pcg, pcg_cuda, pcg_diagonal, pcg_ainv, pcg_diagonal_cuda, pcg_ainv_cuda, pcg_ic, pcg_ic_cuda]:
     print(method.__name__)
     x = np.array([1,2,3], dtype=np.float32)
     print(method(A, b, x, 1e-4, 20, 1))
@@ -46,19 +59,19 @@ def laplace_2d(n):
 
 n = 128
 cnt = 3
-A = laplace_2d(n)
+A = laplace_2d(n).astype(np.float64)
 
 ai = ainv(A)
 
 
 def eval_once(solver):
-    x = np.ones(n*n, dtype=np.float32)
+    x = np.ones(n*n, dtype=np.float64)
     b = A @ x
-    x = np.zeros(n*n, dtype=np.float32)
+    x = np.zeros(n*n, dtype=np.float64)
     it, er = solver(A, b, x, 1e-6, n * n * 4, 0)
     print(it, er)
 
-for method in [pcg, pcg_cuda, pcg_diagonal, pcg_ainv, pcg_diagonal_cuda, pcg_ainv_cuda]:
+for method in [pcg, pcg_cuda, pcg_diagonal, pcg_ainv, pcg_diagonal_cuda, pcg_ainv_cuda, pcg_ic, pcg_ic_cuda]:
     print(method.__name__)
     t = Timer(lambda: eval_once(method))
     print(t.timeit(number=cnt) / cnt)

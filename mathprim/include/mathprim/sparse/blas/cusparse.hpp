@@ -1,6 +1,6 @@
 #pragma once
 #include <cusparse.h>
-
+#include <iostream>
 #include "mathprim/core/defines.hpp"
 #include "mathprim/core/devices/cuda.cuh"
 #include "mathprim/core/utils/common.hpp"
@@ -52,6 +52,20 @@ class cusparse_context : public internal::basic_singleton<cusparse_context, cusp
   friend base;
   void create_impl(cusparseHandle_t& handle) noexcept {
     MATHPRIM_CHECK_CUSPARSE(cusparseCreate(&handle));
+
+    constexpr int version_compiled = CUSPARSE_VERSION;
+    int version_dynamic = 0;
+    MATHPRIM_CHECK_CUSPARSE(cusparseGetVersion(handle, &version_dynamic));
+    if (version_compiled != version_dynamic) {
+      std::cerr << "================================================================================"  //
+                << "cuSPARSE version mismatch:\n"                                                      //
+                << "  - compiled=" << version_compiled << std::endl                                    //
+                << "  - dynamic=" << version_dynamic << std::endl                                      //
+                << "Consider static linking, or upgrade your dynamic library to match the compiled\n"  //
+                   "version.\n"                                                                        //
+                << "================================================================================\n";
+      std::exit(EXIT_FAILURE);
+    }
   }
   void destroy_impl(cusparseHandle_t& handle) noexcept {
     MATHPRIM_CHECK_CUSPARSE(cusparseDestroy(handle));
@@ -184,10 +198,10 @@ private:
   cusparseDnMatDescr_t b_desc_{nullptr};
   cusparseDnMatDescr_t c_desc_{nullptr};
 
-  using temp_buffer = contiguous_buffer<char, shape_t<keep_dim>, device::cuda>;
-  std::unique_ptr<temp_buffer> no_transpose_buffer_;
-  std::unique_ptr<temp_buffer> transpose_buffer_;
-  std::unique_ptr<temp_buffer> spmm_buffer_;
+  using temp_buffer = contiguous_vector_buffer<char, device::cuda>;
+  std::unique_ptr<temp_buffer> no_transpose_buffer_{nullptr};
+  std::unique_ptr<temp_buffer> transpose_buffer_{nullptr};
+  std::unique_ptr<temp_buffer> spmm_buffer_{nullptr};
 };
 
 ///////////////////////////////////////////////////////////////////////////////

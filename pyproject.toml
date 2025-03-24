@@ -29,7 +29,8 @@ minimum-version = "build-system.requires"
 build-dir = "build"
 
 [tool.scikit-build.cmake]
-build-type = "RelWithDebInfo"
+build-type = "Release"
+# build-type = "Debug"
 define.CMAKE_EXPORT_COMPILE_COMMANDS = true
 define.MATHPRIM_BUILD_BINDINGS=true
 define.MATHPRIM_BUILD_TESTS=false

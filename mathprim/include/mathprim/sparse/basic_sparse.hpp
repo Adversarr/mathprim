@@ -304,6 +304,8 @@ public:
   // y = alpha * A * x + beta * y.
   void gemv(Scalar alpha, const_vector_view x, Scalar beta, vector_view y, bool transpose = false) {
     check_gemv_shape(x, y, transpose);
+    MATHPRIM_INTERNAL_CHECK_VALID_VIEW(x);
+    MATHPRIM_INTERNAL_CHECK_VALID_VIEW(y);
     static_cast<Derived*>(this)->gemv_impl(alpha, x, beta, y, transpose);
   }
 
