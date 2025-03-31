@@ -43,7 +43,10 @@ private:
     auto grad = problem.fused_gradients().as_const();
     auto neg_dir = this->neg_search_dir_;
     const Scalar expected_descent = -blas_.dot(grad, neg_dir) * armijo_threshold_;
-    MATHPRIM_ASSERT(expected_descent < 0 && "Expected descent rate should be positive.");
+    // MATHPRIM_ASSERT(expected_descent < 0 && "Expected descent rate should be positive.");
+    if (!(expected_descent < 0)) {
+      throw std::runtime_error("Expected descent rate should be positive.");
+    }
 
     for (; iterations < criteria.max_iterations_ && min_abs_step < step_size; ++iterations) {
       // Step 1: Compute the new value.

@@ -1,9 +1,11 @@
 #pragma once
 #include <algorithm>
+#include <stdexcept>
 #include <vector>
 #include <ostream>
 #include "mathprim/blas/blas.hpp"
 #include "mathprim/core/buffer.hpp"
+#include "mathprim/core/defines.hpp"
 #include "mathprim/core/view.hpp"
 #include "mathprim/core/utils/parameter_item.hpp"
 
@@ -216,7 +218,8 @@ public:
     auto result = base::template optimize<ProblemDerived, LinesearchCallback>(
         problem, std::forward<LinesearchCallback>(callback));
     const Scalar next_value = problem.current_value();
-    MATHPRIM_ASSERT(next_value <= cur_value && "Linesearcher should decrease the value.");
+    // MATHPRIM_ASSERT(next_value <= cur_value && "Linesearcher should decrease the value.");
+    MATHPRIM_INTERNAL_CHECK_THROW(next_value <= cur_value, std::runtime_error, "Linesearcher should decrease the value.");
     MATHPRIM_UNUSED(cur_value);
     MATHPRIM_UNUSED(next_value);
 
@@ -224,6 +227,21 @@ public:
     // restore_state(problem, true);
     return {result, step_size_};
   }
+
+  /// @brief Restore the state of the problem.
+  template <typename ProblemDerived>
+  void restore_state(basic_problem<ProblemDerived, Scalar, Device>& problem, bool with_grad = false) {
+    problem.for_each_parameter([this](auto& param) {
+      auto& value = param.value();
+      auto offset = param.offset();
+      auto size = value.size();
+      copy(value, backuped_parameters_.view().sub(offset, offset + size));
+    });
+    if (with_grad) {
+      copy(problem.fused_gradients(), backuped_gradients_);
+    }
+  }
+
 protected:
   template <typename ProblemDerived, typename Callback>
   result_type optimize_impl(basic_problem<ProblemDerived, Scalar, Device>& problem, Callback&& callback) {
@@ -251,20 +269,6 @@ protected:
       copy(backuped_parameters_.view().sub(offset, offset + size), value);
     });
     copy(backuped_gradients_.view(), problem.fused_gradients());
-  }
-
-  /// @brief Restore the state of the problem.
-  template <typename ProblemDerived>
-  void restore_state(basic_problem<ProblemDerived, Scalar, Device>& problem, bool with_grad = false) {
-    problem.for_each_parameter([this](auto& param) {
-      auto& value = param.value();
-      auto offset = param.offset();
-      auto size = value.size();
-      copy(value, backuped_parameters_.view().sub(offset, offset + size));
-    });
-    if (with_grad) {
-      copy(problem.fused_gradients(), backuped_gradients_);
-    }
   }
 
   /// @brief Perform a step: x' <- x - step_size * neg_search_dir

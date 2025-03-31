@@ -14,6 +14,7 @@
 #include <cstring>
 #include <memory>  // IWYU pragma: export
 #include <stdexcept>
+#include <sstream> // IWYU pragma: export
 #include <type_traits>  // IWYU pragma: export
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -121,12 +122,14 @@
       }                                                                              \
     } while (0)
 #elif MATHPRIM_OPTION_EXIT_ON_THROW == 0
-#  define MATHPRIM_INTERNAL_CHECK_THROW(cond, error_type, msg)          \
-    do {                                                                \
-      if (!(cond)) MATHPRIM_UNLIKELY {                                                    \
-        fprintf(stderr, "Check Failed: (" #cond ") at %s:%d\n", __FILE__, __LINE__); \
-        throw error_type(msg);                                          \
-      }                                                                 \
+#  define MATHPRIM_INTERNAL_CHECK_THROW(cond, error_type, msg)                          \
+    do {                                                                                \
+      if (!(cond))                                                                      \
+        MATHPRIM_UNLIKELY {                                                             \
+          std::ostringstream oss;                                                       \
+          oss << "Check Failed: (" #cond ") at " << __FILE__ << ":" << __LINE__ << msg; \
+          throw error_type(oss.str());                                                  \
+        }                                                                               \
     } while (0)
 #else
 #  define MATHPRIM_INTERNAL_CHECK_THROW(cond, error_type, msg) \
@@ -320,9 +323,7 @@ public:
     static_cast<const Derived *>(this)->memset_impl(ptr, value, size);
   }
 
-  const char *name() const {
-    return static_cast<const Derived *>(this)->name_impl();
-  }
+  const char *name() const { return static_cast<const Derived *>(this)->name_impl(); }
 };
 
 class cpu;
@@ -352,13 +353,9 @@ public:
 #endif
   }
 
-  void memset_impl(void *ptr, int value, size_t size) const {
-    std::memset(ptr, value, size);
-  }
+  void memset_impl(void *ptr, int value, size_t size) const { std::memset(ptr, value, size); }
 
-  const char *name_impl() const noexcept {
-    return "cpu";
-  }
+  const char *name_impl() const noexcept { return "cpu"; }
 };
 
 // Include the <mathprim/core/devices/cuda.cuh> for the definition.

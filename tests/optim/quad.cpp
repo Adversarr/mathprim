@@ -5,6 +5,7 @@
 #include "mathprim/optim/optimizer/adamw.hpp"
 #include "mathprim/optim/optimizer/gradient_descent.hpp"
 #include "mathprim/optim/optimizer/l_bfgs.hpp"
+#include "mathprim/optim/optimizer/ncg.hpp"
 #include "mathprim/optim/optimizer/newton.hpp"
 #include "mathprim/sparse/blas/eigen.hpp"
 #include <iostream>
@@ -95,6 +96,20 @@ int main() {
     problem.setup();
 
     std::cout << newton.optimize(problem, [](auto& result) {
+      std::cout << result << std::endl;
+    }) << std::endl;
+  }
+
+  for (int i = 0; i < 6; ++ i) {
+    std::cout << "Nonlinear Conjugate Gradient " << i << std::endl;
+    using ls = optim::backtracking_linesearcher<double, device::cpu, blas::cpu_eigen<double>>;
+    using opt = optim::ncg_optimizer<double, device::cpu, blas::cpu_eigen<double>, ls>;
+    opt ncg;
+    ncg.stopping_criteria_.max_iterations_ = 1000;
+    ncg.stopping_criteria_.tol_grad_ = 1e-6;
+    ncg.strategy_ = static_cast<optim::ncg_strategy>(i);
+    problem.setup();
+    std::cout << ncg.optimize(problem, [](auto& result) {
       std::cout << result << std::endl;
     }) << std::endl;
   }
