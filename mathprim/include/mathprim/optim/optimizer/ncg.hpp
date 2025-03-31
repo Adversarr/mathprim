@@ -92,7 +92,8 @@ public:
       return result;
     }
 
-    MATHPRIM_INTERNAL_CHECK_THROW(std::isfinite(value), std::runtime_error, "Initial value is not finite.");
+    MATHPRIM_INTERNAL_CHECK_THROW(std::isfinite(value), std::runtime_error, 
+                                  "Initial value is not finite. Value: " + std::to_string(value));
     MATHPRIM_INTERNAL_CHECK_THROW(std::isfinite(grad_norm), std::runtime_error, "Initial gradient norm is not finite.");
 
     // 2. init
@@ -101,6 +102,9 @@ public:
     Scalar delta_new = bl.dot(r, d);
     Scalar beta = 0;
     index_t restart_counter = 0;
+
+    // Validate restart_period_ to avoid division by zero.
+    MATHPRIM_INTERNAL_CHECK_THROW(restart_period_ > 0, std::runtime_error, "restart_period_ must be greater than zero.");
 
     // 3. main loop.
     for (; iteration < criteria.max_iterations_; ++iteration) {
@@ -185,13 +189,12 @@ public:
     return result;
   }
 
-private:
-public:  // Hyper parameters.
+  // Hyper parameters.
   ncg_strategy strategy_{ncg_strategy::fletcher_reeves};
   Blas blas_;
-  Preconditioner preconditioner_;  ///< Preconditioner for L-BFGS, default is scaled identity.
-  Linesearcher linesearcher_;      ///< Linesearcher for L-BFGS, for better convergency, consider wolfe.
-  Scalar learning_rate_{1.0};      ///< learning rate of L-BFGS, due to linesearch, 1.0 is a good start.
+  Preconditioner preconditioner_;  ///< Preconditioner, default is scaled identity.
+  Linesearcher linesearcher_;      ///< Linesearcher, for better convergency, consider wolfe.
+  Scalar learning_rate_{1.0};      ///< Learning rate, due to linesearch, 1.0 is a good start.
   temp_buffer s_, d_;
   index_t restart_period_{1000};
 };
