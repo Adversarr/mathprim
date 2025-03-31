@@ -2,7 +2,7 @@
 #include <mathprim/blas/cublas.cuh>
 #include <mathprim/core/defines.hpp>
 #include <mathprim/core/devices/cuda.cuh>
-#include <mathprim/linalg/iterative/precond/approx_inv.hpp>
+#include <mathprim/linalg/iterative/precond/fsai0.hpp>
 #include <mathprim/linalg/iterative/precond/diagonal.hpp>
 #include <mathprim/linalg/iterative/precond/eigen_support.hpp>
 #include <mathprim/linalg/iterative/precond/ic_cusparse.hpp>
@@ -13,6 +13,7 @@
 #include <mathprim/supports/eigen_sparse.hpp>
 
 #include "linalg.hpp"
+#include "mathprim/linalg/iterative/precond/ainv.hpp"
 
 using namespace mathprim;
 
@@ -22,7 +23,7 @@ using diagonal = sparse::iterative::diagonal_preconditioner<Scalar, device::cuda
 
 template <typename Scalar>
 using ainv
-    = sparse::iterative::approx_inverse_preconditioner<sparse::blas::cusparse<Scalar, sparse::sparse_format::csr>>;
+    = sparse::iterative::scaled_bridson_ainv_preconditioner<sparse::blas::cusparse<Scalar, sparse::sparse_format::csr>>;
 
 template <typename Scalar>
 using ic = sparse::iterative::cusparse_ichol<Scalar, device::cuda, mathprim::sparse::sparse_format::csr>;

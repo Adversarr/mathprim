@@ -77,11 +77,11 @@ void fsai_compute(sparse::basic_sparse_view<const Scalar, device::cpu, sparse::s
 }  // namespace internal
 
 template <typename SparseBlas>
-class approx_inverse_preconditioner
-    : public basic_preconditioner<approx_inverse_preconditioner<SparseBlas>, typename SparseBlas::scalar_type,
+class fsai0_preconditioner
+    : public basic_preconditioner<fsai0_preconditioner<SparseBlas>, typename SparseBlas::scalar_type,
                                   typename SparseBlas::device_type, SparseBlas::compression> {
 public:
-  using base = basic_preconditioner<approx_inverse_preconditioner<SparseBlas>, typename SparseBlas::scalar_type,
+  using base = basic_preconditioner<fsai0_preconditioner<SparseBlas>, typename SparseBlas::scalar_type,
                                     typename SparseBlas::device_type, SparseBlas::compression>;
   using Scalar = typename base::scalar_type;
   using Device = typename base::device_type;
@@ -96,11 +96,11 @@ public:
   using cpu_view = sparse::basic_sparse_view<Scalar, device::cpu, sparse::sparse_format::csr>;
   using sparse_cpu_matrix = sparse::basic_sparse_matrix<Scalar, device::cpu, sparse::sparse_format::csr>;
 
-  approx_inverse_preconditioner() = default;
-  explicit approx_inverse_preconditioner(const const_sparse_view& view) : base(view) { this->compute({}); }
+  fsai0_preconditioner() = default;
+  explicit fsai0_preconditioner(const const_sparse_view& view) : base(view) { this->compute({}); }
 
-  approx_inverse_preconditioner(approx_inverse_preconditioner&&) = default;
-  approx_inverse_preconditioner(const approx_inverse_preconditioner&) = delete;
+  fsai0_preconditioner(fsai0_preconditioner&&) = default;
+  fsai0_preconditioner(const fsai0_preconditioner&) = delete;
 
   void factorize_impl() {
     auto matrix = this->matrix();

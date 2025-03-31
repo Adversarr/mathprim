@@ -1,7 +1,7 @@
 #include <fstream>
 #include <iostream>
 #include "mathprim/blas/cublas.cuh"
-#include "mathprim/linalg/iterative/precond/approx_inv.hpp"
+#include "mathprim/linalg/iterative/precond/fsai0.hpp"
 #include "mathprim/linalg/iterative/precond/diagonal.hpp"
 #include "mathprim/parallel/cuda.cuh"
 #include "mathprim/sparse/blas/cusparse.hpp"
@@ -72,7 +72,7 @@ int main() {
   auto gpu = matrix_cpu.to<device::cuda>();
   using sp_blas_t = sparse::blas::cusparse<float, mathprim::sparse::sparse_format::csr>;
   using blas_t = blas::cublas<float>;
-  using prec_t = sparse::iterative::approx_inverse_preconditioner<sp_blas_t>;
+  using prec_t = sparse::iterative::fsai0_preconditioner<sp_blas_t>;
   // using prec_t = sparse::iterative::diagonal_preconditioner<
   //     float, device::cuda, sparse::sparse_format::csr, blas_t>;
   report_time("Transfer GPU");

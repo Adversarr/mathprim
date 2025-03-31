@@ -5,7 +5,7 @@
 
 #include <iostream>
 #include <mathprim/blas/cpu_blas.hpp>
-#include <mathprim/linalg/iterative/precond/approx_inv.hpp>
+#include <mathprim/linalg/iterative/precond/fsai0.hpp>
 #include <mathprim/linalg/iterative/precond/diagonal.hpp>
 #include <mathprim/linalg/iterative/precond/eigen_support.hpp>
 #include <mathprim/linalg/iterative/precond/sparse_inverse.hpp>
@@ -145,7 +145,7 @@ template <typename Scalar>
 using no = sparse::iterative::none_preconditioner<Scalar, device::cpu, mathprim::sparse::sparse_format::csr>;
 
 template <typename Scalar>
-using ainv = sparse::iterative::approx_inverse_preconditioner<sparse::blas::eigen<Scalar, sparse::sparse_format::csr>>;
+using ainv = sparse::iterative::fsai0_preconditioner<sparse::blas::eigen<Scalar, sparse::sparse_format::csr>>;
 
 template <typename Scalar>
 using ic = sparse::iterative::eigen_ichol<Scalar, sparse::sparse_format::csr>;
@@ -153,7 +153,7 @@ using ic = sparse::iterative::eigen_ichol<Scalar, sparse::sparse_format::csr>;
 template <typename Flt = float>
 Eigen::SparseMatrix<Flt, Eigen::RowMajor> ainv_content(const Eigen::SparseMatrix<Flt, Eigen::RowMajor>& A) {
   using SparseBlas = mp::sparse::blas::eigen<Flt, sparse::sparse_format::csr>;
-  sparse::iterative::approx_inverse_preconditioner<SparseBlas> ainv(eigen_support::view(A));
+  sparse::iterative::fsai0_preconditioner<SparseBlas> ainv(eigen_support::view(A));
 
   return eigen_support::map(ainv.ainv());
 }
