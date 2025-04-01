@@ -122,14 +122,14 @@
       }                                                                              \
     } while (0)
 #elif MATHPRIM_OPTION_EXIT_ON_THROW == 0
-#  define MATHPRIM_INTERNAL_CHECK_THROW(cond, error_type, msg)                          \
-    do {                                                                                \
-      if (!(cond))                                                                      \
-        MATHPRIM_UNLIKELY {                                                             \
-          std::ostringstream oss;                                                       \
-          oss << "Check Failed: (" #cond ") at " << __FILE__ << ":" << __LINE__ << msg; \
-          throw error_type(oss.str());                                                  \
-        }                                                                               \
+#  define MATHPRIM_INTERNAL_CHECK_THROW(cond, error_type, msg)                                  \
+    do {                                                                                        \
+      if (!(cond))                                                                              \
+        MATHPRIM_UNLIKELY {                                                                     \
+          std::ostringstream oss;                                                               \
+          oss << "Check Failed: (" #cond ") at " << __FILE__ << ":" << __LINE__ << '\n' << msg; \
+          throw error_type(oss.str());                                                          \
+        }                                                                                       \
     } while (0)
 #else
 #  define MATHPRIM_INTERNAL_CHECK_THROW(cond, error_type, msg) \

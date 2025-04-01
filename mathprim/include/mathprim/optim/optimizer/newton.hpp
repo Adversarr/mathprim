@@ -105,9 +105,9 @@ public:
       converged |= (last_change < criteria.tol_change_ && last_change >= 0);
 
       MATHPRIM_INTERNAL_CHECK_THROW(std::isfinite(value), std::runtime_error,
-                                    "At step " + std::to_string(iteration) + ", value is not finite.");
+                                    "At step " << iteration << ", value is not finite.");
       MATHPRIM_INTERNAL_CHECK_THROW(std::isfinite(grad_norm), std::runtime_error,
-                                    "At step " + std::to_string(iteration) + ", gradient norm is not finite.");
+                                    "At step " << iteration << ", gradient norm is not finite.");
 
       if (converged) {
         break;

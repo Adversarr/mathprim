@@ -107,6 +107,7 @@ int main() {
     opt ncg;
     ncg.stopping_criteria_.max_iterations_ = 1000;
     ncg.stopping_criteria_.tol_grad_ = 1e-6;
+    ncg.linesearcher_.armijo_threshold_ = 1e-2;
     ncg.strategy_ = static_cast<optim::ncg_strategy>(i);
     problem.setup();
     std::cout << ncg.optimize(problem, [](auto& result) {

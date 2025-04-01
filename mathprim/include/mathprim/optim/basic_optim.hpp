@@ -1,22 +1,48 @@
 #pragma once
 #include <algorithm>
+#include <ostream>
 #include <stdexcept>
 #include <vector>
-#include <ostream>
+
 #include "mathprim/blas/blas.hpp"
 #include "mathprim/core/buffer.hpp"
 #include "mathprim/core/defines.hpp"
-#include "mathprim/core/view.hpp"
 #include "mathprim/core/utils/parameter_item.hpp"
+#include "mathprim/core/view.hpp"
 
 namespace mathprim::optim {
 
+namespace internal {
+
+template <typename Real>
+Real solve_optimal_step_size_quadratic(Real f_lo, Real g_lo, Real f_hi, Real lo, Real hi) {
+  // See Page 58, Numerical Optimization, Nocedal and Wright. Eq. 3.57
+  // f(x) = B (x-a)^2 + C (x-a) + D
+  // f(a) = D.
+  // f'(a) = C.
+  // f(b) = B (b-a)^2 + C (b-a) + D => B = (f(b) - f(a) - C (b-a)) / (b-a)^2
+  // optimal = a - C / (2 B)
+
+  const Real b = hi, a = lo, df_a = g_lo, f_a = f_lo, f_b = f_hi;
+  Real b_a = b - a;
+  Real c = df_a /* , d = f_a */;
+  Real bb = (f_b - f_a - c * b_a) / (b_a * b_a);
+  return a - c / (2 * bb);
+}
+
+template <typename Real>
+Real solve_optimal_step_size_none(Real shrink, Real lo, Real hi) {
+  return shrink * hi + (1 - shrink) * lo;
+}
+
+}  // namespace internal
+
 /**
  * @brief Base class for all optimization problems.
- * 
- * @tparam Derived 
- * @tparam Scalar 
- * @tparam Device 
+ *
+ * @tparam Derived
+ * @tparam Scalar
+ * @tparam Device
  */
 template <typename Derived,  // The actual problem class
           typename Scalar, typename Device>
@@ -117,6 +143,7 @@ protected:
     derived().eval_value_impl();
     derived().eval_gradients_impl();
   }
+
 private:
   buffer_type fused_gradients_;  // fused gradients
   Scalar loss_{};
@@ -156,7 +183,7 @@ public:
   MATHPRIM_INTERNAL_COPY(basic_optimizer, delete);
 
   struct do_nothing_cb {
-    inline void operator()(const result_type& ) {}
+    inline void operator()(const result_type&) {}
   };
 
   template <typename ProblemDerived, typename Callback = do_nothing_cb>
@@ -165,7 +192,7 @@ public:
         problem, std::forward<Callback>(callback));
   }
 
-  stopping_criteria_type &criteria() noexcept { return stopping_criteria_; }
+  stopping_criteria_type& criteria() noexcept { return stopping_criteria_; }
 
   Derived& derived() noexcept { return static_cast<Derived&>(*this); }
 
@@ -219,7 +246,8 @@ public:
         problem, std::forward<LinesearchCallback>(callback));
     const Scalar next_value = problem.current_value();
     // MATHPRIM_ASSERT(next_value <= cur_value && "Linesearcher should decrease the value.");
-    MATHPRIM_INTERNAL_CHECK_THROW(next_value <= cur_value, std::runtime_error, "Linesearcher should decrease the value.");
+    MATHPRIM_INTERNAL_CHECK_THROW(next_value <= cur_value, std::runtime_error,
+                                  "Linesearcher should decrease the value.");
     MATHPRIM_UNUSED(cur_value);
     MATHPRIM_UNUSED(next_value);
 
@@ -246,8 +274,8 @@ protected:
   template <typename ProblemDerived, typename Callback>
   result_type optimize_impl(basic_problem<ProblemDerived, Scalar, Device>& problem, Callback&& callback) {
     return static_cast<Derived&>(*this).template optimize_impl<ProblemDerived, Callback>(
-      problem, std::forward<Callback>(callback));
-    }
+        problem, std::forward<Callback>(callback));
+  }
 
   ///////////// These methods are for optimizer developers. //////////////
 
@@ -284,7 +312,7 @@ protected:
     });
   }
 
-  const_view neg_search_dir_; ///< negative search direction
+  const_view neg_search_dir_;  ///< negative search direction
 
   // Minimum and maximum step size relative to the input step size.
   Scalar min_rel_step_{1e-5};

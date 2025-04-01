@@ -43,8 +43,7 @@ enum class ncg_strategy {
 };
 
 /**
- * @brief L-BFGS Optimizer.
- * @ref   https://en.wikipedia.org/wiki/Limited-memory_BFGS
+ * @brief Nonlinear Conjugate Gradient optimizer
  *
  * @tparam Scalar
  * @tparam Device
@@ -92,9 +91,10 @@ public:
       return result;
     }
 
-    MATHPRIM_INTERNAL_CHECK_THROW(std::isfinite(value), std::runtime_error, 
-                                  "Initial value is not finite. Value: " + std::to_string(value));
-    MATHPRIM_INTERNAL_CHECK_THROW(std::isfinite(grad_norm), std::runtime_error, "Initial gradient norm is not finite.");
+    MATHPRIM_INTERNAL_CHECK_THROW(std::isfinite(value), std::runtime_error,
+                                  "Initial value is not finite. Value: " << value);
+    MATHPRIM_INTERNAL_CHECK_THROW(std::isfinite(grad_norm), std::runtime_error,  //
+                                  "Initial gradient norm is not finite.");
 
     // 2. init
     prec.apply(s, r);  // d <- M^-1 * r
@@ -105,6 +105,8 @@ public:
 
     // Validate restart_period_ to avoid division by zero.
     MATHPRIM_INTERNAL_CHECK_THROW(restart_period_ > 0, std::runtime_error, "restart_period_ must be greater than zero.");
+    MATHPRIM_INTERNAL_CHECK_THROW(delta_new > 0, std::runtime_error,
+                                  "Initial search direction is not a descent direction (delta_new >= 0).");
 
     // 3. main loop.
     for (; iteration < criteria.max_iterations_; ++iteration) {
@@ -126,17 +128,17 @@ public:
       converged = grad_norm < criteria.tol_grad_;
       converged |= (last_change < criteria.tol_change_ && last_change >= 0);
       MATHPRIM_INTERNAL_CHECK_THROW(std::isfinite(value), std::runtime_error,
-                                    "At step " + std::to_string(iteration) + ", value is not finite.");
+                                    "At step " << iteration << ", value is not finite.");
       MATHPRIM_INTERNAL_CHECK_THROW(std::isfinite(grad_norm), std::runtime_error,
-                                    "At step " + std::to_string(iteration) + ", gradient norm is not finite.");
+                                    "At step " << iteration << ", gradient norm is not finite.");
       if (converged) {
         break;
       }
-
-      const Scalar delta_old = delta_new;     // grad[n-1] dot s[k-1]
-      const Scalar delta_mid = bl.dot(r, s);  // grad[n] dot s[n-1]
-      prec.apply(s, r);                       // s = M^-1 * r
-      delta_new = bl.dot(r, s);               // grad[n] dot s[n]
+      const Scalar eps = std::numeric_limits<Scalar>::epsilon();
+      const Scalar delta_old = delta_new + eps;  // grad[n-1] dot s[k-1]
+      const Scalar delta_mid = bl.dot(r, s);     // grad[n] dot s[n-1]
+      prec.apply(s, r);                          // s = M^-1 * r
+      delta_new = bl.dot(r, s);                  // grad[n] dot s[n]
       switch (strategy_) {
         case ncg_strategy::fletcher_reeves: {
           beta = delta_new / delta_old;
@@ -151,6 +153,7 @@ public:
           beta = std::max<Scalar>(beta, 0);
           break;
         }
+
         // ed_mid = grad[n] dot search_dir[n-1]
         case ncg_strategy::hestenes_stiefel: {
           Scalar ed_mid = bl.dot(r, d);
@@ -169,8 +172,10 @@ public:
           break;
         }
         default:
-          throw std::runtime_error("Not implemented yet.");
+          MATHPRIM_UNREACHABLE();
       }
+
+      MATHPRIM_INTERNAL_CHECK_THROW(!std::isnan(beta), std::runtime_error, "beta computation resulted in NaN");
 
       // d <- s + beta d
       bl.axpby(1, s, beta, d);
