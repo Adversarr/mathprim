@@ -112,6 +112,13 @@ GTEST_TEST(vector, view) {
   for (auto [c] : view.shape()) {
     EXPECT_EQ(view(c), m(c));
   }
+
+  Eigen::MatrixX3d x3d;
+  auto view_x3d = eigen_support::view(x3d);
+
+
+  Eigen::Matrix3Xd x3d2;
+  auto view_x3d2 = eigen_support::view(x3d2);
 }
 
 GTEST_TEST(sparse, csr_rm) {

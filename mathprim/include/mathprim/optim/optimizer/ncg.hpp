@@ -38,6 +38,7 @@ enum class ncg_strategy {
   polak_ribiere,
   hestenes_stiefel,
   dai_yuan,
+  dai_kou,
   polak_ribiere_clamped,
   hestenes_stiefel_clamped,
 };
@@ -104,7 +105,8 @@ public:
     index_t restart_counter = 0;
 
     // Validate restart_period_ to avoid division by zero.
-    MATHPRIM_INTERNAL_CHECK_THROW(restart_period_ > 0, std::runtime_error, "restart_period_ must be greater than zero.");
+    MATHPRIM_INTERNAL_CHECK_THROW(restart_period_ > 0, std::runtime_error,
+                                  "restart_period_ must be greater than zero.");
     MATHPRIM_INTERNAL_CHECK_THROW(delta_new > 0, std::runtime_error,
                                   "Initial search direction is not a descent direction (delta_new >= 0).");
 
@@ -123,6 +125,7 @@ public:
       auto new_value = problem.eval_value_and_gradients();
       last_change = value - new_value;
       value = new_value;
+      Scalar old_norm = grad_norm;
       grad_norm = bl.norm(grads);
 
       converged = grad_norm < criteria.tol_grad_;
@@ -151,6 +154,19 @@ public:
         case ncg_strategy::polak_ribiere_clamped: {
           beta = (delta_new - delta_mid) / delta_old;
           beta = std::max<Scalar>(beta, 0);
+          break;
+        }
+
+        case ncg_strategy::dai_kou: {
+          auto prev_grad = linesearcher_.backuped_gradients();
+          const Scalar ed_mid = bl.dot(r, d);
+          const Scalar g_gnew = bl.dot(grads, prev_grad);
+          const Scalar denominator = ed_mid - expected_descent;
+          const Scalar numerator = grad_norm - g_gnew;
+          const Scalar numerator2 = grad_norm - 2 * g_gnew + old_norm;
+          const Scalar numerator3 = ed_mid;
+          const Scalar b = numerator / denominator + (numerator2 / denominator) * (numerator3 / denominator);
+          beta = std::max<Scalar>(b, 0);
           break;
         }
 

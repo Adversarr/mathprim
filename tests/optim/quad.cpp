@@ -100,7 +100,7 @@ int main() {
     }) << std::endl;
   }
 
-  for (int i = 0; i < 6; ++ i) {
+  for (int i = 0; i < 7; ++ i) {
     std::cout << "Nonlinear Conjugate Gradient " << i << std::endl;
     using ls = optim::backtracking_linesearcher<double, device::cpu, blas::cpu_eigen<double>>;
     using opt = optim::ncg_optimizer<double, device::cpu, blas::cpu_eigen<double>, ls>;

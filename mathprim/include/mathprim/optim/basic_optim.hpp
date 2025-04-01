@@ -217,6 +217,9 @@ public:
   view_type backuped() noexcept { return backuped_parameters_.view(); }
   const_view backuped() const noexcept { return backuped_parameters_.const_view(); }
 
+  view_type backuped_gradients() noexcept { return backuped_gradients_.view(); }
+  const_view backuped_gradients() const noexcept { return backuped_gradients_.const_view(); }
+
   /**
    * @brief Search a step size along the search direction.
    *
