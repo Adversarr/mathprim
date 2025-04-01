@@ -12,18 +12,18 @@ public:
   explicit direct_solver_interface(const Eigen::SparseMatrix<Flt, Eigen::RowMajor>& A) : alg_(eigen_support::view(A)) {}
 
   /// vector version: A x = b
-  void solve(nb::ndarray<Flt, nb::ndim<1>, nb::device::cpu> b, nb::ndarray<Flt, nb::ndim<1>, nb::device::cpu> x) {
-    auto x_view = mp::view(x.data(), make_shape(static_cast<index_t>(x.size())));
-    auto b_view = mp::view(b.data(), make_shape(static_cast<index_t>(b.size())));
-    alg_.solve(b_view, x_view);
+  void solve(nb::ndarray<Flt, nb::ndim<1>, nb::device::cpu> x, nb::ndarray<Flt, nb::ndim<1>, nb::device::cpu> b) {
+    auto x_view = nbex::to_mathprim(x);
+    auto b_view = nbex::to_mathprim(b);
+    alg_.solve(x_view, b_view);
   }
 
   /// matrix version: A X = B
-  void vsolve(nb::ndarray<Flt, nb::ndim<2>, nb::device::cpu, nb::c_contig> B,
-              nb::ndarray<Flt, nb::ndim<2>, nb::device::cpu, nb::c_contig> X) {
+  void vsolve(nb::ndarray<Flt, nb::ndim<2>, nb::device::cpu, nb::c_contig> X,
+              nb::ndarray<Flt, nb::ndim<2>, nb::device::cpu, nb::c_contig> B) {
     auto x_view = nbex::to_mathprim(X);
     auto b_view = nbex::to_mathprim(B);
-    alg_.vsolve(b_view, x_view);
+    alg_.vsolve(x_view, b_view);
   }
 
 private:
@@ -34,8 +34,8 @@ template <typename Flt, template <typename, sparse::sparse_format> class Solver>
 static void bind_class(nb::module_& m, const std::string& name) {
   nb::class_<direct_solver_interface<Flt, Solver>>(m, name.c_str())
       .def(nb::init<const Eigen::SparseMatrix<Flt, Eigen::RowMajor>&>())
-      .def("solve", &direct_solver_interface<Flt, Solver>::solve, nb::arg("b").noconvert(), nb::arg("x").noconvert())
-      .def("vsolve", &direct_solver_interface<Flt, Solver>::vsolve, nb::arg("B").noconvert(), nb::arg("X").noconvert());
+      .def("solve", &direct_solver_interface<Flt, Solver>::solve, nb::arg("x").noconvert(), nb::arg("b").noconvert())
+      .def("vsolve", &direct_solver_interface<Flt, Solver>::vsolve, nb::arg("X").noconvert(), nb::arg("B").noconvert());
 }
 
 #ifdef MATHPRIM_ENABLE_CHOLMOD

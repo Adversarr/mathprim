@@ -30,13 +30,13 @@ private:
 namespace mathprim::sparse {
 namespace blas {
 
-cholmod_common* get_cholmod_handle() {
+inline cholmod_common* get_cholmod_handle() {
   return singletons::cholmod_handle::get();
 }
 
 namespace internal {
 
-const char* to_string(int status) {
+inline const char* to_string(int status) {
   // cholmod_status -> string
   if (status == CHOLMOD_OK) {
     return "CHOLMOD_OK";
