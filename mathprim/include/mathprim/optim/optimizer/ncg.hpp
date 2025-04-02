@@ -121,18 +121,48 @@ public:
                                   "Initial search direction is not a descent direction (delta_new >= 0).");
 
     Scalar delta_old, delta_mid;
+    auto dx = dx_.view(), dg = dg_.view();
     // 3. main loop.
     for (; iteration < criteria.max_iterations_; ++iteration) {
       callback(result);
       const Scalar expected_descent = bl.dot(r, d);  // grad[n-1] dot d[n-1]
       Scalar alpha = 1;
-      if (iteration > 0 && step_size_ != ncg_step_size::none) {
+      if (step_size_ != ncg_step_size::none && iteration > 0) {
+        auto g_prev = linesearcher_.backuped_gradients();
+        //    s = x[n] - x[n-1] => s = d * alpha
+        //    y = g[n] - g[n-1]
         if (step_size_ == ncg_step_size::bb1) {
           // bb1 = s.s / s.y:
-          //    s = x[n] - x[n-1] => s = d * alpha
+          const Scalar ss = bl.dot(s, s);
+          const Scalar s_gn = bl.dot(s, r);
+          const Scalar s_gn_1 = bl.dot(s, g_prev);
+          const Scalar sy = s_gn - s_gn_1;
+          alpha = ss / sy;
+        } else if (step_size_ == ncg_step_size::bb2) {
+          // bb2 = s.y / y.y:
+          const Scalar yy = bl.dot(r, r);
+          const Scalar s_gn = bl.dot(s, r);
+          const Scalar s_gn_1 = bl.dot(s, g_prev);
+          const Scalar sy = s_gn - s_gn_1;
+          alpha = sy / yy;
         } else if (step_size_ == ncg_step_size::inspired) {
+          const Scalar ss = bl.dot(s, s);
+          const Scalar s_gn = bl.dot(s, r);
+          const Scalar s_gn_1 = bl.dot(s, g_prev);
+          const Scalar sy = s_gn - s_gn_1;
+          Scalar bb1 = sy / ss;
+          if (std::abs(sy) > 1e-8) {
+            bb1 = std::max<Scalar>(std::min<Scalar>(bb1, 1e4), 1e-4);
+          } else {
+            bb1 = prev_alpha * 1.2;
+          }
+
+          alpha = 0.5 * bb1 + 0.5 * std::min<Scalar>(1.2 * prev_alpha, 1.0);
+        } else {
+          throw std::runtime_error("Invalid step size type.");
         }
       }
+
       try {
         auto [ls_result, ls_step_size] = ls.search(problem, d, learning_rate_);
         prev_alpha = ls_step_size;
@@ -214,6 +244,9 @@ public:
 
       MATHPRIM_INTERNAL_CHECK_THROW(!std::isnan(beta), std::runtime_error, "beta computation resulted in NaN");
 
+      // backup d, g
+      copy(dx, d);
+
       // d <- s + beta d
       bl.axpby(1, s, beta, d);
       if ((restart_counter + 1) % restart_period_ == 0) {
@@ -233,7 +266,7 @@ public:
 
   // Hyper parameters.
   ncg_strategy strategy_{ncg_strategy::fletcher_reeves};
-  ncg_step_size step_size_{ncg_step_size::inspired};
+  ncg_step_size step_size_{ncg_step_size::none};
   Blas blas_;
   Preconditioner preconditioner_;  ///< Preconditioner, default is scaled identity.
   Linesearcher linesearcher_;      ///< Linesearcher, for better convergency, consider wolfe.

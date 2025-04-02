@@ -23,9 +23,7 @@ int main() {
     gd.momentum_ = 0.5;
     gd.nesterov_ = true;
 
-    std::cout << gd.optimize(problem, [](auto& result) {
-      std::cout << result << std::endl;
-    }) << std::endl;
+    std::cout << gd.optimize(problem) << std::endl;
   }
 
   {
@@ -35,9 +33,7 @@ int main() {
     adamw.beta2_ = 0.95;
     adamw.criteria().max_iterations_ = 1000;
     problem.setup();
-    std::cout << adamw.optimize(problem, [](auto& result) {
-      std::cout << result << std::endl;
-    }) << std::endl;
+    std::cout << adamw.optimize(problem) << std::endl;
   }
 
   {
@@ -47,9 +43,7 @@ int main() {
     gd.linesearcher().stopping_criteria_.max_iterations_ = 100;
     gd.learning_rate_ = 0.5;
 
-    std::cout << gd.optimize(problem, [](auto& result) {
-      std::cout << result << std::endl;
-    }) << std::endl;
+    std::cout << gd.optimize(problem) << std::endl;
   }
 
   {
@@ -58,9 +52,7 @@ int main() {
     l_bfgs.criteria().max_iterations_ = 1000;
     l_bfgs.memory_size_ = 10;
     l_bfgs.stopping_criteria_.max_iterations_ = 100;
-    std::cout << l_bfgs.optimize(problem, [](auto& result) {
-      std::cout << result << std::endl;
-    }) << std::endl;
+    std::cout << l_bfgs.optimize(problem) << std::endl;
   }
 
 
@@ -72,9 +64,7 @@ int main() {
     l_bfgs.criteria().max_iterations_ = 1000;
     l_bfgs.memory_size_ = 5;
     l_bfgs.stopping_criteria_.max_iterations_ = 100;
-    std::cout << l_bfgs.optimize(problem, [](auto& result) {
-      std::cout << result << std::endl;
-    }) << std::endl;
+    std::cout << l_bfgs.optimize(problem) << std::endl;
   }
 
   {
@@ -95,9 +85,7 @@ int main() {
     });
     problem.setup();
 
-    std::cout << newton.optimize(problem, [](auto& result) {
-      std::cout << result << std::endl;
-    }) << std::endl;
+    std::cout << newton.optimize(problem) << std::endl;
   }
 
   for (int i = 0; i < 7; ++ i) {
@@ -110,9 +98,7 @@ int main() {
     ncg.linesearcher_.armijo_threshold_ = 1e-2;
     ncg.strategy_ = static_cast<optim::ncg_strategy>(i);
     problem.setup();
-    std::cout << ncg.optimize(problem, [](auto& result) {
-      std::cout << result << std::endl;
-    }) << std::endl;
+    std::cout << ncg.optimize(problem) << std::endl;
   }
 
   return 0;

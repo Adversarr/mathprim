@@ -21,12 +21,7 @@ int main() {
   gd.stopping_criteria_.tol_change_ = 0;
   gd.stopping_criteria_.tol_grad_ = 1e-7;
 
-  std::cout << gd.optimize(problem, [&problem](auto& result) {
-    if (result.iterations_ % 256 == 0){
-      std::cout << result << std::endl;
-      std::cout << "x=" << eigen_support::cmap(problem.at(0).value()).transpose() << std::endl;
-    }
-  }) << std::endl;
+  std::cout << gd.optimize(problem) << std::endl;
   std::cout << "-------------------" << std::endl;
   {
     optim::adamw_optimizer<double, device::cpu, blas::cpu_eigen<double>> adamw;
@@ -37,12 +32,7 @@ int main() {
     adamw.stopping_criteria_.tol_change_ = 0;
     adamw.stopping_criteria_.tol_grad_ = 1e-7;
     problem.setup();
-    std::cout << adamw.optimize(problem, [&problem](auto& result) {
-      if (result.iterations_ % 256 == 0) {
-        std::cout << result << std::endl;
-        std::cout << "x=" << eigen_support::cmap(problem.at(0).value()).transpose() << std::endl;
-      }
-    }) << std::endl;
+    std::cout << adamw.optimize(problem) << std::endl;
   }
 
   {
@@ -51,12 +41,7 @@ int main() {
     l_bfgs.criteria().max_iterations_ = 1000;
     l_bfgs.memory_size_ = 5;
     l_bfgs.stopping_criteria_.max_iterations_ = 1000;
-    std::cout << l_bfgs.optimize(problem,  [&problem](auto& result) {
-      if (result.iterations_ % 16 == 0) {
-        std::cout << result << std::endl;
-        std::cout << "x=" << eigen_support::cmap(problem.at(0).value()).transpose() << std::endl;
-      }
-    }) << std::endl;
+    std::cout << l_bfgs.optimize(problem) << std::endl;
   }
 
   for (int i = 0; i < 6; ++ i) {
@@ -68,8 +53,7 @@ int main() {
     ncg.stopping_criteria_.tol_grad_ = 1e-6;
     ncg.strategy_ = static_cast<optim::ncg_strategy>(i);
     problem.setup();
-    std::cout << ncg.optimize(problem, [](auto& result) {
-    }) << std::endl;
+    std::cout << ncg.optimize(problem) << std::endl;
     std::cout << "x=" << eigen_support::cmap(problem.at(0).value()).transpose() << std::endl;
     std::cout << "-------------------" << std::endl;
   }
