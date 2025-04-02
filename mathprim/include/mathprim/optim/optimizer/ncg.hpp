@@ -43,6 +43,13 @@ enum class ncg_strategy {
   hestenes_stiefel_clamped,
 };
 
+enum class ncg_step_size {
+  none,
+  bb1,
+  bb2,
+  inspired
+};
+
 /**
  * @brief Nonlinear Conjugate Gradient optimizer
  *
@@ -82,6 +89,8 @@ public:
     // 1. prepare all the buffers.
     s_ = make_buffer<Scalar, Device>(grads.numel());
     d_ = make_buffer<Scalar, Device>(grads.numel());
+    dx_ = make_buffer<Scalar, Device>(grads.numel());
+    dg_ = make_buffer<Scalar, Device>(grads.numel());
     auto r = problem.fused_gradients();
     auto s = s_.view(), d = d_.view();
     value = problem.eval_value_and_gradients();
@@ -103,6 +112,7 @@ public:
     Scalar delta_new = bl.dot(r, d);
     Scalar beta = 0;
     index_t restart_counter = 0;
+    Scalar prev_alpha = 1.0;
 
     // Validate restart_period_ to avoid division by zero.
     MATHPRIM_INTERNAL_CHECK_THROW(restart_period_ > 0, std::runtime_error,
@@ -110,17 +120,28 @@ public:
     MATHPRIM_INTERNAL_CHECK_THROW(delta_new > 0, std::runtime_error,
                                   "Initial search direction is not a descent direction (delta_new >= 0).");
 
+    Scalar delta_old, delta_mid;
     // 3. main loop.
     for (; iteration < criteria.max_iterations_; ++iteration) {
       callback(result);
       const Scalar expected_descent = bl.dot(r, d);  // grad[n-1] dot d[n-1]
+      Scalar alpha = 1;
+      if (iteration > 0 && step_size_ != ncg_step_size::none) {
+        if (step_size_ == ncg_step_size::bb1) {
+          // bb1 = s.s / s.y:
+          //    s = x[n] - x[n-1] => s = d * alpha
+        } else if (step_size_ == ncg_step_size::inspired) {
+        }
+      }
       try {
-        ls.search(problem, d, learning_rate_);
+        auto [ls_result, ls_step_size] = ls.search(problem, d, learning_rate_);
+        prev_alpha = ls_step_size;
       } catch (const std::runtime_error& e) {
         // Reinit d = r
         copy(d, r);
         ls.restore_state(problem, true);
-        ls.search(problem, d, learning_rate_);
+        auto [ls_result, ls_step_size] = ls.search(problem, d, learning_rate_);
+        prev_alpha = ls_step_size;
       }
       auto new_value = problem.eval_value_and_gradients();
       last_change = value - new_value;
@@ -138,10 +159,10 @@ public:
         break;
       }
       const Scalar eps = std::numeric_limits<Scalar>::epsilon();
-      const Scalar delta_old = delta_new + eps;  // grad[n-1] dot s[k-1]
-      const Scalar delta_mid = bl.dot(r, s);     // grad[n] dot s[n-1]
-      prec.apply(s, r);                          // s = M^-1 * r
-      delta_new = bl.dot(r, s);                  // grad[n] dot s[n]
+      delta_old = delta_new + eps;  // grad[n-1] dot s[k-1]
+      delta_mid = bl.dot(r, s);     // grad[n] dot s[n-1]
+      prec.apply(s, r);             // s = M^-1 * r
+      delta_new = bl.dot(r, s);     // grad[n] dot s[n]
       switch (strategy_) {
         case ncg_strategy::fletcher_reeves: {
           beta = delta_new / delta_old;
@@ -212,11 +233,13 @@ public:
 
   // Hyper parameters.
   ncg_strategy strategy_{ncg_strategy::fletcher_reeves};
+  ncg_step_size step_size_{ncg_step_size::inspired};
   Blas blas_;
   Preconditioner preconditioner_;  ///< Preconditioner, default is scaled identity.
   Linesearcher linesearcher_;      ///< Linesearcher, for better convergency, consider wolfe.
   Scalar learning_rate_{1.0};      ///< Learning rate, due to linesearch, 1.0 is a good start.
   temp_buffer s_, d_;
+  temp_buffer dx_, dg_;
   index_t restart_period_{1000};
 };
 
