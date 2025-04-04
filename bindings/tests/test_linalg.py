@@ -1,4 +1,4 @@
-from pymp.linalg import (
+from pymathprim.linalg import (
     pcg,
     pcg_cuda,
     pcg_diagonal,

@@ -3,6 +3,7 @@
 #include <ostream>
 #include <stdexcept>
 #include <vector>
+#include <limits>
 
 #include "mathprim/blas/blas.hpp"
 #include "mathprim/core/buffer.hpp"

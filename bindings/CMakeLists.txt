@@ -14,9 +14,9 @@ if(MATHPRIM_ENABLE_CUDA)
   enable_language(CUDA)
 endif()
 
-nanobind_add_module(libpymp ${PYMP_SRC})
+nanobind_add_module(libpymathprim ${PYMP_SRC})
 
-target_link_libraries(libpymp PRIVATE mathprim)
+target_link_libraries(libpymathprim PRIVATE mathprim)
 
 # Install the module
-install(TARGETS libpymp LIBRARY DESTINATION .)
+install(TARGETS libpymathprim LIBRARY DESTINATION .)

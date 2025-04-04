@@ -1,4 +1,4 @@
-# pymp: python bindings for mathprim
+# pymathprim: python bindings for mathprim
 
 # Build
 
@@ -11,7 +11,7 @@ use `poetry` to package the library, and you will find the packaged wheel in `di
 
 ```sh
 poetry build
-pip install dist/pymp-XXXX.whl
+pip install dist/pymathprim-XXXX.whl
 ```
 
 `XXXX` depends on your platform.

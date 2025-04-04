@@ -1,10 +1,10 @@
 from typing import Any
-import libpymp
+import libpymathprim
 import numpy as np
 from scipy.sparse import csr_matrix
 
 def is_cholmod_available() -> bool:
-    return libpymp.linalg.is_cholmod_available
+    return libpymathprim.linalg.is_cholmod_available
 
 def chol(
     A: csr_matrix
@@ -25,6 +25,6 @@ def chol(
     >>> solver.vsolve(b, x) # Solve A X = B where X and B are matrices
     """
     if A.dtype == np.float32:
-        return libpymp.linalg.cholmod.cholmod_cholesky_float32(A)
+        return libpymathprim.linalg.cholmod.cholmod_cholesky_float32(A)
     elif A.dtype == np.float64:
-        return libpymp.linalg.cholmod.cholmod_cholesky_float64(A)
+        return libpymathprim.linalg.cholmod.cholmod_cholesky_float64(A)

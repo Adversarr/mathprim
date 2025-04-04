@@ -1,5 +1,5 @@
 from typing import Any, Callable, Tuple, List, Union
-import libpymp
+import libpymathprim
 import numpy as np
 from scipy.sparse import csr_matrix
 from torch import Tensor
@@ -26,9 +26,9 @@ def pcg(
         The time taken to solve the linear system.
     """
     if callback:
-        return libpymp.linalg.pcg_cb_no(A, b, x, rtol, max_iter, callback)
+        return libpymathprim.linalg.pcg_cb_no(A, b, x, rtol, max_iter, callback)
     else:
-        return libpymp.linalg.pcg_no(A, b, x, rtol, max_iter, verbose)
+        return libpymathprim.linalg.pcg_no(A, b, x, rtol, max_iter, verbose)
 
 
 def pcg_diagonal(
@@ -51,9 +51,9 @@ def pcg_diagonal(
         The time taken to solve the linear system.
     """
     if callback:
-        return libpymp.linalg.pcg_cb_diagonal(A, b, x, rtol, max_iter, callback)
+        return libpymathprim.linalg.pcg_cb_diagonal(A, b, x, rtol, max_iter, callback)
     else:
-        return libpymp.linalg.pcg_diagonal(A, b, x, rtol, max_iter, verbose)
+        return libpymathprim.linalg.pcg_diagonal(A, b, x, rtol, max_iter, verbose)
 
 def pcg_ainv(
     A: csr_matrix,
@@ -75,9 +75,9 @@ def pcg_ainv(
         The time taken to solve the linear system.
     """
     if callback:
-        return libpymp.linalg.pcg_cb_ainv(A, b, x, rtol, max_iter, callback)
+        return libpymathprim.linalg.pcg_cb_ainv(A, b, x, rtol, max_iter, callback)
     else:
-        return libpymp.linalg.pcg_ainv(A, b, x, rtol, max_iter, verbose)
+        return libpymathprim.linalg.pcg_ainv(A, b, x, rtol, max_iter, verbose)
 
 
 def pcg_ic(
@@ -100,9 +100,9 @@ def pcg_ic(
         The time taken to solve the linear system.
     """
     if callback:
-        return libpymp.linalg.pcg_cb_ic(A, b, x, rtol, max_iter, callback)
+        return libpymathprim.linalg.pcg_cb_ic(A, b, x, rtol, max_iter, callback)
     else:
-        return libpymp.linalg.pcg_ic(A, b, x, rtol, max_iter, verbose)
+        return libpymathprim.linalg.pcg_ic(A, b, x, rtol, max_iter, verbose)
 
 
 def pcg_with_ext_spai(
@@ -125,7 +125,7 @@ def pcg_with_ext_spai(
     float
         The time taken to solve the linear system.
     """
-    return libpymp.linalg.pcg_with_ext_spai(A, b, x, ainv, epsilon, rtol, max_iter, verbose)
+    return libpymathprim.linalg.pcg_with_ext_spai(A, b, x, ainv, epsilon, rtol, max_iter, verbose)
 
 
 def pcg_with_ext_spai_cuda(
@@ -148,7 +148,7 @@ def pcg_with_ext_spai_cuda(
     float
         The time taken to solve the linear system.
     """
-    return libpymp.linalg.pcg_with_ext_spai_cuda(A, b, x, ainv, epsilon, rtol, max_iter, verbose)
+    return libpymathprim.linalg.pcg_with_ext_spai_cuda(A, b, x, ainv, epsilon, rtol, max_iter, verbose)
 
 def pcg_cuda(
     A: csr_matrix,
@@ -168,7 +168,7 @@ def pcg_cuda(
     float
         The time taken to solve the linear system.
     """
-    return libpymp.linalg.pcg_no_cuda(A, b, x, rtol, max_iter, verbose)
+    return libpymathprim.linalg.pcg_no_cuda(A, b, x, rtol, max_iter, verbose)
 
 def pcg_diagonal_cuda(
     A: csr_matrix,
@@ -188,7 +188,7 @@ def pcg_diagonal_cuda(
     float
         The time taken to solve the linear system.
     """
-    return libpymp.linalg.pcg_diagonal_cuda(A, b, x, rtol, max_iter, verbose)
+    return libpymathprim.linalg.pcg_diagonal_cuda(A, b, x, rtol, max_iter, verbose)
 
 def pcg_ainv_cuda(
     A: csr_matrix,
@@ -208,7 +208,7 @@ def pcg_ainv_cuda(
     float
         The time taken to solve the linear system.
     """
-    return libpymp.linalg.pcg_ainv_cuda(A, b, x, rtol, max_iter, verbose)
+    return libpymathprim.linalg.pcg_ainv_cuda(A, b, x, rtol, max_iter, verbose)
 
 def pcg_ic_cuda(
     A: csr_matrix,
@@ -229,7 +229,7 @@ def pcg_ic_cuda(
     float
         The time taken to solve the linear system.
     """
-    return libpymp.linalg.pcg_ic_cuda(A, b, x, rtol, max_iter, verbose)
+    return libpymathprim.linalg.pcg_ic_cuda(A, b, x, rtol, max_iter, verbose)
 
 
 def ainv(A: csr_matrix) -> csr_matrix:
@@ -241,7 +241,7 @@ def ainv(A: csr_matrix) -> csr_matrix:
     csr_matrix
         The content of the Approximated Inverse preconditioner.
     """
-    return libpymp.linalg.ainv_content(A)
+    return libpymathprim.linalg.ainv_content(A)
 
 
 def grid_laplacian_nd_dbc(
@@ -261,9 +261,9 @@ def grid_laplacian_nd_dbc(
         grids = grids.tolist()
 
     if dtype == np.float32:
-        return libpymp.linalg.grid_laplacian_nd_dbc_float32(grids)
+        return libpymathprim.linalg.grid_laplacian_nd_dbc_float32(grids)
     elif dtype == np.float64:
-        return libpymp.linalg.grid_laplacian_nd_dbc_float64(grids)
+        return libpymathprim.linalg.grid_laplacian_nd_dbc_float64(grids)
     else:
         raise ValueError("dtype must be np.float32 or np.float64")
 
@@ -292,7 +292,7 @@ def cg_cuda_csr_direct(
     assert outer_ptrs.dtype == inner_indices.dtype == torch.int32
     assert values.dtype == b.dtype == x.dtype
     assert b.is_contiguous() and x.is_contiguous()
-    return libpymp.linalg.pcg_no_cuda_direct(
+    return libpymathprim.linalg.pcg_no_cuda_direct(
         outer_ptrs=outer_ptrs,
         inner_indices=inner_indices,
         values=values,
@@ -330,7 +330,7 @@ def pcg_cuda_csr_direct_diagonal(
     assert outer_ptrs.dtype == inner_indices.dtype == torch.int32
     assert values.dtype == b.dtype == x.dtype
     assert b.is_contiguous() and x.is_contiguous()
-    return libpymp.linalg.pcg_diagonal_cuda_direct(
+    return libpymathprim.linalg.pcg_diagonal_cuda_direct(
         outer_ptrs=outer_ptrs,
         inner_indices=inner_indices,
         values=values,
@@ -368,7 +368,7 @@ def pcg_cuda_csr_direct_ic(
     assert outer_ptrs.dtype == inner_indices.dtype == torch.int32
     assert values.dtype == b.dtype == x.dtype
     assert b.is_contiguous() and x.is_contiguous()
-    return libpymp.linalg.pcg_ic_cuda_direct(
+    return libpymathprim.linalg.pcg_ic_cuda_direct(
         outer_ptrs=outer_ptrs,
         inner_indices=inner_indices,
         values=values,
@@ -406,7 +406,7 @@ def pcg_cuda_csr_direct_ainv(
     assert outer_ptrs.dtype == inner_indices.dtype == torch.int32
     assert values.dtype == b.dtype == x.dtype
     assert b.is_contiguous() and x.is_contiguous()
-    return libpymp.linalg.pcg_ainv_cuda_direct(
+    return libpymathprim.linalg.pcg_ainv_cuda_direct(
         outer_ptrs=outer_ptrs,
         inner_indices=inner_indices,
         values=values,
@@ -449,7 +449,7 @@ def pcg_cuda_csr_direct_with_ext_spai(
     assert outer_ptrs.dtype == inner_indices.dtype == torch.int32
     assert values.dtype == b.dtype == x.dtype
     assert b.is_contiguous() and x.is_contiguous()
-    return libpymp.linalg.pcg_with_ext_spai_cuda_direct(
+    return libpymathprim.linalg.pcg_with_ext_spai_cuda_direct(
         outer_ptrs=outer_ptrs,
         inner_indices=inner_indices,
         values=values,
@@ -486,9 +486,9 @@ def ldlt(
     >>> solver.vsolve(b, x) # Solve A X = B where X and B are matrices
     """
     if A.dtype == np.float32:
-        return libpymp.linalg.eigen_simplicial_ldlt_float32(A)
+        return libpymathprim.linalg.eigen_simplicial_ldlt_float32(A)
     elif A.dtype == np.float64:
-        return libpymp.linalg.eigen_simplicial_ldlt_float64(A)
+        return libpymathprim.linalg.eigen_simplicial_ldlt_float64(A)
 
 def llt(
     A: csr_matrix
@@ -509,6 +509,6 @@ def llt(
     >>> solver.vsolve(b, x) # Solve A X = B where X and B are matrices
     """
     if A.dtype == np.float32:
-        return libpymp.linalg.eigen_simplicial_llt_float32(A)
+        return libpymathprim.linalg.eigen_simplicial_llt_float32(A)
     elif A.dtype == np.float64:
-        return libpymp.linalg.eigen_simplicial_llt_float64(A)
+        return libpymathprim.linalg.eigen_simplicial_llt_float64(A)

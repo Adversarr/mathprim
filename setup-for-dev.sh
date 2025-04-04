@@ -17,7 +17,7 @@ if [ ! -d .venv ]; then
         exit 1
     fi
 
-    python3 -m venv .venv --prompt=pymp-dev
+    python3 -m venv .venv --prompt=pymathprim-dev
     source .venv/bin/activate
 
     if [ $? -ne 0 ]; then

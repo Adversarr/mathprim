@@ -1,4 +1,4 @@
-from pymp.geometry import laplacian, lumped_mass
+from pymathprim.geometry import laplacian, lumped_mass
 import numpy as np
 
 vert = np.array([[0, 0, 0], [1, 0, 0], [1, 1, 0]], dtype=np.float64)

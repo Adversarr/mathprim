@@ -1,6 +1,6 @@
 import numpy as np
 from scipy.sparse import csr_matrix
-from pymp.linalg import (
+from pymathprim.linalg import (
     cg_cuda_csr_direct,
     pcg_cuda_csr_direct_diagonal,
     pcg_cuda_csr_direct_ic,

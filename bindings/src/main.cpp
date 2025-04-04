@@ -11,7 +11,7 @@ bool is_cuda_available() {
 #endif
 }
 
-NB_MODULE(libpymp, m) {
+NB_MODULE(libpymathprim, m) {
   ////////// Basic //////////
   m.doc() = "MathPrim: A lightweight tensor(view) library";
   m.attr("__version__") = "0.1.0";

@@ -1,5 +1,5 @@
-from pymp.linalg.cholmod import chol, is_cholmod_available
-from pymp.linalg import ldlt, llt
+from pymathprim.linalg.cholmod import chol, is_cholmod_available
+from pymathprim.linalg import ldlt, llt
 import numpy as np
 from scipy.sparse import csr_matrix
 from timeit import Timer

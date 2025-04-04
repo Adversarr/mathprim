@@ -1,7 +1,7 @@
 # Triangle mesh Laplacian matrix tests
 import numpy as np
 import matplotlib.pyplot as plt
-from pymp.geometry import laplacian
+from pymathprim.geometry import laplacian
 from time import time
 def mesh(rows, cols):
     # Create a simple 2D mesh
