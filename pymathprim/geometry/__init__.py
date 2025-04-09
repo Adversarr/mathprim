@@ -12,8 +12,8 @@ def laplacian(
     """
     Construct the Laplacian matrix of a mesh.
     """
-    if edge_weights:  # If edge weights are provided, use them
-        return libpymathprim.geometry.laplacian(vert, edge, edge_weights)
+    if edge_weights is not None:  # If edge weights are provided, use them
+        return libpymathprim.geometry.weighted_laplacian(vert, edge, edge_weights)
     else:
         return libpymathprim.geometry.laplacian(vert, edge)
 

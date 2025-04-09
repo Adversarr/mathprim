@@ -1,21 +1,88 @@
 #include "linalg.hpp"
 
 #include <nanobind/stl/function.h>
+#include <nanobind/stl/tuple.h>
 #include <nanobind/stl/vector.h>
 
 #include <iostream>
 #include <mathprim/blas/cpu_blas.hpp>
-#include <mathprim/linalg/iterative/precond/fsai0.hpp>
 #include <mathprim/linalg/iterative/precond/diagonal.hpp>
 #include <mathprim/linalg/iterative/precond/eigen_support.hpp>
+#include <mathprim/linalg/iterative/precond/fsai0.hpp>
 #include <mathprim/linalg/iterative/precond/sparse_inverse.hpp>
 #include <mathprim/linalg/iterative/solver/cg.hpp>
 #include <mathprim/sparse/basic_sparse.hpp>
 #include <mathprim/sparse/blas/eigen.hpp>
 #include <mathprim/sparse/systems/laplace.hpp>
+
 #include "mathprim/sparse/blas/naive.hpp"
 
 using namespace mathprim;
+using namespace helper;
+
+template <typename Flt, typename Precond, typename Callback>
+static std::tuple<index_t, double, double>                    //
+solve_cg(const Eigen::SparseMatrix<Flt, Eigen::RowMajor>& A,  //
+         nb::ndarray<Flt, nb::ndim<1>, nb::device::cpu> b,    //
+         nb::ndarray<Flt, nb::ndim<1>, nb::device::cpu> x,    //
+         const Flt rtol, index_t max_iter, Callback callback) {
+  if (b.ndim() != 1 || x.ndim() != 1) {
+    throw std::invalid_argument("b and x must be 1D arrays.");
+  }
+  auto b_view = view(b.data(), make_shape(b.size()));
+  auto x_view = view(x.data(), make_shape(x.size()));
+  if (b_view.size() != A.rows() || x_view.size() != A.cols()) {
+    throw std::invalid_argument("b and x must have the same size as the matrix.");
+  }
+  if (max_iter == 0) {
+    max_iter = A.rows();
+  }
+  auto view_a = eigen_support::view(A);
+  using SparseBlas = mp::sparse::blas::eigen<Flt, sparse::sparse_format::csr>;
+  using Blas = mp::blas::cpu_blas<Flt>;
+  using Solver = mp::sparse::iterative::cg<Flt, mp::device::cpu, SparseBlas, Blas, Precond>;
+  auto start = helper::time_now();
+  Solver solver(view_a);
+  double prec = time_elapsed(start);
+  sparse::convergence_criteria<Flt> criteria{max_iter, rtol};
+  start = std::chrono::high_resolution_clock::now();
+  sparse::convergence_result<Flt> result;
+  result = solver.solve(x_view, b_view, criteria, callback);
+  double solve = time_elapsed(start);
+  return {result.iterations_, prec, solve};
+}
+
+template <typename Flt, typename Precond>
+static std::tuple<index_t, double, double>                    //
+solve_cg(const Eigen::SparseMatrix<Flt, Eigen::RowMajor>& A,  //
+         nb::ndarray<Flt, nb::ndim<1>, nb::device::cpu> b,    //
+         nb::ndarray<Flt, nb::ndim<1>, nb::device::cpu> x,    //
+         const Flt rtol, index_t max_iter) {
+  if (b.ndim() != 1 || x.ndim() != 1) {
+    throw std::invalid_argument("b and x must be 1D arrays.");
+  }
+  auto b_view = view(b.data(), make_shape(b.size()));
+  auto x_view = view(x.data(), make_shape(x.size()));
+  if (b_view.size() != A.rows() || x_view.size() != A.cols()) {
+    throw std::invalid_argument("b and x must have the same size as the matrix.");
+  }
+  if (max_iter == 0) {
+    max_iter = A.rows();
+  }
+  auto view_a = eigen_support::view(A);
+  using SparseBlas = mp::sparse::blas::eigen<Flt, sparse::sparse_format::csr>;
+  using Blas = mp::blas::cpu_blas<Flt>;
+  using Solver = mp::sparse::iterative::cg<Flt, mp::device::cpu, SparseBlas, Blas, Precond>;
+  auto start = helper::time_now();
+  Solver solver(view_a);
+  double prec = time_elapsed(start);
+  sparse::convergence_criteria<Flt> criteria{max_iter, rtol};
+  start = std::chrono::high_resolution_clock::now();
+  sparse::convergence_result<Flt> result;
+  result = solver.solve(x_view, b_view, criteria);
+  double solve = time_elapsed(start);
+  return {result.iterations_, prec, solve};
+}
 
 ////////////////////////////////////////////////
 /// Model Problems
@@ -53,88 +120,33 @@ Eigen::SparseMatrix<Flt, Eigen::RowMajor> grid_laplacian_nd_dbc(std::vector<inde
 /// Conjugate Gradient Solvers.
 ////////////////////////////////////////////////
 template <typename Flt, typename Precond = sparse::iterative::none_preconditioner<Flt, device::cpu>>
-static std::pair<index_t, double> cg_host(const Eigen::SparseMatrix<Flt, Eigen::RowMajor>& A,  //
-                                          nb::ndarray<Flt, nb::ndim<1>, nb::device::cpu> b,    //
-                                          nb::ndarray<Flt, nb::ndim<1>, nb::device::cpu> x,    //
-                                          const Flt rtol,                                      //
-                                          index_t max_iter,                                    //
-                                          int verbose) {
-  using SparseBlas = mp::sparse::blas::naive<Flt, sparse::sparse_format::csr>;
-  using LinearOp = SparseBlas;
-  using Blas = mp::blas::cpu_blas<Flt>;
-  using Solver = mp::sparse::iterative::cg<Flt, mp::device::cpu, LinearOp, Blas, Precond>;
-
-  if (b.ndim() != 1 || x.ndim() != 1) {
-    throw std::invalid_argument("b and x must be 1D arrays.");
-  }
-
-  auto b_view = view(b.data(), make_shape(b.size()));
-  auto x_view = view(x.data(), make_shape(x.size()));
-  if (b_view.size() != A.rows() || x_view.size() != A.cols()) {
-    throw std::invalid_argument("b and x must have the same size as the matrix.");
-  }
-  if (max_iter == 0) {
-    max_iter = A.rows();
-  }
-  auto view_A = eigen_support::view(A);
-  Solver solver(view_A);
-  sparse::convergence_criteria<Flt> criteria{
-    max_iter,
-    rtol,
-  };
-  sparse::convergence_result<Flt> result;
-  auto start = std::chrono::high_resolution_clock::now();
+static std::tuple<index_t, double, double>                   //
+cg_host(const Eigen::SparseMatrix<Flt, Eigen::RowMajor>& A,  //
+        nb::ndarray<Flt, nb::ndim<1>, nb::device::cpu> b,    //
+        nb::ndarray<Flt, nb::ndim<1>, nb::device::cpu> x,    //
+        const Flt rtol,                                      //
+        index_t max_iter,                                    //
+        int verbose) {
   if (verbose > 0) {
-    result = solver.solve(x_view, b_view, criteria, [verbose](index_t iter, Flt norm) {
+    // verbose function is print
+    return solve_cg<Flt, Precond>(A, b, x, rtol, max_iter, [verbose](index_t iter, Flt norm) {
       if (iter % verbose == 0) {
         std::cout << "Iteration: " << iter << ", Norm: " << norm << std::endl;
       }
     });
   } else {
-    result = solver.solve(x_view, b_view, criteria);
+    return solve_cg<Flt, Precond>(A, b, x, rtol, max_iter);
   }
-  auto end = std::chrono::high_resolution_clock::now();
-  auto duration = end - start;
-  double seconds = std::chrono::duration_cast<std::chrono::duration<double, std::ratio<1>>>(duration).count();
-  return std::make_pair(result.iterations_, seconds);
 }
 
 template <typename Flt, typename Precond = sparse::iterative::none_preconditioner<Flt, device::cpu>>
-static std::pair<index_t, double> cg_host_callback(const Eigen::SparseMatrix<Flt, Eigen::RowMajor>& A,  //
-                                                   nb::ndarray<Flt, nb::ndim<1>, nb::device::cpu> b,    //
-                                                   nb::ndarray<Flt, nb::ndim<1>, nb::device::cpu> x,    //
-                                                   const Flt rtol,                                      //
-                                                   index_t max_iter,                                    //
-                                                   std::function<void(index_t, Flt)> callback) {
-  using SparseBlas = mp::sparse::blas::eigen<Flt, sparse::sparse_format::csr>;
-  using Blas = mp::blas::cpu_blas<Flt>;
-  using Solver = mp::sparse::iterative::cg<Flt, mp::device::cpu, SparseBlas, Blas, Precond>;
-
-  if (b.ndim() != 1 || x.ndim() != 1) {
-    throw std::invalid_argument("b and x must be 1D arrays.");
-  }
-
-  auto b_view = view(b.data(), make_shape(b.size()));
-  auto x_view = view(x.data(), make_shape(x.size()));
-  if (b_view.size() != A.rows() || x_view.size() != A.cols()) {
-    throw std::invalid_argument("b and x must have the same size as the matrix.");
-  }
-  if (max_iter == 0) {
-    max_iter = A.rows();
-  }
-  auto view_A = eigen_support::view(A);
-  Solver solver(view_A);
-  sparse::convergence_criteria<Flt> criteria{
-    max_iter,
-    rtol,
-  };
-  sparse::convergence_result<Flt> result;
-  auto start = std::chrono::high_resolution_clock::now();
-  result = solver.solve(x_view, b_view, criteria, callback);
-  auto end = std::chrono::high_resolution_clock::now();
-  auto duration = end - start;
-  double seconds = std::chrono::duration_cast<std::chrono::duration<double, std::ratio<1>>>(duration).count();
-  return std::make_pair(result.iterations_, seconds);
+static std::tuple<index_t, double, double> cg_host_callback(const Eigen::SparseMatrix<Flt, Eigen::RowMajor>& A,  //
+                                                            nb::ndarray<Flt, nb::ndim<1>, nb::device::cpu> b,    //
+                                                            nb::ndarray<Flt, nb::ndim<1>, nb::device::cpu> x,    //
+                                                            const Flt rtol,                                      //
+                                                            index_t max_iter,                                    //
+                                                            std::function<void(index_t, Flt)> callback) {
+  return solve_cg<Flt, Precond>(A, b, x, rtol, max_iter, callback);
 }
 
 template <typename Scalar>
@@ -154,27 +166,22 @@ template <typename Flt = float>
 Eigen::SparseMatrix<Flt, Eigen::RowMajor> ainv_content(const Eigen::SparseMatrix<Flt, Eigen::RowMajor>& A) {
   using SparseBlas = mp::sparse::blas::eigen<Flt, sparse::sparse_format::csr>;
   sparse::iterative::fsai0_preconditioner<SparseBlas> ainv(eigen_support::view(A));
-
   return eigen_support::map(ainv.ainv());
 }
 
 template <typename Flt = float>
-std::pair<index_t, double> pcg_with_ext_spai(const Eigen::SparseMatrix<Flt, Eigen::RowMajor>& A,     //
-                                             nb::ndarray<Flt, nb::ndim<1>, nb::device::cpu> b,       //
-                                             nb::ndarray<Flt, nb::ndim<1>, nb::device::cpu> x,       //
-                                             const Eigen::SparseMatrix<Flt, Eigen::RowMajor>& ainv,  //
-                                             Flt epsilon,                                            //
-                                             const Flt& rtol,                                        //
-                                             index_t max_iter,                                       //
-                                             int verbose) {
+std::tuple<index_t, double, double> pcg_with_ext_spai(const Eigen::SparseMatrix<Flt, Eigen::RowMajor>& A,     //
+                                                      nb::ndarray<Flt, nb::ndim<1>, nb::device::cpu> b,       //
+                                                      nb::ndarray<Flt, nb::ndim<1>, nb::device::cpu> x,       //
+                                                      const Eigen::SparseMatrix<Flt, Eigen::RowMajor>& ainv,  //
+                                                      Flt epsilon,                                            //
+                                                      const Flt& rtol,                                        //
+                                                      index_t max_iter,                                       //
+                                                      int verbose) {
   using SparseBlas = mp::sparse::blas::eigen<Flt, sparse::sparse_format::csr>;
   using Blas = mp::blas::cpu_blas<Flt>;
   using Precond = mp::sparse::iterative::sparse_preconditioner<SparseBlas, Blas>;
   using Solver = mp::sparse::iterative::cg<Flt, mp::device::cpu, SparseBlas, Blas, Precond>;
-  Solver solver(eigen_support::view(A));
-
-  solver.preconditioner().derived().set_approximation(eigen_support::view(ainv), epsilon);
-
   if (b.ndim() != 1 || x.ndim() != 1) {
     throw std::invalid_argument("b and x must be 1D arrays.");
   }
@@ -185,12 +192,16 @@ std::pair<index_t, double> pcg_with_ext_spai(const Eigen::SparseMatrix<Flt, Eige
     throw std::invalid_argument("b and x must have the same size as the matrix.");
   }
 
+  auto start = helper::time_now();
+  Solver solver(eigen_support::view(A));
+  auto prec = time_elapsed(start);
+  solver.preconditioner().derived().set_approximation(eigen_support::view(ainv), epsilon);
+
   sparse::convergence_criteria<Flt> criteria{
     max_iter,
     rtol,
   };
   sparse::convergence_result<Flt> result;
-  auto start = std::chrono::high_resolution_clock::now();
   if (verbose > 0) {
     result = solver.solve(x_view, b_view, criteria, [verbose](index_t iter, Flt norm) {
       if (iter % verbose == 0) {
@@ -200,10 +211,46 @@ std::pair<index_t, double> pcg_with_ext_spai(const Eigen::SparseMatrix<Flt, Eige
   } else {
     result = solver.solve(x_view, b_view, criteria);
   }
-  auto end = std::chrono::high_resolution_clock::now();
-  auto duration = end - start;
-  double seconds = std::chrono::duration_cast<std::chrono::duration<double, std::ratio<1>>>(duration).count();
-  return std::make_pair(result.iterations_, seconds);
+  double solve = time_elapsed(start);
+  return {result.iterations_, prec, solve};
+}
+
+template <typename Flt = float>
+std::tuple<index_t, double, double> pcg_with_ext_spai_callback(  //
+    const Eigen::SparseMatrix<Flt, Eigen::RowMajor>& A,          //
+    nb::ndarray<Flt, nb::ndim<1>, nb::device::cpu> b,            //
+    nb::ndarray<Flt, nb::ndim<1>, nb::device::cpu> x,            //
+    const Eigen::SparseMatrix<Flt, Eigen::RowMajor>& ainv,       //
+    Flt epsilon,                                                 //
+    const Flt& rtol,                                             //
+    index_t max_iter,                                            //
+    std::function<void(index_t, Flt)> callback) {
+  using SparseBlas = mp::sparse::blas::eigen<Flt, sparse::sparse_format::csr>;
+  using Blas = mp::blas::cpu_blas<Flt>;
+  using Precond = mp::sparse::iterative::sparse_preconditioner<SparseBlas, Blas>;
+  using Solver = mp::sparse::iterative::cg<Flt, mp::device::cpu, SparseBlas, Blas, Precond>;
+  if (b.ndim() != 1 || x.ndim() != 1) {
+    throw std::invalid_argument("b and x must be 1D arrays.");
+  }
+
+  auto b_view = view(b.data(), make_shape(b.size()));
+  auto x_view = view(x.data(), make_shape(x.size()));
+  if (b_view.size() != A.rows() || x_view.size() != A.cols()) {
+    throw std::invalid_argument("b and x must have the same size as the matrix.");
+  }
+
+  auto start = helper::time_now();
+  Solver solver(eigen_support::view(A));
+  auto prec = time_elapsed(start);
+  solver.preconditioner().derived().set_approximation(eigen_support::view(ainv), epsilon);
+
+  sparse::convergence_criteria<Flt> criteria{
+    max_iter,
+    rtol,
+  };
+  auto result = solver.solve(x_view, b_view, criteria, callback);
+  double solve = time_elapsed(start);
+  return {result.iterations_, prec, solve};
 }
 
 #define BIND_TYPE(flt, preconditioning)                                                                     \
@@ -236,6 +283,17 @@ void bind_linalg(nb::module_& m) {
         nb::arg("ainv").noconvert(), nb::arg("epsilon"),                                                      //
         nb::arg("rtol") = 1e-4f, nb::arg("max_iter") = 0, nb::arg("verbose") = 0);
 
+  m.def("pcg_cb_with_ext_spai", &pcg_with_ext_spai_callback<double>,                   //
+        "Preconditioned Conjugate Gradient method on CPU.",                            //
+        nb::arg("A").noconvert(), nb::arg("b").noconvert(), nb::arg("x").noconvert(),  //
+        nb::arg("ainv").noconvert(), nb::arg("epsilon"),                               //
+        nb::arg("rtol"), nb::arg("max_iter"), nb::arg("callback"));
+  m.def("pcg_cb_with_ext_spai", &pcg_with_ext_spai_callback<float>,                    //
+        "Preconditioned Conjugate Gradient method on CPU.",                            //
+        nb::arg("A").noconvert(), nb::arg("b").noconvert(), nb::arg("x").noconvert(),  //
+        nb::arg("ainv").noconvert(), nb::arg("epsilon"),                               //
+        nb::arg("rtol"), nb::arg("max_iter"), nb::arg("callback"));
+
   ////////// Helpers for Preconditioners //////////
   m.def("ainv_content", &ainv_content<float>, "Get the content of the Approx Inverse Preconditioner.",
         nb::arg("A").noconvert());
@@ -243,10 +301,10 @@ void bind_linalg(nb::module_& m) {
         nb::arg("A").noconvert());
 
   ////////// Model Problems //////////
-  m.def("grid_laplacian_nd_dbc_float32", &grid_laplacian_nd_dbc<float>, "Grid Laplacian matrix with Dirichlet BCs.",
-        nb::arg("dims"))
-      .def("grid_laplacian_nd_dbc_float64", &grid_laplacian_nd_dbc<double>, "Grid Laplacian matrix with Dirichlet BCs.",
-           nb::arg("dims"));
+  m.def("grid_laplacian_nd_dbc_float32", &grid_laplacian_nd_dbc<float>,  //
+        "Grid Laplacian matrix with Dirichlet BCs.", nb::arg("dims"));
+  m.def("grid_laplacian_nd_dbc_float64", &grid_laplacian_nd_dbc<double>,  //
+        "Grid Laplacian matrix with Dirichlet BCs.", nb::arg("dims"));
 }
 #ifndef MATHPRIM_ENABLE_CUDA
 void bind_linalg_cuda(nb::module_& m) {

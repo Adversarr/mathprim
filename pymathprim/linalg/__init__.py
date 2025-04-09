@@ -1,514 +1,128 @@
-from typing import Any, Callable, Tuple, List, Union
-import libpymathprim
-import numpy as np
+from functools import partial
 from scipy.sparse import csr_matrix
-from torch import Tensor
-import torch
+from typing import Callable, Optional, Tuple, Union, Literal
+import numpy as np
 
 
-def pcg(
-    A: csr_matrix,
-    b: np.ndarray,
-    x: np.ndarray,
-    rtol: float = 1e-4,
-    max_iter: int = 0,
-    verbose: int = 0,
-    callback: Union[None, Callable] = None,
-) -> Tuple[int, float]:
+def get_pcg_cuda(preconditioner: str) -> Callable:
     """
-    Solve the linear system Ax = b using the conjugate gradient method.
+    Parameters
+    ----------
+    preconditioner : str
 
     Returns
     -------
-    int
-        The number of iterations.
-    float
-        The time taken to solve the linear system.
+    Callable
+        CG Callable
     """
-    if callback:
-        return libpymathprim.linalg.pcg_cb_no(A, b, x, rtol, max_iter, callback)
-    else:
-        return libpymathprim.linalg.pcg_no(A, b, x, rtol, max_iter, verbose)
-
-
-def pcg_diagonal(
-    A: csr_matrix,
-    b: np.ndarray,
-    x: np.ndarray,
-    rtol: float = 1e-4,
-    max_iter: int = 0,
-    verbose: int = 0,
-    callback: Union[None, Callable] = None,
-) -> Tuple[int, float]:
-    """
-    Solve the linear system Ax = b using the conjugate gradient method with diagonal preconditioner.
-
-    Returns
-    -------
-    int
-        The number of iterations.
-    float
-        The time taken to solve the linear system.
-    """
-    if callback:
-        return libpymathprim.linalg.pcg_cb_diagonal(A, b, x, rtol, max_iter, callback)
-    else:
-        return libpymathprim.linalg.pcg_diagonal(A, b, x, rtol, max_iter, verbose)
-
-def pcg_ainv(
-    A: csr_matrix,
-    b: np.ndarray,
-    x: np.ndarray,
-    rtol: float = 1e-4,
-    max_iter: int = 0,
-    verbose: int = 0,
-    callback: Union[None, Callable] = None,
-) -> Tuple[int, float]:
-    """
-    Solve the linear system Ax = b using the conjugate gradient method with Approximated Inverse preconditioner.
-
-    Returns
-    -------
-    int
-        The number of iterations.
-    float
-        The time taken to solve the linear system.
-    """
-    if callback:
-        return libpymathprim.linalg.pcg_cb_ainv(A, b, x, rtol, max_iter, callback)
-    else:
-        return libpymathprim.linalg.pcg_ainv(A, b, x, rtol, max_iter, verbose)
-
-
-def pcg_ic(
-    A: csr_matrix,
-    b: np.ndarray,
-    x: np.ndarray,
-    rtol: float = 1e-4,
-    max_iter: int = 0,
-    verbose: int = 0,
-    callback: Union[None, Callable] = None,
-) -> Tuple[int, float]:
-    """
-    Solve the linear system Ax = b using the conjugate gradient method with Incomplete Cholesky preconditioner.
-
-    Returns
-    -------
-    int
-        The number of iterations.
-    float
-        The time taken to solve the linear system.
-    """
-    if callback:
-        return libpymathprim.linalg.pcg_cb_ic(A, b, x, rtol, max_iter, callback)
-    else:
-        return libpymathprim.linalg.pcg_ic(A, b, x, rtol, max_iter, verbose)
-
-
-def pcg_with_ext_spai(
-    A: csr_matrix,
-    b: np.ndarray,
-    x: np.ndarray,
-    ainv: csr_matrix,
-    epsilon: float,
-    rtol: float = 1e-4,
-    max_iter: int = 0,
-    verbose: int = 0,
-) -> Tuple[int, float]:
-    """
-    Solve the linear system Ax = b using the conjugate gradient method with External SPAI preconditioner.
-
-    Returns
-    -------
-    int
-        The number of iterations.
-    float
-        The time taken to solve the linear system.
-    """
-    return libpymathprim.linalg.pcg_with_ext_spai(A, b, x, ainv, epsilon, rtol, max_iter, verbose)
-
-
-def pcg_with_ext_spai_cuda(
-    A: csr_matrix,
-    b: np.ndarray,
-    x: np.ndarray,
-    ainv: csr_matrix,
-    epsilon: float,
-    rtol: float = 1e-4,
-    max_iter: int = 0,
-    verbose: int = 0,
-) -> Tuple[int, float]:
-    """
-    Solve the linear system Ax = b using the conjugate gradient method with External SPAI preconditioner.
-
-    Returns
-    -------
-    int
-        The number of iterations.
-    float
-        The time taken to solve the linear system.
-    """
-    return libpymathprim.linalg.pcg_with_ext_spai_cuda(A, b, x, ainv, epsilon, rtol, max_iter, verbose)
-
-def pcg_cuda(
-    A: csr_matrix,
-    b: np.ndarray,
-    x: np.ndarray,
-    rtol: float = 1e-4,
-    max_iter: int = 0,
-    verbose: int = 0,
-) -> Tuple[int, float]:
-    """
-    Solve the linear system Ax = b using the conjugate gradient method on GPU.
-
-    Returns
-    -------
-    int
-        The number of iterations.
-    float
-        The time taken to solve the linear system.
-    """
-    return libpymathprim.linalg.pcg_no_cuda(A, b, x, rtol, max_iter, verbose)
-
-def pcg_diagonal_cuda(
-    A: csr_matrix,
-    b: np.ndarray,
-    x: np.ndarray,
-    rtol: float = 1e-4,
-    max_iter: int = 0,
-    verbose: int = 0,
-) -> Tuple[int, float]:
-    """
-    Solve the linear system Ax = b using the conjugate gradient method with diagonal preconditioner on GPU.
-
-    Returns
-    -------
-    int
-        The number of iterations.
-    float
-        The time taken to solve the linear system.
-    """
-    return libpymathprim.linalg.pcg_diagonal_cuda(A, b, x, rtol, max_iter, verbose)
-
-def pcg_ainv_cuda(
-    A: csr_matrix,
-    b: np.ndarray,
-    x: np.ndarray,
-    rtol: float = 1e-4,
-    max_iter: int = 0,
-    verbose: int = 0,
-) -> Tuple[int, float]:
-    """
-    Solve the linear system Ax = b using the conjugate gradient method with Approximated Inverse preconditioner on GPU.
-
-    Returns
-    -------
-    int
-        The number of iterations.
-    float
-        The time taken to solve the linear system.
-    """
-    return libpymathprim.linalg.pcg_ainv_cuda(A, b, x, rtol, max_iter, verbose)
-
-def pcg_ic_cuda(
-    A: csr_matrix,
-    b: np.ndarray,
-    x: np.ndarray,
-    rtol: float = 1e-4,
-    max_iter: int = 0,
-    verbose: int = 0,
-    callback: Union[None, Callable] = None,
-) -> Tuple[int, float]:
-    """
-    Solve the linear system Ax = b using the conjugate gradient method with Incomplete Cholesky preconditioner.
-
-    Returns
-    -------
-    int
-        The number of iterations.
-    float
-        The time taken to solve the linear system.
-    """
-    return libpymathprim.linalg.pcg_ic_cuda(A, b, x, rtol, max_iter, verbose)
-
-
-def ainv(A: csr_matrix) -> csr_matrix:
-    """
-    Compute the content of the Approximated Inverse preconditioner.
-
-    Returns
-    -------
-    csr_matrix
-        The content of the Approximated Inverse preconditioner.
-    """
-    return libpymathprim.linalg.ainv_content(A)
-
-
-def grid_laplacian_nd_dbc(
-    grids: Union[List[int], np.ndarray],
-    dtype=np.float32
-) -> csr_matrix:
-    """
-    Construct the Laplacian operator on n-dimensional grid with Dirichlet boundary conditions.
-
-    Returns
-    -------
-    csr_matrix
-        The Laplacian operator.
-    """
-
-    if isinstance(grids, np.ndarray):
-        grids = grids.tolist()
-
-    if dtype == np.float32:
-        return libpymathprim.linalg.grid_laplacian_nd_dbc_float32(grids)
-    elif dtype == np.float64:
-        return libpymathprim.linalg.grid_laplacian_nd_dbc_float64(grids)
-    else:
-        raise ValueError("dtype must be np.float32 or np.float64")
-
-def cg_cuda_csr_direct(
-    outer_ptrs: Tensor,
-    inner_indices: Tensor,
-    values: Tensor,
-    rows: int,
-    cols: int,
-    b: Tensor,
-    x: Tensor,
-    rtol: float = 1e-4,
-    max_iter: int = 0,
-    verbose: int = 0,
-) -> Tuple[int, float]:
-    """
-    Solve the linear system Ax = b using the conjugate gradient method on GPU.
-    
-    Returns
-    -------
-    int
-        The number of iterations.
-    float
-        The time taken to solve the linear system.
-    """
-    assert outer_ptrs.dtype == inner_indices.dtype == torch.int32
-    assert values.dtype == b.dtype == x.dtype
-    assert b.is_contiguous() and x.is_contiguous()
-    return libpymathprim.linalg.pcg_no_cuda_direct(
-        outer_ptrs=outer_ptrs,
-        inner_indices=inner_indices,
-        values=values,
-        rows=rows,
-        cols=cols,
-        b=b,
-        x=x,
-        rtol=rtol,
-        max_iter=max_iter,
-        verbose=verbose,
+    from .cg_cuda import (
+        pcg_cuda,
+        pcg_diagonal_cuda,
+        pcg_ainv_cuda,
+        pcg_ic_cuda,
+        pcg_with_ext_spai_cuda,
     )
 
-def pcg_cuda_csr_direct_diagonal(
-    outer_ptrs: Tensor,
-    inner_indices: Tensor,
-    values: Tensor,
-    rows: int,
-    cols: int,
-    b: Tensor,
-    x: Tensor,
-    rtol: float = 1e-4,
-    max_iter: int = 0,
-    verbose: int = 0,
-) -> Tuple[int, float]:
-    """
-    Solve the linear system Ax = b using the conjugate gradient method with diagonal preconditioner on GPU.
-    
-    Returns
-    -------
-    int
-        The number of iterations.
-    float
-        The time taken to solve the linear system.
-    """
-    assert outer_ptrs.dtype == inner_indices.dtype == torch.int32
-    assert values.dtype == b.dtype == x.dtype
-    assert b.is_contiguous() and x.is_contiguous()
-    return libpymathprim.linalg.pcg_diagonal_cuda_direct(
-        outer_ptrs=outer_ptrs,
-        inner_indices=inner_indices,
-        values=values,
-        rows=rows,
-        cols=cols,
-        b=b,
-        x=x,
-        rtol=rtol,
-        max_iter=max_iter,
-        verbose=verbose,
-    )
-
-def pcg_cuda_csr_direct_ic(
-    outer_ptrs: Tensor,
-    inner_indices: Tensor,
-    values: Tensor,
-    rows: int,
-    cols: int,
-    b: Tensor,
-    x: Tensor,
-    rtol: float = 1e-4,
-    max_iter: int = 0,
-    verbose: int = 0,
-) -> Tuple[int, float]:
-    """
-    Solve the linear system Ax = b using the conjugate gradient method with Incomplete Cholesky preconditioner on GPU.
-    
-    Returns
-    -------
-    int
-        The number of iterations.
-    float
-        The time taken to solve the linear system.
-    """
-    assert outer_ptrs.dtype == inner_indices.dtype == torch.int32
-    assert values.dtype == b.dtype == x.dtype
-    assert b.is_contiguous() and x.is_contiguous()
-    return libpymathprim.linalg.pcg_ic_cuda_direct(
-        outer_ptrs=outer_ptrs,
-        inner_indices=inner_indices,
-        values=values,
-        rows=rows,
-        cols=cols,
-        b=b,
-        x=x,
-        rtol=rtol,
-        max_iter=max_iter,
-        verbose=verbose,
-   )
-
-def pcg_cuda_csr_direct_ainv(
-    outer_ptrs: Tensor,
-    inner_indices: Tensor,
-    values: Tensor,
-    rows: int,
-    cols: int,
-    b: Tensor,
-    x: Tensor,
-    rtol: float = 1e-4,
-    max_iter: int = 0,
-    verbose: int = 0,
-) -> Tuple[int, float]:
-    """
-    Solve the linear system Ax = b using the conjugate gradient method with Approximated Inverse preconditioner on GPU.
-    
-    Returns
-    -------
-    int
-        The number of iterations.
-    float
-        The time taken to solve the linear system.
-    """
-    assert outer_ptrs.dtype == inner_indices.dtype == torch.int32
-    assert values.dtype == b.dtype == x.dtype
-    assert b.is_contiguous() and x.is_contiguous()
-    return libpymathprim.linalg.pcg_ainv_cuda_direct(
-        outer_ptrs=outer_ptrs,
-        inner_indices=inner_indices,
-        values=values,
-        rows=rows,
-        cols=cols,
-        b=b,
-        x=x,
-        rtol=rtol,
-        max_iter=max_iter,
-        verbose=verbose,
-    )
+    preconditioners = {
+        "none": pcg_cuda,
+        "diagonal": pcg_diagonal_cuda,
+        "ainv": pcg_ainv_cuda,
+        "ic": pcg_ic_cuda,
+        "ext_spai": pcg_with_ext_spai_cuda,
+    }
+    if preconditioner not in preconditioners:
+        raise ValueError("Unknown preconditioner: {}".format(preconditioner))
+    return preconditioners[preconditioner]
 
 
-def pcg_cuda_csr_direct_with_ext_spai(
-    outer_ptrs: Tensor,
-    inner_indices: Tensor,
-    values: Tensor,
-    rows: int,
-    cols: int,
-    ainv_outer_ptrs: Tensor,
-    ainv_inner_indices: Tensor,
-    ainv_values: Tensor,
-    epsilon: float,
-    b: Tensor,
-    x: Tensor,
-    rtol: float = 1e-4,
-    max_iter: int = 0,
-    verbose: int = 0,
-) -> Tuple[int, float]:
+def get_pcg_host(preconditioner: str) -> Callable:
     """
-    Solve the linear system Ax = b using the conjugate gradient method with Approximated Inverse preconditioner on GPU.
-    
-    Returns
-    -------
-    int
-        The number of iterations.
-    float
-        The time taken to solve the linear system.
-    """
-    assert outer_ptrs.dtype == inner_indices.dtype == torch.int32
-    assert values.dtype == b.dtype == x.dtype
-    assert b.is_contiguous() and x.is_contiguous()
-    return libpymathprim.linalg.pcg_with_ext_spai_cuda_direct(
-        outer_ptrs=outer_ptrs,
-        inner_indices=inner_indices,
-        values=values,
-        rows=rows,
-        cols=cols,
-        ainv_outer_ptrs=ainv_outer_ptrs,
-        ainv_inner_indices=ainv_inner_indices,
-        ainv_values=ainv_values,
-        epsilon=epsilon,
-        b=b,
-        x=x,
-        rtol=rtol,
-        max_iter=max_iter,
-        verbose=verbose,
-    )
-
-
-def ldlt(
-    A: csr_matrix
-) -> Any:
-    """
-    Compute the LDL^T decomposition of a symmetric positive definite matrix. (Eigen::SimplicialLDLT)
+    Parameters
+    ----------
+    preconditioner : str
 
     Returns
     -------
-    Solver
-        The LDL^T decomposition.
-
-    Examples
-    --------
-    >>> A = csr_matrix(...)
-    >>> solver = ldlt(A)
-    >>> solver.solve(b, x) # Solve Ax = b where x and b are vectors
-    >>> solver.vsolve(b, x) # Solve A X = B where X and B are matrices
+    Callable
+        CG Callable
     """
-    if A.dtype == np.float32:
-        return libpymathprim.linalg.eigen_simplicial_ldlt_float32(A)
-    elif A.dtype == np.float64:
-        return libpymathprim.linalg.eigen_simplicial_ldlt_float64(A)
+    from .cg_host import pcg, pcg_diagonal, pcg_ainv, pcg_ic, pcg_with_ext_spai
 
-def llt(
-    A: csr_matrix
-) -> Any:
-    """
-    Compute the Cholesky decomposition of a symmetric positive definite matrix. (Eigen::SimplicialLLT)
+    preconditioners = {
+        "none": pcg,
+        "diagonal": pcg_diagonal,
+        "ainv": pcg_ainv,
+        "ic": pcg_ic,
+        "ext_spai": pcg_with_ext_spai,
+    }
+    if preconditioner not in preconditioners:
+        raise ValueError("Unknown preconditioner: {}".format(preconditioner))
+    return preconditioners[preconditioner]
 
-    Returns
-    -------
-    Solver
-        The Cholesky decomposition.
 
-    Examples
-    --------
-    >>> A = csr_matrix(...)
-    >>> solver = ldlt(A)
-    >>> solver.solve(b, x) # Solve Ax = b where x and b are vectors
-    >>> solver.vsolve(b, x) # Solve A X = B where X and B are matrices
-    """
-    if A.dtype == np.float32:
-        return libpymathprim.linalg.eigen_simplicial_llt_float32(A)
-    elif A.dtype == np.float64:
-        return libpymathprim.linalg.eigen_simplicial_llt_float64(A)
+class PreconditionedConjugateGradient:
+    def __init__(
+        self,
+        matrix: csr_matrix,
+        device: Literal["cpu", "cuda"],
+        preconditioner: Literal["none", "ainv", "ic", "diagonal", "ext_spai"],
+        dtype: Optional[np.dtype] = None,
+    ):
+        self.dtype = dtype or matrix.dtype
+        if matrix.dtype != self.dtype:
+            self.matrix: csr_matrix = matrix.astype(self.dtype)
+        else:
+            self.matrix = matrix
+
+        self.device = device
+        self.preconditioner: str = preconditioner
+
+    def get_pcg(self):
+        if self.device == "cuda":
+            return get_pcg_cuda(self.preconditioner)
+        elif self.device == "cpu":
+            return get_pcg_host(self.preconditioner)
+        else:
+            raise ValueError("Unsupported device: {}".format(self.device))
+
+    def __call__(
+        self,
+        b: np.ndarray,
+        x: np.ndarray,
+        rtol: float = 1e-4,
+        max_iter: int = 0,
+        verbose: int = 0,
+        callback: Union[None, Callable] = None,
+        ext_spai: Union[None, Tuple[csr_matrix, float]] = None,
+    ) -> Tuple[int, float, float]:
+        """
+        Solve the linear system Ax = b using the conjugate gradient method on GPU.
+
+        Returns
+        -------
+        int
+            The number of iterations.
+        float
+            The time of precompute step.
+        float
+            The time taken to solve the linear system.
+        """
+
+        method = self.get_pcg()
+        if self.preconditioner == "ext_spai":
+            assert (
+                ext_spai is not None
+            ), "ext_spai must be provided for ext_spai preconditioner"
+            ainv, eps = ext_spai
+            method = partial(method, ainv=ainv, epsilon=eps)
+        if self.device == "cpu" and self.preconditioner != 'ext_spai':
+            # only cpu version support this.
+            method = partial(method, callback=callback)
+        return method(
+            A=self.matrix,
+            b=b,
+            x=x,
+            rtol=rtol,
+            max_iter=max_iter,
+            verbose=verbose,
+        )

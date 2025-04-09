@@ -1,15 +1,17 @@
-from pymathprim.linalg import (
+from pymathprim.linalg.cg_host import (
     pcg,
-    pcg_cuda,
-    pcg_diagonal,
+    ainv,
     pcg_ainv,
+    pcg_diagonal,
+    pcg_with_ext_spai,
+    pcg_ic,
+    grid_laplacian_nd_dbc,
+)
+from pymathprim.linalg.cg_cuda import (
+    pcg_cuda,
     pcg_diagonal_cuda,
     pcg_ainv_cuda,
-    ainv,
-    grid_laplacian_nd_dbc,
-    pcg_with_ext_spai,
     pcg_with_ext_spai_cuda,
-    pcg_ic,
     pcg_ic_cuda
 )
 
@@ -68,8 +70,8 @@ def eval_once(solver):
     x = np.ones(n*n, dtype=np.float64)
     b = A @ x
     x = np.zeros(n*n, dtype=np.float64)
-    it, er = solver(A, b, x, 1e-6, n * n * 4, 0)
-    print(it, er)
+    it, prec, solve = solver(A, b, x, 1e-6, n * n * 4, 0)
+    print(it, prec, solve)
 
 for method in [pcg, pcg_cuda, pcg_diagonal, pcg_ainv, pcg_diagonal_cuda, pcg_ainv_cuda, pcg_ic, pcg_ic_cuda]:
     print(method.__name__)
