@@ -6,6 +6,7 @@
 
 #include <iostream>
 #include <mathprim/blas/cpu_blas.hpp>
+#include <mathprim/linalg/iterative/precond/ainv.hpp>
 #include <mathprim/linalg/iterative/precond/diagonal.hpp>
 #include <mathprim/linalg/iterative/precond/eigen_support.hpp>
 #include <mathprim/linalg/iterative/precond/fsai0.hpp>
@@ -157,7 +158,8 @@ template <typename Scalar>
 using no = sparse::iterative::none_preconditioner<Scalar, device::cpu, mathprim::sparse::sparse_format::csr>;
 
 template <typename Scalar>
-using ainv = sparse::iterative::fsai0_preconditioner<sparse::blas::eigen<Scalar, sparse::sparse_format::csr>>;
+using ainv = sparse::iterative::bridson_ainv_preconditioner<sparse::blas::eigen<Scalar, sparse::sparse_format::csr>,
+                                                            blas::cpu_blas<Scalar>>;
 
 template <typename Scalar>
 using ic = sparse::iterative::eigen_ichol<Scalar, sparse::sparse_format::csr>;
@@ -165,10 +167,24 @@ using ic = sparse::iterative::eigen_ichol<Scalar, sparse::sparse_format::csr>;
 template <typename Flt = float>
 Eigen::SparseMatrix<Flt, Eigen::RowMajor> ainv_content(const Eigen::SparseMatrix<Flt, Eigen::RowMajor>& A) {
   using SparseBlas = mp::sparse::blas::eigen<Flt, sparse::sparse_format::csr>;
-  sparse::iterative::fsai0_preconditioner<SparseBlas> ainv(eigen_support::view(A));
+  sparse::iterative::scaled_bridson_ainv_preconditioner<SparseBlas> ainv(eigen_support::view(A));
   return eigen_support::map(ainv.ainv());
 }
 
+template <typename Flt = float>
+static Eigen::SparseMatrix<Flt, Eigen::RowMajor> ichol_content(  //
+    Eigen::SparseMatrix<Flt, Eigen::RowMajor> m                  //
+) {
+  using namespace Eigen;
+  IncompleteCholesky<Flt, Lower, NaturalOrdering<index_t>> ic;
+  ic.compute(m);
+  if (ic.info() != Success) {
+    throw std::runtime_error("Incomplete Cholesky factorization failed.");
+  }
+
+  auto lower_mat = ic.matrixL();
+  return lower_mat;
+}
 template <typename Flt = float>
 std::tuple<index_t, double, double> pcg_with_ext_spai(const Eigen::SparseMatrix<Flt, Eigen::RowMajor>& A,     //
                                                       nb::ndarray<Flt, nb::ndim<1>, nb::device::cpu> b,       //
@@ -299,6 +315,10 @@ void bind_linalg(nb::module_& m) {
         nb::arg("A").noconvert());
   m.def("ainv_content", &ainv_content<double>, "Get the content of the Approx Inverse Preconditioner.",
         nb::arg("A").noconvert());
+  m.def("ichol_content", &ichol_content<double>, "Compute the incomplete Cholesky factorization of a matrix.",  //
+        nb::arg("m").noconvert());
+  m.def("ichol_content", &ichol_content<float>, "Compute the incomplete Cholesky factorization of a matrix.",  //
+        nb::arg("m").noconvert());
 
   ////////// Model Problems //////////
   m.def("grid_laplacian_nd_dbc_float32", &grid_laplacian_nd_dbc<float>,  //

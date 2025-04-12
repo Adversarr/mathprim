@@ -556,6 +556,11 @@ public:
     has_compute_ = true;
   }
 
+  const_sparse_view ainv() const {
+    MATHPRIM_INTERNAL_CHECK_THROW(has_compute_, std::runtime_error, "The preconditioner has not been computed.");
+    return w_.const_view();
+  }
+
 private:
   void apply_impl(vector_type y, const_vector x) {
     MATHPRIM_INTERNAL_CHECK_THROW(has_compute_, std::runtime_error, "The preconditioner has not been computed.");

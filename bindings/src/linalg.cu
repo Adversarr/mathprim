@@ -26,7 +26,9 @@ using diagonal = sparse::iterative::diagonal_preconditioner<Scalar, device::cuda
 
 template <typename Scalar>
 using ainv
-    = sparse::iterative::scaled_bridson_ainv_preconditioner<sparse::blas::cusparse<Scalar, sparse::sparse_format::csr>>;
+    // = sparse::iterative::scaled_bridson_ainv_preconditioner<sparse::blas::cusparse<Scalar, sparse::sparse_format::csr>>;
+    = sparse::iterative::bridson_ainv_preconditioner<sparse::blas::cusparse<Scalar, sparse::sparse_format::csr>,
+                                                     blas::cublas<Scalar>>;
 
 template <typename Scalar>
 using ic = sparse::iterative::cusparse_ichol<Scalar, device::cuda, mathprim::sparse::sparse_format::csr>;
@@ -119,19 +121,19 @@ static std::tuple<index_t, double, double> cg_cuda_csr_direct(          //
   using Solver = mp::sparse::iterative::cg<Flt, mp::device::cuda, LinearOp, Blas, Precond>;
   using SpView = sparse::basic_sparse_view<const Flt, device::cuda, mathprim::sparse::sparse_format::csr>;
 
+  auto b_view = view<device::cuda>(b.data(), make_shape(b.size())).as_const();
+  auto x_view = view<device::cuda>(x.data(), make_shape(x.size()));
   if (b.ndim() != 1 || x.ndim() != 1) {
     throw std::invalid_argument("b and x must be 1D arrays.");
   }
 
-  if (b.size() != rows || x.size() != cols) {
+  if (b_view.size() != rows || x_view.size() != cols) {
     throw std::invalid_argument("b and x must have the same size as the matrix.");
   }
 
   if (max_iter == 0) {
     max_iter = rows;
   }
-  auto b_view = view<device::cuda>(b.data(), make_shape(b.size())).as_const();
-  auto x_view = view<device::cuda>(x.data(), make_shape(x.size()));
 
   const Flt* p_values = values.data();
   const index_t* p_outer = outer_ptrs.data();
@@ -165,6 +167,7 @@ static std::tuple<index_t, double, double> cg_cuda_csr_direct(          //
 
   return {result.iterations_, prec, solve};
 }
+
 
 template <typename Flt = float>
 static std::tuple<index_t, double, double> pcg_with_ext_spai(  //
@@ -255,11 +258,14 @@ static std::tuple<index_t, double, double> pcg_with_ext_spai_cuda_direct(    //
   using Solver = mp::sparse::iterative::cg<Flt, mp::device::cuda, LinearOp, Blas, Precond>;
   using SpView = sparse::basic_sparse_view<const Flt, device::cuda, mathprim::sparse::sparse_format::csr>;
 
+  auto b_view = view<device::cuda>(b.data(), make_shape(b.size())).as_const();
+  auto x_view = view<device::cuda>(x.data(), make_shape(x.size()));
+
   if (b.ndim() != 1 || x.ndim() != 1) {
     throw std::invalid_argument("b and x must be 1D arrays.");
   }
 
-  if (b.size() != rows || x.size() != cols) {
+  if (b_view.size() != rows || x_view.size() != cols) {
     throw std::invalid_argument("b and x must have the same size as the matrix.");
   }
 
@@ -289,8 +295,6 @@ static std::tuple<index_t, double, double> pcg_with_ext_spai_cuda_direct(    //
   start = time_now();
 
   // 2. Setup working vectors.
-  auto b_view = view<device::cuda>(b.data(), make_shape(b.size())).as_const();
-  auto x_view = view<device::cuda>(x.data(), make_shape(x.size()));
 
   sparse::convergence_criteria<Flt> criteria{max_iter, rtol};
   sparse::convergence_result<Flt> result;

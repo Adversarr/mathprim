@@ -57,10 +57,13 @@ protected:
 };
 
 template <typename Scalar, sparse_format Compression>
-using eigen_ichol = eigen_preconditioner<Scalar, Eigen::IncompleteCholesky<Scalar>, Compression>;
+using eigen_ichol
+    = eigen_preconditioner<Scalar, Eigen::IncompleteCholesky<Scalar, Eigen::Lower, Eigen::NaturalOrdering<index_t>>,
+                           Compression>;
 
 template <typename Scalar, sparse_format Compression>
-using eigen_ilu = eigen_preconditioner<Scalar, Eigen::IncompleteLUT<Scalar>, Compression>;
+using eigen_ilu
+    = eigen_preconditioner<Scalar, Eigen::IncompleteLUT<Scalar, Eigen::NaturalOrdering<index_t>>, Compression>;
 
 ///! Use diagonal_preconditioner instead, this class is reserved for debug use
 template <typename Scalar, sparse_format Compression>

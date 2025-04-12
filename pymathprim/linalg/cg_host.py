@@ -5,6 +5,7 @@ from scipy.sparse import csr_matrix
 
 __all__ = [
     "ainv",
+    "ichol",
     "pcg",
     "pcg_diagonal",
     "pcg_ainv",
@@ -146,6 +147,16 @@ def pcg_with_ext_spai(
         A, b, x, ainv, epsilon, rtol, max_iter, verbose
     )
 
+def ichol(A: csr_matrix) -> csr_matrix:
+    """
+    Compute the content of the Incomplete Cholesky preconditioner.
+
+    Returns
+    -------
+    csr_matrix
+        The content of the Incomplete Cholesky preconditioner.
+    """
+    return libpymathprim.linalg.ichol_content(A)
 
 def ainv(A: csr_matrix) -> csr_matrix:
     """
