@@ -77,3 +77,15 @@ for method in [pcg, pcg_cuda, pcg_diagonal, pcg_ainv, pcg_diagonal_cuda, pcg_ain
     print(method.__name__)
     t = Timer(lambda: eval_once(method))
     print(t.timeit(number=cnt) / cnt)
+
+print("=== pcg_with_ext_spai ===")
+x = np.ones(n*n, dtype=np.float64)
+b = A @ x
+x = np.zeros(n*n, dtype=np.float64)
+print(pcg_with_ext_spai(A, b, x, ainv(A), 1e-6, 1e-6, n * n * 4, 1))
+
+print("=== pcg_with_ext_spai_cuda ===")
+x = np.ones(n*n, dtype=np.float64)
+b = A @ x
+x = np.zeros(n*n, dtype=np.float64)
+print(pcg_with_ext_spai_cuda(A, b, x, ainv(A), 1e-6, 1e-6, n * n * 4, 1))

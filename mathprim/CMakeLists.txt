@@ -51,6 +51,8 @@ endif()
 if(MATHPRIM_ENABLE_CUDA)
   find_package(CUDAToolkit REQUIRED)
   message(STATUS "Enabling CUDA")
+  message(STATUS "CUDA tk version: ${CUDAToolkit_VERSION}")
+  message(STATUS "CUDA tk path: ${CUDAToolkit_ROOT}")
 
   if(MATHPRIM_CUDA_LINK_DYNAMIC)
     message(STATUS "Linking to dynamic CUDA libraries. Please check if your application support this.")

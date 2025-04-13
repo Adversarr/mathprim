@@ -1,7 +1,9 @@
 #pragma once
 #include <cmath>
+
 #include "mathprim/core/buffer.hpp"
 #include "mathprim/linalg/iterative/iterative.hpp"
+#include "mathprim/supports/eigen_sparse.hpp"
 
 namespace mathprim::sparse::iterative {
 
@@ -27,10 +29,37 @@ public:
   sparse_preconditioner(const sparse_preconditioner&) = delete;
   sparse_preconditioner(sparse_preconditioner&&) = default;
 
+  using sparse_matrix = basic_sparse_matrix<Scalar, Device, sparse::sparse_format::csr>;
+
   void set_approximation(const_sparse mat, Scalar eps) {
-    bl_ = SparseBlas(mat);
+    bl_l_ = SparseBlas(mat);
     buffer_intern_ = make_buffer<Scalar, Device>(mat.rows());
     eps_ = eps;
+  }
+
+  void set_approximation(const Eigen::SparseMatrix<Scalar, Eigen::RowMajor, index_t>& mat, Scalar eps) {
+    eps_ = eps;
+    MATHPRIM_INTERNAL_CHECK_THROW(mat.isCompressed(), std::runtime_error,  //
+                                  "Eigen sparse matrix must be compressed.");
+
+    Eigen::SparseMatrix<Scalar, Eigen::RowMajor, index_t> mat_transpose = mat.transpose();
+    mat_transpose.makeCompressed();
+    auto matview = eigen_support::view(mat);
+    auto matview_transpose = eigen_support::view(mat_transpose);
+
+    // copy the matrix locally.
+    mat_l_ = sparse_matrix(matview.rows(), matview.cols(), matview.nnz());
+    mat_u_ = sparse_matrix(matview_transpose.rows(), matview_transpose.cols(), matview_transpose.nnz());
+
+    copy(mat_l_.view().outer_ptrs(), matview.outer_ptrs());
+    copy(mat_l_.view().inner_indices(), matview.inner_indices());
+    copy(mat_l_.view().values(), matview.values());
+    copy(mat_u_.view().outer_ptrs(), matview_transpose.outer_ptrs());
+    copy(mat_u_.view().inner_indices(), matview_transpose.inner_indices());
+    copy(mat_u_.view().values(), matview_transpose.values());
+    buffer_intern_ = make_buffer<Scalar, Device>(mat.rows());
+    bl_l_ = SparseBlas(mat_l_.view());
+    bl_u_ = SparseBlas(mat_u_.view());
   }
 
 private:
@@ -38,16 +67,24 @@ private:
     MATHPRIM_INTERNAL_CHECK_THROW(buffer_intern_, std::runtime_error, "Preconditioner not initialized.");
     // z = lo.T * x.
     auto z = buffer_intern_.view();
-    bl_.gemv(1, x, 0, z, true);
+    if (mat_u_) {
+      bl_u_.gemv(1, x, 0, z, false);
+    } else {
+      bl_l_.gemv(1, x, 0, z, true);
+    }
     // y = lo * y.
-    bl_.gemv(1, z, 0, y, false);
+    bl_l_.gemv(1, z, 0, y, false);
     // y = y + eps x
     dense_bl_.axpy(eps_, x, y);
   }
 
-  SparseBlas bl_;
   Scalar eps_;
   Blas dense_bl_;
   contiguous_vector_buffer<Scalar, Device> buffer_intern_;
+
+  SparseBlas bl_l_;
+  SparseBlas bl_u_;
+  sparse_matrix mat_l_;
+  sparse_matrix mat_u_;
 };
 }  // namespace mathprim::sparse::iterative

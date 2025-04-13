@@ -194,13 +194,13 @@ static std::tuple<index_t, double, double> pcg_with_ext_spai(  //
   copy(view_device.inner_indices(), matrix_host.inner_indices());
   copy(view_device.values(), matrix_host.values());
 
-  auto ainv_host = eigen_support::view(ainv);
-  auto ainv_device = sparse::basic_sparse_matrix<Flt, device::cuda, mathprim::sparse::sparse_format::csr>(
-      ainv_host.rows(), ainv_host.cols(), ainv_host.nnz());
-  auto view_ainv = ainv_device.view();
-  copy(view_ainv.outer_ptrs(), ainv_host.outer_ptrs());
-  copy(view_ainv.inner_indices(), ainv_host.inner_indices());
-  copy(view_ainv.values(), ainv_host.values());
+  // auto ainv_host = eigen_support::view(ainv);
+  // auto ainv_device = sparse::basic_sparse_matrix<Flt, device::cuda, mathprim::sparse::sparse_format::csr>(
+  //     ainv_host.rows(), ainv_host.cols(), ainv_host.nnz());
+  // auto view_ainv = ainv_device.view();
+  // copy(view_ainv.outer_ptrs(), ainv_host.outer_ptrs());
+  // copy(view_ainv.inner_indices(), ainv_host.inner_indices());
+  // copy(view_ainv.values(), ainv_host.values());
 
   // 2. Prepare the buffers.
   auto h_b = view(b.data(), make_shape(b.size()));
@@ -215,7 +215,8 @@ static std::tuple<index_t, double, double> pcg_with_ext_spai(  //
   // 3. Solve the system.
   auto start = time_now();
   Solver solver(view_device.as_const());
-  solver.preconditioner().derived().set_approximation(view_ainv.as_const(), epsilon);
+  // solver.preconditioner().derived().set_approximation(view_ainv.as_const(), epsilon);
+  solver.preconditioner().derived().set_approximation(ainv, epsilon);
   auto prec = time_elapsed(start);
   start = time_now();
   sparse::convergence_criteria<Flt> criteria{max_iter, rtol};

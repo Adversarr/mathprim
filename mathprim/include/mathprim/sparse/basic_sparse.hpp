@@ -267,6 +267,8 @@ public:
     return {std::move(value_buf), std::move(outer_buf), std::move(inner_buf), rows_, cols_, nnz_, property_};
   }
 
+  explicit operator bool() const noexcept { return values_ && outer_ptrs_ && inner_indices_; }
+
 protected:
   values_buffer values_;
   index_buffer outer_ptrs_;

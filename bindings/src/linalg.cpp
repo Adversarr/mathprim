@@ -258,7 +258,8 @@ std::tuple<index_t, double, double> pcg_with_ext_spai_callback(  //
   auto start = helper::time_now();
   Solver solver(eigen_support::view(A));
   auto prec = time_elapsed(start);
-  solver.preconditioner().derived().set_approximation(eigen_support::view(ainv), epsilon);
+  // solver.preconditioner().derived().set_approximation(eigen_support::view(ainv), epsilon);
+  solver.preconditioner().derived().set_approximation(ainv, epsilon);
 
   sparse::convergence_criteria<Flt> criteria{
     max_iter,
