@@ -21,6 +21,7 @@ def get_pcg_cuda(preconditioner: str) -> Callable:
         pcg_ainv_cuda,
         pcg_ic_cuda,
         pcg_with_ext_spai_cuda,
+        pcg_with_ext_spai_cuda_scaled
     )
 
     preconditioners = {
@@ -29,6 +30,7 @@ def get_pcg_cuda(preconditioner: str) -> Callable:
         "ainv": pcg_ainv_cuda,
         "ic": pcg_ic_cuda,
         "ext_spai": pcg_with_ext_spai_cuda,
+        "ext_spai_scaled": pcg_with_ext_spai_cuda_scaled,
     }
     if preconditioner not in preconditioners:
         raise ValueError("Unknown preconditioner: {}".format(preconditioner))
@@ -46,7 +48,14 @@ def get_pcg_host(preconditioner: str) -> Callable:
     Callable
         CG Callable
     """
-    from .cg_host import pcg, pcg_diagonal, pcg_ainv, pcg_ic, pcg_with_ext_spai
+    from .cg_host import (
+        pcg,
+        pcg_diagonal,
+        pcg_ainv,
+        pcg_ic,
+        pcg_with_ext_spai,
+        pcg_with_ext_spai_scaled,
+    )
 
     preconditioners = {
         "none": pcg,
@@ -54,6 +63,7 @@ def get_pcg_host(preconditioner: str) -> Callable:
         "ainv": pcg_ainv,
         "ic": pcg_ic,
         "ext_spai": pcg_with_ext_spai,
+        "ext_spai_scaled": pcg_with_ext_spai_scaled,
     }
     if preconditioner not in preconditioners:
         raise ValueError("Unknown preconditioner: {}".format(preconditioner))
@@ -65,7 +75,7 @@ class PreconditionedConjugateGradient:
         self,
         matrix: csr_matrix,
         device: Literal["cpu", "cuda"],
-        preconditioner: Literal["none", "ainv", "ic", "diagonal", "ext_spai"],
+        preconditioner: Literal["none", "ainv", "ic", "diagonal", "ext_spai", "ext_spai_scaled"],
         dtype: Optional[np.dtype] = None,
     ):
         self.dtype = dtype or matrix.dtype
@@ -109,13 +119,11 @@ class PreconditionedConjugateGradient:
         """
 
         method = self.get_pcg()
-        if self.preconditioner == "ext_spai":
-            assert (
-                ext_spai is not None
-            ), "ext_spai must be provided for ext_spai preconditioner"
+        if self.preconditioner == "ext_spai" or self.preconditioner == "ext_spai_scaled":
+            assert ext_spai is not None, "ext_spai must be provided for ext_spai preconditioner"
             ainv, eps = ext_spai
             method = partial(method, ainv=ainv, epsilon=eps)
-        if self.device == "cpu" and self.preconditioner != 'ext_spai':
+        if self.device == "cpu" and self.preconditioner not in ["ext_spai", "ext_spai_scaled"]:
             # only cpu version support this.
             method = partial(method, callback=callback)
         return method(

@@ -456,11 +456,11 @@ private:
     auto z = buffer_intern_.view();
     auto diag = diags_.const_view();
     // z = lo.T * x.
-    bl_.gemv(1, x, 0, z, true);
+    bl_.gemv(1, x, 0, z, false);
     // z = diag * z
     Blas().emul(diag, z);
     // y = lo * y.
-    bl_.gemv(1, z, 0, y, false);
+    bl_.gemv(1, z, 0, y, true);
   }
 
   Scalar drop_tolerance_ = {0.1};
@@ -566,9 +566,9 @@ private:
     MATHPRIM_INTERNAL_CHECK_THROW(has_compute_, std::runtime_error, "The preconditioner has not been computed.");
     auto z = buffer_intern_.view();
     // z = lo.T * x.
-    bl_.gemv(1, x, 0, z, true);
+    bl_.gemv(1, x, 0, z, false);
     // y = lo * y.
-    bl_.gemv(1, z, 0, y, false);
+    bl_.gemv(1, z, 0, y, true);
   }
 
   Scalar drop_tolerance_ = {0.1};

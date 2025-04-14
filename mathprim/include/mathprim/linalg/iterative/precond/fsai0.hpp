@@ -165,10 +165,10 @@ private:
   void apply_impl(vector_type y, const_vector x) {
     MATHPRIM_INTERNAL_CHECK_THROW(has_compute_, std::runtime_error, "The preconditioner has not been computed.");
     auto z = buffer_intern_.view();
-    // z = lo.T * x.
-    bl_.gemv(1, x, 0, z, true);
-    // y = lo * y.
-    bl_.gemv(1, z, 0, y, false);
+    // z = lo * x.
+    bl_.gemv(1, x, 0, z, false);
+    // y = lo.T * y.
+    bl_.gemv(1, z, 0, y, true);
   }
 
   bool has_compute_ = false;

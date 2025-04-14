@@ -185,6 +185,7 @@ static Eigen::SparseMatrix<Flt, Eigen::RowMajor> ichol_content(  //
   auto lower_mat = ic.matrixL();
   return lower_mat;
 }
+
 template <typename Flt = float>
 std::tuple<index_t, double, double> pcg_with_ext_spai(const Eigen::SparseMatrix<Flt, Eigen::RowMajor>& A,     //
                                                       nb::ndarray<Flt, nb::ndim<1>, nb::device::cpu> b,       //
@@ -232,6 +233,54 @@ std::tuple<index_t, double, double> pcg_with_ext_spai(const Eigen::SparseMatrix<
 }
 
 template <typename Flt = float>
+std::tuple<index_t, double, double> pcg_with_ext_spai_scaled(  //
+    const Eigen::SparseMatrix<Flt, Eigen::RowMajor>& A,        //
+    nb::ndarray<Flt, nb::ndim<1>, nb::device::cpu> b,          //
+    nb::ndarray<Flt, nb::ndim<1>, nb::device::cpu> x,          //
+    const Eigen::SparseMatrix<Flt, Eigen::RowMajor>& ainv,     //
+    Flt epsilon,                                               //
+    const Flt& rtol,                                           //
+    index_t max_iter,                                          //
+    int verbose) {
+  using SparseBlas = mp::sparse::blas::eigen<Flt, sparse::sparse_format::csr>;
+  using Blas = mp::blas::cpu_blas<Flt>;
+  using Precond = mp::sparse::iterative::scale_sparse_preconditioner<SparseBlas, Blas>;
+  using Solver = mp::sparse::iterative::cg<Flt, mp::device::cpu, SparseBlas, Blas, Precond>;
+  if (b.ndim() != 1 || x.ndim() != 1) {
+    throw std::invalid_argument("b and x must be 1D arrays.");
+  }
+
+  auto b_view = view(b.data(), make_shape(b.size()));
+  auto x_view = view(x.data(), make_shape(x.size()));
+  if (b_view.size() != A.rows() || x_view.size() != A.cols()) {
+    throw std::invalid_argument("b and x must have the same size as the matrix.");
+  }
+
+  auto start = helper::time_now();
+  Solver solver(eigen_support::view(A));
+  auto prec = time_elapsed(start);
+  solver.preconditioner().derived().set_approximation(eigen_support::view(ainv), epsilon);
+
+  sparse::convergence_criteria<Flt> criteria{
+    max_iter,
+    rtol,
+  };
+  sparse::convergence_result<Flt> result;
+  if (verbose > 0) {
+    result = solver.solve(x_view, b_view, criteria, [verbose](index_t iter, Flt norm) {
+      if (iter % verbose == 0) {
+        std::cout << "Iteration: " << iter << ", Norm: " << norm << std::endl;
+      }
+    });
+  } else {
+    result = solver.solve(x_view, b_view, criteria);
+  }
+
+  double solve = time_elapsed(start);
+  return {result.iterations_, prec, solve};
+}
+
+template <typename Flt = float>
 std::tuple<index_t, double, double> pcg_with_ext_spai_callback(  //
     const Eigen::SparseMatrix<Flt, Eigen::RowMajor>& A,          //
     nb::ndarray<Flt, nb::ndim<1>, nb::device::cpu> b,            //
@@ -258,7 +307,6 @@ std::tuple<index_t, double, double> pcg_with_ext_spai_callback(  //
   auto start = helper::time_now();
   Solver solver(eigen_support::view(A));
   auto prec = time_elapsed(start);
-  // solver.preconditioner().derived().set_approximation(eigen_support::view(ainv), epsilon);
   solver.preconditioner().derived().set_approximation(ainv, epsilon);
 
   sparse::convergence_criteria<Flt> criteria{
@@ -300,6 +348,17 @@ void bind_linalg(nb::module_& m) {
         nb::arg("ainv").noconvert(), nb::arg("epsilon"),                                                      //
         nb::arg("rtol") = 1e-4f, nb::arg("max_iter") = 0, nb::arg("verbose") = 0);
 
+  m.def("pcg_with_ext_spai_scaled", &pcg_with_ext_spai_scaled<float>,
+        "Preconditioned Conjugate Gradient method on CPU.",                            //
+        nb::arg("A").noconvert(), nb::arg("b").noconvert(), nb::arg("x").noconvert(),  //
+        nb::arg("ainv").noconvert(), nb::arg("epsilon"),                               //
+        nb::arg("rtol") = 1e-4f, nb::arg("max_iter") = 0, nb::arg("verbose") = 0);
+  m.def("pcg_with_ext_spai_scaled", &pcg_with_ext_spai_scaled<double>,
+        "Preconditioned Conjugate Gradient method on CPU.",                            //
+        nb::arg("A").noconvert(), nb::arg("b").noconvert(), nb::arg("x").noconvert(),  //
+        nb::arg("ainv").noconvert(), nb::arg("epsilon"),                               //
+        nb::arg("rtol") = 1e-4f, nb::arg("max_iter") = 0, nb::arg("verbose") = 0);
+
   m.def("pcg_cb_with_ext_spai", &pcg_with_ext_spai_callback<double>,                   //
         "Preconditioned Conjugate Gradient method on CPU.",                            //
         nb::arg("A").noconvert(), nb::arg("b").noconvert(), nb::arg("x").noconvert(),  //
@@ -316,6 +375,7 @@ void bind_linalg(nb::module_& m) {
         nb::arg("A").noconvert());
   m.def("ainv_content", &ainv_content<double>, "Get the content of the Approx Inverse Preconditioner.",
         nb::arg("A").noconvert());
+
   m.def("ichol_content", &ichol_content<double>, "Compute the incomplete Cholesky factorization of a matrix.",  //
         nb::arg("m").noconvert());
   m.def("ichol_content", &ichol_content<float>, "Compute the incomplete Cholesky factorization of a matrix.",  //

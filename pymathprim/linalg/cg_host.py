@@ -147,6 +147,31 @@ def pcg_with_ext_spai(
         A, b, x, ainv, epsilon, rtol, max_iter, verbose
     )
 
+def pcg_with_ext_spai_scaled(
+    A: csr_matrix,
+    b: np.ndarray,
+    x: np.ndarray,
+    ainv: csr_matrix,
+    epsilon: float,
+    rtol: float = 1e-4,
+    max_iter: int = 0,
+    verbose: int = 0,
+) -> Tuple[int, float, float]:
+    """
+    Solve the linear system Ax = b using the conjugate gradient method with External SPAI preconditioner.
+
+    Returns
+    -------
+    int
+        The number of iterations.
+    float
+        The time taken to solve the linear system.
+    """
+    return libpymathprim.linalg.pcg_with_ext_spai_scaled(
+        A, b, x, ainv, epsilon, rtol, max_iter, verbose
+    )
+
+
 def ichol(A: csr_matrix) -> csr_matrix:
     """
     Compute the content of the Incomplete Cholesky preconditioner.
