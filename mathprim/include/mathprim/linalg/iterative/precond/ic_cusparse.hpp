@@ -92,8 +92,14 @@ public:
     /* Allocate required memory */
     chol_nnz_copy_ = make_cuda_buffer<Scalar>(nnz);
     /* Wrap raw data into cuSPARSE generic API objects */
-    MATHPRIM_CHECK_CUSPARSE(cusparseCreateDnVec(&vec_x_, rows, nullptr, dtype));
-    MATHPRIM_CHECK_CUSPARSE(cusparseCreateDnVec(&vec_y_, rows, nullptr, dtype));
+    // MATHPRIM_CHECK_CUSPARSE(cusparseCreateDnVec(&vec_x_, rows, nullptr, dtype));
+    // MATHPRIM_CHECK_CUSPARSE(cusparseCreateDnVec(&vec_y_, rows, nullptr, dtype));
+    buffer_intern_ = make_cuda_buffer<Scalar>(rows);
+    buffer_x_ = make_cuda_buffer<Scalar>(rows);
+    buffer_y_ = make_cuda_buffer<Scalar>(rows);
+    MATHPRIM_CHECK_CUSPARSE(cusparseCreateDnVec(&vec_intern_, rows, buffer_intern_.data(), dtype));
+    MATHPRIM_CHECK_CUSPARSE(cusparseCreateDnVec(&vec_x_, rows, buffer_x_.data(), dtype));
+    MATHPRIM_CHECK_CUSPARSE(cusparseCreateDnVec(&vec_y_, rows, buffer_y_.data(), dtype));
 
     /* Initialize problem data */
     cusparseFillMode_t fill_lower = CUSPARSE_FILL_MODE_LOWER;
@@ -156,9 +162,6 @@ public:
                                                     descr_sparse_lower_, vec_x_, vec_y_, dtype,
                                                     CUSPARSE_SPSV_ALG_DEFAULT, spsvDescrL_, &buf_size_l));
     buffer_lt_ = make_cuda_buffer<char>(buf_size_l);
-
-    buffer_intern_ = make_cuda_buffer<Scalar>(rows);
-    MATHPRIM_CHECK_CUSPARSE(cusparseCreateDnVec(&vec_intern_, rows, buffer_intern_.data(), dtype));
   }
 
   void factorize_impl() {
@@ -260,9 +263,7 @@ private:
     cusparseHandle_t handle = sparse::blas::internal::get_cusparse_handle();
     Scalar floatone = 1;
     auto dtype = std::is_same_v<Scalar, float> ? CUDA_R_32F : CUDA_R_64F;
-    MATHPRIM_CHECK_CUSPARSE(cusparseDnVecSetValues(vec_x_,
-                                                   const_cast<Scalar*>(x.data())));  // input
-    MATHPRIM_CHECK_CUSPARSE(cusparseDnVecSetValues(vec_y_, y.data()));               // output
+    copy(buffer_x_.view(), x);
     auto no_trans = CUSPARSE_OPERATION_NON_TRANSPOSE;
     auto trans = CUSPARSE_OPERATION_TRANSPOSE;
     MATHPRIM_CHECK_CUSPARSE(cusparseSpSV_solve(           //
@@ -275,6 +276,7 @@ private:
         trans, &floatone,                                 // info
         descr_sparse_lower_, vec_intern_, vec_y_, dtype,  // descriptors
         CUSPARSE_SPSV_ALG_DEFAULT, spsvDescrLtrans_));
+    copy(y, buffer_y_.view());
   }
 
   // Matrix A:
@@ -288,6 +290,9 @@ private:
   contiguous_buffer<Scalar, dshape<1>, device::cuda> chol_nnz_copy_;
   contiguous_buffer<Scalar, dshape<1>, device::cuda> buffer_intern_;
   contiguous_buffer<char, dshape<1>, device::cuda> buffer_l_, buffer_lt_, buffer_chol_;
+
+  contiguous_vector_buffer<Scalar, device::cuda> buffer_x_;
+  contiguous_vector_buffer<Scalar, device::cuda> buffer_y_;
 
   // solver
   cusparseSpSVDescr_t spsvDescrL_{nullptr}, spsvDescrLtrans_{nullptr};
