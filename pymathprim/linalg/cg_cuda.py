@@ -25,6 +25,7 @@ def pcg_with_ext_spai_cuda_scaled(
     x: np.ndarray,
     ainv: csr_matrix,
     epsilon: float,
+    already_scaled: bool = True,
     rtol: float = 1e-4,
     max_iter: int = 0,
     verbose: int = 0,
@@ -40,7 +41,7 @@ def pcg_with_ext_spai_cuda_scaled(
         The time taken to solve the linear system.
     """
     return libpymathprim.linalg.pcg_with_ext_spai_cuda_scaled(
-        A, b, x, ainv, epsilon, rtol, max_iter, verbose
+        A, b, x, ainv, epsilon, already_scaled, rtol, max_iter, verbose
     )
 
 

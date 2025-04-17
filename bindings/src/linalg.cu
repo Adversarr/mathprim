@@ -243,6 +243,7 @@ static std::tuple<index_t, double, double> pcg_with_ext_spai_scaled(  //
     nb::ndarray<Flt, nb::ndim<1>, nb::device::cpu> x,                 //
     const Eigen::SparseMatrix<Flt, Eigen::RowMajor>& ainv,            //
     Flt epsilon,                                                      //
+    bool already_scaled,                                              //
     const Flt& rtol,                                                  //
     index_t max_iter,                                                 //
     int verbose) {
@@ -283,7 +284,7 @@ static std::tuple<index_t, double, double> pcg_with_ext_spai_scaled(  //
   auto start = time_now();
   Solver solver(view_device.as_const());
   // solver.preconditioner().derived().set_approximation(view_ainv.as_const(), epsilon);
-  solver.preconditioner().derived().set_approximation(ainv, epsilon);
+  solver.preconditioner().derived().set_approximation(ainv, epsilon, already_scaled);
   auto prec = time_elapsed(start);
   start = time_now();
   sparse::convergence_criteria<Flt> criteria{max_iter, rtol};
@@ -414,10 +415,10 @@ static void bind_extra(nb::module_& m) {
 
   m.def("pcg_with_ext_spai_cuda_scaled", &pcg_with_ext_spai_scaled<Flt>,
         "Preconditioned CG on GPU (cpu->gpu->cpu) (with SPAI precond.)",
-        nb::arg("A").noconvert(),                         // System to solve
-        nb::arg("b").noconvert(),                         // Right-hand side
-        nb::arg("x").noconvert(),                         // Initial guess
-        nb::arg("ainv").noconvert(), nb::arg("epsilon"),  // Approximate inverse
+        nb::arg("A").noconvert(),                                                    // System to solve
+        nb::arg("b").noconvert(),                                                    // Right-hand side
+        nb::arg("x").noconvert(),                                                    // Initial guess
+        nb::arg("ainv").noconvert(), nb::arg("epsilon"), nb::arg("already_scaled"),  // Approximate inverse
         nb::arg("rtol") = 1e-4f, nb::arg("max_iter") = 0, nb::arg("verbose") = 0);
 
   m.def("pcg_with_ext_spai_cuda_direct", &pcg_with_ext_spai_cuda_direct<Flt>,                                    //

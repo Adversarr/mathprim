@@ -239,6 +239,7 @@ std::tuple<index_t, double, double> pcg_with_ext_spai_scaled(  //
     nb::ndarray<Flt, nb::ndim<1>, nb::device::cpu> x,          //
     const Eigen::SparseMatrix<Flt, Eigen::RowMajor>& ainv,     //
     Flt epsilon,                                               //
+    bool already_scaled,                                       //
     const Flt& rtol,                                           //
     index_t max_iter,                                          //
     int verbose) {
@@ -259,7 +260,7 @@ std::tuple<index_t, double, double> pcg_with_ext_spai_scaled(  //
   auto start = helper::time_now();
   Solver solver(eigen_support::view(A));
   auto prec = time_elapsed(start);
-  solver.preconditioner().derived().set_approximation(eigen_support::view(ainv), epsilon);
+  solver.preconditioner().derived().set_approximation(eigen_support::view(ainv), epsilon, already_scaled);
 
   sparse::convergence_criteria<Flt> criteria{
     max_iter,
@@ -351,12 +352,12 @@ void bind_linalg(nb::module_& m) {
   m.def("pcg_with_ext_spai_scaled", &pcg_with_ext_spai_scaled<float>,
         "Preconditioned Conjugate Gradient method on CPU.",                            //
         nb::arg("A").noconvert(), nb::arg("b").noconvert(), nb::arg("x").noconvert(),  //
-        nb::arg("ainv").noconvert(), nb::arg("epsilon"),                               //
+        nb::arg("ainv").noconvert(), nb::arg("epsilon"), nb::arg("already_scaled"),    //
         nb::arg("rtol") = 1e-4f, nb::arg("max_iter") = 0, nb::arg("verbose") = 0);
   m.def("pcg_with_ext_spai_scaled", &pcg_with_ext_spai_scaled<double>,
         "Preconditioned Conjugate Gradient method on CPU.",                            //
         nb::arg("A").noconvert(), nb::arg("b").noconvert(), nb::arg("x").noconvert(),  //
-        nb::arg("ainv").noconvert(), nb::arg("epsilon"),                               //
+        nb::arg("ainv").noconvert(), nb::arg("epsilon"), nb::arg("already_scaled"),    //
         nb::arg("rtol") = 1e-4f, nb::arg("max_iter") = 0, nb::arg("verbose") = 0);
 
   m.def("pcg_cb_with_ext_spai", &pcg_with_ext_spai_callback<double>,                   //

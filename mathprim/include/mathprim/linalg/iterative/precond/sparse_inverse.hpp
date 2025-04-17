@@ -114,13 +114,15 @@ public:
 
   using sparse_matrix = basic_sparse_matrix<Scalar, Device, sparse::sparse_format::csr>;
 
-  void set_approximation(const_sparse mat, Scalar eps) {
+  void set_approximation(const_sparse mat, Scalar eps, bool already_scaled=false) {
+    already_scaled_ = already_scaled;
     bl_l_ = SparseBlas(mat);
     buffer_intern_ = make_buffer<Scalar, Device>(mat.rows());
     eps_ = eps;
   }
 
-  void set_approximation(const Eigen::SparseMatrix<Scalar, Eigen::RowMajor, index_t>& mat, Scalar eps) {
+  void set_approximation(const Eigen::SparseMatrix<Scalar, Eigen::RowMajor, index_t>& mat, Scalar eps, bool already_scaled=false) {
+    already_scaled_ = already_scaled;
     eps_ = eps;
     MATHPRIM_INTERNAL_CHECK_THROW(mat.isCompressed(), std::runtime_error,  //
                                   "Eigen sparse matrix must be compressed.");
@@ -166,7 +168,10 @@ private:
     } else {
       bl_l_.gemv(1, x, 0, z, true);
     }
-    dense_bl_.inplace_emul(invd, z);
+
+    if (!already_scaled_) {
+      dense_bl_.inplace_emul(invd, z);
+    }
 
     // y = lo * z + eps_ * y
     bl_l_.gemv(1, z, eps_, y, false);
@@ -181,6 +186,7 @@ private:
   SparseBlas bl_u_;
   sparse_matrix mat_l_;
   sparse_matrix mat_u_;
+  bool already_scaled_ = false;
 };
 
 }  // namespace mathprim::sparse::iterative

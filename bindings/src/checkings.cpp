@@ -3,7 +3,7 @@
 void add_1(nb::ndarray<int, nb::shape<-1>, nb::device::cpu, nb::numpy> arr) {
   auto cnt = arr.size();
   auto* ptr = arr.data();
-  for (ssize_t i = 0; i < cnt; ++i) {
+  for (size_t i = 0; i < cnt; ++i) {
     ptr[i] += 1;
   }
 }
