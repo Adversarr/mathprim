@@ -458,7 +458,7 @@ private:
     // z = lo.T * x.
     bl_.gemv(1, x, 0, z, false);
     // z = diag * z
-    Blas().emul(diag, z);
+    Blas().inplace_emul(diag, z);
     // y = lo * y.
     bl_.gemv(1, z, 0, y, true);
   }

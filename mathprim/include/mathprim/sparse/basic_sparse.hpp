@@ -126,7 +126,7 @@ public:
     return property_;
   }
 
-  basic_sparse_view<std::add_const_t<Scalar>, Device, SparseCompression> as_const() const noexcept {
+  MATHPRIM_PRIMFUNC basic_sparse_view<std::add_const_t<Scalar>, Device, SparseCompression> as_const() const noexcept {
     return basic_sparse_view<std::add_const_t<Scalar>, Device, SparseCompression>(
         values_.as_const(), outer_ptrs_.as_const(), inner_indices_.as_const(), rows_, cols_, nnz_, property_);
   }

@@ -30,7 +30,7 @@ protected:
   void apply_impl(vector_type y, const_vector x) {
     MATHPRIM_INTERNAL_CHECK_THROW(inv_diag_, std::runtime_error, "Preconditioner not initialized.");
     blas_.copy(y, x);  // Y = X
-    blas_.emul(inv_diag_.const_view(), y);
+    blas_.inplace_emul(inv_diag_.const_view(), y);
   }
 
 private:

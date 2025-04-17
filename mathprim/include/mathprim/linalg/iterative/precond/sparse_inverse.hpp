@@ -155,8 +155,9 @@ private:
   void apply_impl(vector_type y, const_vector x) {
     MATHPRIM_INTERNAL_CHECK_THROW(buffer_intern_, std::runtime_error, "Preconditioner not initialized.");
     auto invd = inv_diag_.const_view();
-    dense_bl_.copy(y, x);     // y = x
-    dense_bl_.emul(invd, y);  // y = D^-1 * x
+    // copy(y, x);     // y = x
+    // dense_bl_.inplace_emul(invd, y);  // y = D^-1 * x
+    dense_bl_.emul(invd, x, y);  // y = D^-1 * x
 
     // z = lo.T * x.
     auto z = buffer_intern_.view();
@@ -165,7 +166,7 @@ private:
     } else {
       bl_l_.gemv(1, x, 0, z, true);
     }
-    dense_bl_.emul(invd, z);
+    dense_bl_.inplace_emul(invd, z);
 
     // y = lo * z + eps_ * y
     bl_l_.gemv(1, z, eps_, y, false);

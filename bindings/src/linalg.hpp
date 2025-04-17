@@ -1,8 +1,18 @@
 #pragma once
 #include <chrono>
 
+#ifdef __GNUC__
+#  pragma GCC diagnostic push
+#  pragma GCC diagnostic ignored "-Wpedantic"
+#endif
+#include <nanobind/stl/tuple.h>
+#ifdef __GNUC__
+#  pragma GCC diagnostic pop
+#endif
+
 #include "common.hpp"
 
+#define TOSTR(x) #x
 void bind_linalg(nb::module_& m);
 void bind_linalg_cuda(nb::module_& m);
 

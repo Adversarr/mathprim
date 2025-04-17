@@ -182,11 +182,22 @@ protected:
   // element-wise operatons
   // y = x * y
   template <typename SshapeX, typename SstrideX, typename SshapeY, typename SstrideY>
-  void emul_impl(const_type<SshapeX, SstrideX> x, view_type<SshapeY, SstrideY> y) {
+  void inplace_emul_impl(const_type<SshapeX, SstrideX> x, view_type<SshapeY, SstrideY> y) {
     auto total = x.shape(0);
     MATHPRIM_PRAGMA_UNROLL_HOST
     for (index_t i = 0; i < total; ++i) {
       y[i] = x[i] * y[i];
+    }
+  }
+
+  template <typename SshapeX, typename SstrideX, typename SshapeY, typename SstrideY,  //
+            typename SshapeZ, typename SstrideZ>
+  void emul_impl(const_type<SshapeX, SstrideX> x, const_type<SshapeY, SstrideY> y,  //
+                 view_type<SshapeZ, SstrideZ> z) {
+    auto total = x.shape(0);
+    MATHPRIM_PRAGMA_UNROLL_HOST
+    for (index_t i = 0; i < total; ++i) {
+      z[i] = x[i] * y[i];
     }
   }
 

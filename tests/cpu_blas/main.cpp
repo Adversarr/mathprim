@@ -112,7 +112,7 @@ GTEST_TEST(blas, gemm) {
   }
 }
 
-GTEST_TEST(blas, emul) {
+GTEST_TEST(blas, inplace_emul) {
   blas::cpu_blas<float> b;
   auto a = make_buffer<float>(12);
   auto x = make_buffer<float>(12);
@@ -126,7 +126,7 @@ GTEST_TEST(blas, emul) {
   }
   // y <- a y
   b.copy(y.view(), x.const_view());
-  b.emul(a.const_view(), y.view());
+  b.inplace_emul(a.const_view(), y.view());
   for (int i = 0; i < 12; ++i) {
     EXPECT_EQ(y.view()[i], i * i);
   }

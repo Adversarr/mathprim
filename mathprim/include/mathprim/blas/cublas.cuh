@@ -70,11 +70,21 @@ namespace internal {
 cublasHandle_t get_cublas_handle() { return singletons::cublas_context::get(); }
 
 template <typename Scalar>
-__global__ void emul_kernel(const Scalar *x, Scalar *y, index_t total,
+__global__ void inplace_emul_kernel(const Scalar *x, Scalar *y, index_t total,
                             index_t inc_x, index_t inc_y) {
   index_t i = blockIdx.x * blockDim.x + threadIdx.x;
   if (i < total) {
     y[i * inc_y] *= x[i * inc_x];
+  }
+}
+
+template <typename Scalar>
+__global__ void emul_kernel(const Scalar *x, const Scalar *y, Scalar *z,
+                            index_t total, index_t inc_x, index_t inc_y,
+                            index_t inc_z) {
+  index_t i = blockIdx.x * blockDim.x + threadIdx.x;
+  if (i < total) {
+    z[i * inc_z] = x[i * inc_x] * y[i * inc_y];
   }
 }
 
@@ -242,15 +252,24 @@ protected:
   }
 
   // Y <- alpha * A * X + beta * Y
-  template <typename SshapeX, typename SstrideX, typename SshapeY,
-            typename SstrideY>
-  void emul_impl(const_type<SshapeX, SstrideX> x,
-                                   view_type<SshapeY, SstrideY> y) {
+  template <typename SshapeX, typename SstrideX, typename SshapeY, typename SstrideY>
+  void inplace_emul_impl(const_type<SshapeX, SstrideX> x, view_type<SshapeY, SstrideY> y) {
     auto total = x.shape(0);
     auto block_size = 256;
     auto grid_size = (total + block_size - 1) / block_size;
-    internal::emul_kernel<Scalar><<<grid_size, block_size>>>(
+    internal::inplace_emul_kernel<Scalar><<<grid_size, block_size>>>(
         x.data(), y.data(), total, x.stride(-1), y.stride(-1));
+  }
+  template <typename SshapeX, typename SstrideX, typename SshapeY, typename SstrideY,  //
+            typename SshapeZ, typename SstrideZ>
+  void emul_impl(const_type<SshapeX, SstrideX> x, const_type<SshapeY, SstrideY> y,  //
+                 view_type<SshapeZ, SstrideZ> z) {
+    auto total = x.shape(0);
+    auto block_size = 256;
+    auto grid_size = (total + block_size - 1) / block_size;
+    internal::emul_kernel<Scalar><<<grid_size, block_size>>>(  //
+        x.data(), y.data(), z.data(), total,                   //
+        x.stride(-1), y.stride(-1), z.stride(-1));
   }
 
   // Level 2

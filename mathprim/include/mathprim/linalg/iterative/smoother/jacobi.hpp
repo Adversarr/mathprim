@@ -27,7 +27,7 @@ private:
 
   void apply_impl(vector_type dx, const_vector residual) {
     blas_.copy(dx, residual); // dx = residual
-    blas_.emul(inv_diag_.const_view(), dx); // dx = inv_diag_ * dx
+    blas_.inplace_emul(inv_diag_.const_view(), dx); // dx = inv_diag_ * dx
   }
 
   buffer_type inv_diag_;

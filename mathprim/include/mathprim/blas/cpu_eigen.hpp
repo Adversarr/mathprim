@@ -89,10 +89,20 @@ protected:
   // element-wise operatons
   // Y <- alpha * A * X + beta * Y
   template <typename SshapeX, typename SstrideX, typename SshapeY, typename SstrideY>
-  void emul_impl(const_type<SshapeX, SstrideX> x, view_type<SshapeY, SstrideY> y) {
+  void inplace_emul_impl(const_type<SshapeX, SstrideX> x, view_type<SshapeY, SstrideY> y) {
     auto map_x = eigen_support::amap(x);
     auto map_y = eigen_support::amap(y);
     map_y = map_x.cwiseProduct(map_y);
+  }
+
+  template <typename SshapeX, typename SstrideX, typename SshapeY, typename SstrideY,  //
+            typename SshapeZ, typename SstrideZ>
+  void emul_impl(const_type<SshapeX, SstrideX> x, const_type<SshapeY, SstrideY> y,  //
+                 view_type<SshapeZ, SstrideZ> z) {
+    auto map_x = eigen_support::amap(x);
+    auto map_y = eigen_support::amap(y);
+    auto map_z = eigen_support::amap(z);
+    map_z = map_x.cwiseProduct(map_y);
   }
 
   // // Level 2

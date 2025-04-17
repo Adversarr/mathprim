@@ -243,15 +243,37 @@ struct basic_blas {
   template <typename ScalarX, typename SshapeX, typename SstrideX,  // x
             typename SshapeY, typename SstrideY,                    // y
             typename = enable_if_same_scalar_t<ScalarX>>
-  void emul(generic_type<ScalarX, SshapeX, SstrideX> x, view_type<SshapeY, SstrideY> y) {
+  void inplace_emul(generic_type<ScalarX, SshapeX, SstrideX> x, view_type<SshapeY, SstrideY> y) {
     MATHPRIM_INTERNAL_CHECK_THROW(internal::is_capable_vector(x), std::runtime_error,
-                                  "Incompatible views for BLAS emul. (x)");
+                                  "Incompatible views for BLAS inplace_emul. (x)");
     MATHPRIM_INTERNAL_CHECK_THROW(internal::is_capable_vector(y), std::runtime_error,
-                                  "Incompatible views for BLAS emul. (y)");
+                                  "Incompatible views for BLAS inplace_emul. (y)");
 
-    MATHPRIM_INTERNAL_CHECK_THROW(x.shape() == y.shape(), shape_error, "blas::emul: x.shape() != y.shape()");
+    MATHPRIM_INTERNAL_CHECK_THROW(x.shape() == y.shape(), shape_error, "blas::inplace_emul: x.shape() != y.shape()");
 
-    static_cast<Derived *>(this)->emul_impl(x.as_const().flatten(), y.flatten());
+    static_cast<Derived *>(this)->inplace_emul_impl(x.as_const().flatten(), y.flatten());
+  }
+
+    /**
+   * @brief Computes Z <- X * Y, element-wise.
+   * @param x
+   * @return index_t
+   */
+  template <typename ScalarX, typename SshapeX, typename SstrideX,  // x
+            typename ScalarY, typename SshapeY, typename SstrideY,  // y
+            typename SshapeZ, typename SstrideZ,                    // z
+            typename = enable_if_same_scalar_t<ScalarX>>
+  void emul(generic_type<ScalarX, SshapeX, SstrideX> x,  //
+            generic_type<ScalarY, SshapeY, SstrideY> y,  //
+            view_type<SshapeZ, SstrideZ> z) {
+    MATHPRIM_INTERNAL_CHECK_THROW(internal::is_capable_vector(x), std::runtime_error,
+                                  "Incompatible views for BLAS inplace_emul. (x)");
+    MATHPRIM_INTERNAL_CHECK_THROW(internal::is_capable_vector(y), std::runtime_error,
+                                  "Incompatible views for BLAS inplace_emul. (y)");
+
+    MATHPRIM_INTERNAL_CHECK_THROW(x.shape() == y.shape(), shape_error, "blas::inplace_emul: x.shape() != y.shape()");
+
+    static_cast<Derived *>(this)->emul_impl(x.as_const().flatten(), y.as_const().flatten(), z.flatten());
   }
 
   /**

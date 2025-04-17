@@ -1,16 +1,23 @@
 #pragma once
 
+#ifdef __GNUC__
+#  pragma GCC diagnostic push
+#  pragma GCC diagnostic ignored "-Wpedantic"
+#endif
 #include <nanobind/eigen/dense.h>
 #include <nanobind/eigen/sparse.h>
 #include <nanobind/nanobind.h>
 #include <nanobind/ndarray.h>
 #include <nanobind/stl/pair.h>
 
+#ifdef __GNUC__
+#  pragma GCC diagnostic pop
+#endif
+
 #include <array>
 
 #include "mathprim/core/view.hpp"
 
-#define TOSTR(x) #x
 namespace nb = ::nanobind;
 namespace mp = ::mathprim;
 

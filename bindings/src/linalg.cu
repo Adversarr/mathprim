@@ -1,4 +1,3 @@
-#include <nanobind/stl/tuple.h>
 
 #include <iostream>
 #include <mathprim/blas/cublas.cuh>
@@ -52,16 +51,16 @@ std::tuple<index_t, double, double> cg_cuda(Eigen::SparseMatrix<Flt, Eigen::RowM
   using Blas = blas::cublas<Flt>;
   using Solver = mp::sparse::iterative::cg<Flt, mp::device::cuda, LinearOp, Blas, Precond>;
 
+  auto h_b_view = view(b.data(), make_shape(b.size()));
+  auto h_x_view = view(x.data(), make_shape(x.size()));
   if (b.ndim() != 1 || x.ndim() != 1) {
     throw std::invalid_argument("b and x must be 1D arrays.");
   }
 
-  if (b.size() != A.rows() || x.size() != A.cols()) {
+  if (h_b_view.size() != A.rows() || h_b_view.size() != A.cols()) {
     throw std::invalid_argument("b and x must have the same size as the matrix.");
   }
 
-  auto h_b_view = view(b.data(), make_shape(b.size()));
-  auto h_x_view = view(x.data(), make_shape(x.size()));
   if (max_iter == 0) {
     max_iter = A.rows();
   }
