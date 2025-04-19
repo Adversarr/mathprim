@@ -162,6 +162,9 @@ using ainv = sparse::iterative::bridson_ainv_preconditioner<sparse::blas::eigen<
                                                             blas::cpu_blas<Scalar>>;
 
 template <typename Scalar>
+using fsai = sparse::iterative::fsai0_preconditioner<sparse::blas::eigen<Scalar, sparse::sparse_format::csr>>;
+
+template <typename Scalar>
 using ic = sparse::iterative::eigen_ichol<Scalar, sparse::sparse_format::csr>;
 
 template <typename Flt = float>
@@ -332,7 +335,8 @@ std::tuple<index_t, double, double> pcg_with_ext_spai_callback(  //
   BIND_TYPE(flt, no);       \
   BIND_TYPE(flt, diagonal); \
   BIND_TYPE(flt, ainv);     \
-  BIND_TYPE(flt, ic)
+  BIND_TYPE(flt, ic);       \
+  BIND_TYPE(flt, fsai);
 
 void bind_linalg(nb::module_& m) {
   ////////// Solvers //////////

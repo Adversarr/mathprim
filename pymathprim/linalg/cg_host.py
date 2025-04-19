@@ -3,18 +3,6 @@ import libpymathprim
 import numpy as np
 from scipy.sparse import csr_matrix
 
-__all__ = [
-    "ainv",
-    "ichol",
-    "pcg",
-    "pcg_diagonal",
-    "pcg_ainv",
-    "pcg_ic",
-    "pcg_with_ext_spai",
-    "grid_laplacian_nd_dbc",
-]
-
-
 def pcg(
     A: csr_matrix,
     b: np.ndarray,
@@ -94,6 +82,32 @@ def pcg_ainv(
         return libpymathprim.linalg.pcg_cb_ainv(A, b, x, rtol, max_iter, callback)
     else:
         return libpymathprim.linalg.pcg_ainv(A, b, x, rtol, max_iter, verbose)
+
+def pcg_fsai(
+    A: csr_matrix,
+    b: np.ndarray,
+    x: np.ndarray,
+    rtol: float = 1e-4,
+    max_iter: int = 0,
+    verbose: int = 0,
+    callback: Union[None, Callable] = None,
+) -> Tuple[int, float, float]:
+    """
+    Solve the linear system Ax = b using the conjugate gradient method with FSAI0 preconditioner.
+
+    Returns
+    -------
+    int
+        The number of iterations.
+    float
+        The time taken to prefactorize the system.
+    float
+        The time taken to solve the linear system.
+    """
+    if callback:
+        return libpymathprim.linalg.pcg_cb_fsai(A, b, x, rtol, max_iter, callback)
+    else:
+        return libpymathprim.linalg.pcg_fsai(A, b, x, rtol, max_iter, verbose)
 
 
 def pcg_ic(
@@ -217,3 +231,17 @@ def grid_laplacian_nd_dbc(
         return libpymathprim.linalg.grid_laplacian_nd_dbc_float64(grids)
     else:
         raise ValueError("dtype must be np.float32 or np.float64")
+
+
+__all__ = [
+    "pcg",
+    "pcg_diagonal",
+    "pcg_ainv",
+    "pcg_fsai",
+    "pcg_ic",
+    "pcg_with_ext_spai",
+    "pcg_with_ext_spai_scaled",
+    "ichol",
+    "ainv",
+    "grid_laplacian_nd_dbc",
+]

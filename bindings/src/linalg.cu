@@ -31,6 +31,9 @@ using ainv
                                                      blas::cublas<Scalar>>;
 
 template <typename Scalar>
+using fsai = sparse::iterative::fsai0_preconditioner<sparse::blas::cusparse<Scalar, sparse::sparse_format::csr>>;
+
+template <typename Scalar>
 using ic = sparse::iterative::cusparse_ichol<Scalar, device::cuda, mathprim::sparse::sparse_format::csr>;
 
 template <typename Scalar>
@@ -398,10 +401,12 @@ static std::tuple<index_t, double, double> pcg_with_ext_spai_cuda_direct(    //
   BIND_TRANSFERING_GPU_TYPE(flt, diagonal); \
   BIND_TRANSFERING_GPU_TYPE(flt, ainv);     \
   BIND_TRANSFERING_GPU_TYPE(flt, ic);       \
+  BIND_TRANSFERING_GPU_TYPE(flt, fsai);     \
   BIND_DIRECT(flt, no);                     \
   BIND_DIRECT(flt, diagonal);               \
   BIND_DIRECT(flt, ainv);                   \
-  BIND_DIRECT(flt, ic)
+  BIND_DIRECT(flt, ic);                     \
+  BIND_DIRECT(flt, fsai);
 
 template <typename Flt>
 static void bind_extra(nb::module_& m) {
