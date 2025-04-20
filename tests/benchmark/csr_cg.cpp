@@ -10,6 +10,7 @@
 #include <mathprim/linalg/iterative/solver/cg.hpp>
 #include <mathprim/parallel/openmp.hpp>
 #include <mathprim/sparse/blas/cholmod.hpp>
+#include <mathprim/sparse/blas/mkl.hpp>
 #include <mathprim/sparse/blas/eigen.hpp>
 #include <mathprim/sparse/blas/naive.hpp>
 #include <mathprim/sparse/systems/laplace.hpp>
@@ -29,7 +30,8 @@ static void work(benchmark::State &state) {
   auto mat_buf = lap.matrix<mathprim::sparse::sparse_format::csr>();
   auto mat = mat_buf.const_view();
   auto rows = mat.rows();
-  using SparseBlas = sparse::blas::naive<Scalar, sparse::sparse_format::csr, par::openmp>;
+  // using SparseBlas = sparse::blas::naive<Scalar, sparse::sparse_format::csr, par::openmp>;
+  using SparseBlas = sparse::blas::mkl<Scalar, sparse::sparse_format::csr>;
   using preconditioner
       = sparse::iterative::diagonal_preconditioner<Scalar, device::cpu, sparse::sparse_format::csr, BlasImpl>;
   sparse::iterative::cg<Scalar, device::cpu, SparseBlas, BlasImpl, preconditioner> cg{mat};

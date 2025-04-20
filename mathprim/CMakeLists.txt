@@ -24,6 +24,7 @@ if(MATHPRIM_ENABLE_BLAS)
     message(STATUS "Enabling MKL as BLAS")
     target_link_libraries(mathprim INTERFACE MKL::MKL)
     target_compile_definitions(mathprim INTERFACE MATHPRIM_BLAS_VENDOR_INTEL_MKL)
+    target_compile_definitions(mathprim INTERFACE MATHPRIM_ENABLE_MKL)
   else()
     if(APPLE)
       # Prefer to use Accelerate framework on macOS

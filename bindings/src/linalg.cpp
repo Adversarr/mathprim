@@ -16,10 +16,18 @@
 #include <mathprim/sparse/blas/eigen.hpp>
 #include <mathprim/sparse/systems/laplace.hpp>
 
-#include "mathprim/sparse/blas/naive.hpp"
 
 using namespace mathprim;
 using namespace helper;
+
+#ifdef MATHPRIM_ENABLE_MKL
+#include "mathprim/sparse/blas/mkl.hpp"
+template <typename Flt>
+using sparse_blas_t = mp::sparse::blas::mkl<Flt, sparse::sparse_format::csr>;
+#else
+template <typename Flt>
+using sparse_blas_t = mp::sparse::blas::eigen<Flt, sparse::sparse_format::csr>;
+#endif
 
 template <typename Flt, typename Precond, typename Callback>
 static std::tuple<index_t, double, double>                    //
@@ -39,7 +47,7 @@ solve_cg(const Eigen::SparseMatrix<Flt, Eigen::RowMajor>& A,  //
     max_iter = A.rows();
   }
   auto view_a = eigen_support::view(A);
-  using SparseBlas = mp::sparse::blas::eigen<Flt, sparse::sparse_format::csr>;
+  using SparseBlas = sparse_blas_t<Flt>;
   using Blas = mp::blas::cpu_blas<Flt>;
   using Solver = mp::sparse::iterative::cg<Flt, mp::device::cpu, SparseBlas, Blas, Precond>;
   auto start = helper::time_now();
@@ -71,7 +79,7 @@ solve_cg(const Eigen::SparseMatrix<Flt, Eigen::RowMajor>& A,  //
     max_iter = A.rows();
   }
   auto view_a = eigen_support::view(A);
-  using SparseBlas = mp::sparse::blas::eigen<Flt, sparse::sparse_format::csr>;
+  using SparseBlas = sparse_blas_t<Flt>;
   using Blas = mp::blas::cpu_blas<Flt>;
   using Solver = mp::sparse::iterative::cg<Flt, mp::device::cpu, SparseBlas, Blas, Precond>;
   auto start = helper::time_now();
@@ -169,7 +177,7 @@ using ic = sparse::iterative::eigen_ichol<Scalar, sparse::sparse_format::csr>;
 
 template <typename Flt = float>
 Eigen::SparseMatrix<Flt, Eigen::RowMajor> ainv_content(const Eigen::SparseMatrix<Flt, Eigen::RowMajor>& A) {
-  using SparseBlas = mp::sparse::blas::eigen<Flt, sparse::sparse_format::csr>;
+  using SparseBlas = sparse_blas_t<Flt>;
   sparse::iterative::scaled_bridson_ainv_preconditioner<SparseBlas> ainv(eigen_support::view(A));
   return eigen_support::map(ainv.ainv());
 }
@@ -198,7 +206,7 @@ std::tuple<index_t, double, double> pcg_with_ext_spai(const Eigen::SparseMatrix<
                                                       const Flt& rtol,                                        //
                                                       index_t max_iter,                                       //
                                                       int verbose) {
-  using SparseBlas = mp::sparse::blas::eigen<Flt, sparse::sparse_format::csr>;
+  using SparseBlas = sparse_blas_t<Flt>;
   using Blas = mp::blas::cpu_blas<Flt>;
   using Precond = mp::sparse::iterative::sparse_preconditioner<SparseBlas, Blas>;
   using Solver = mp::sparse::iterative::cg<Flt, mp::device::cpu, SparseBlas, Blas, Precond>;
@@ -246,7 +254,7 @@ std::tuple<index_t, double, double> pcg_with_ext_spai_scaled(  //
     const Flt& rtol,                                           //
     index_t max_iter,                                          //
     int verbose) {
-  using SparseBlas = mp::sparse::blas::eigen<Flt, sparse::sparse_format::csr>;
+  using SparseBlas = sparse_blas_t<Flt>;
   using Blas = mp::blas::cpu_blas<Flt>;
   using Precond = mp::sparse::iterative::scale_sparse_preconditioner<SparseBlas, Blas>;
   using Solver = mp::sparse::iterative::cg<Flt, mp::device::cpu, SparseBlas, Blas, Precond>;
@@ -294,7 +302,7 @@ std::tuple<index_t, double, double> pcg_with_ext_spai_callback(  //
     const Flt& rtol,                                             //
     index_t max_iter,                                            //
     std::function<void(index_t, Flt)> callback) {
-  using SparseBlas = mp::sparse::blas::eigen<Flt, sparse::sparse_format::csr>;
+  using SparseBlas = sparse_blas_t<Flt>;
   using Blas = mp::blas::cpu_blas<Flt>;
   using Precond = mp::sparse::iterative::sparse_preconditioner<SparseBlas, Blas>;
   using Solver = mp::sparse::iterative::cg<Flt, mp::device::cpu, SparseBlas, Blas, Precond>;
