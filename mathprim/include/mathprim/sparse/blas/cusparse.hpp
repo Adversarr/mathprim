@@ -189,19 +189,50 @@ private:
 
   void prepare_spmm(index_t m, index_t n, index_t k, bool transA, bool transB, bool transC);
 
+  void preprosess_spmv() {
+    // Set up the cuSPARSE handle
+    cusparseHandle_t handle = internal::get_cusparse_handle();
+    //// None transpose part.
+    size_t buffer_size = 0;
+    Scalar alpha = 1.0, beta = 0.0;
+    auto alg = CUSPARSE_SPMV_ALG_DEFAULT;
+    {
+      auto op = CUSPARSE_OPERATION_NON_TRANSPOSE;
+      MATHPRIM_CHECK_CUSPARSE(cusparseSpMV_bufferSize(handle, op, &alpha, mat_desc_, right_desc_, &beta, left_desc_,  //
+                                                      data_type(), alg, &buffer_size));
+      no_transpose_buffer_ = make_cuda_buffer<char>(buffer_size);
+      MATHPRIM_CHECK_CUSPARSE(cusparseSpMV_preprocess(handle, op, &alpha, mat_desc_, right_desc_, &beta, left_desc_,  //
+                                                      data_type(), alg, no_transpose_buffer_.data()));
+    }
+
+    {
+      auto op = CUSPARSE_OPERATION_TRANSPOSE;
+      MATHPRIM_CHECK_CUSPARSE(cusparseSpMV_bufferSize(handle, op, &alpha, mat_transpose_desc_, left_desc_, &beta,
+                                                      right_desc_, data_type(), alg, &buffer_size));
+      transpose_buffer_ = make_cuda_buffer<char>(buffer_size);
+      MATHPRIM_CHECK_CUSPARSE(cusparseSpMV_preprocess(handle, op, &alpha, mat_transpose_desc_, left_desc_, &beta,
+                                                      right_desc_, data_type(), alg, transpose_buffer_.data()));
+    }
+  }
+
   // spmv descriptors
-  cusparseSpMatDescr_t mat_desc_{nullptr};
-  cusparseDnVecDescr_t x_desc_{nullptr};
-  cusparseDnVecDescr_t y_desc_{nullptr};
+  cusparseSpMatDescr_t mat_desc_{nullptr};           // matrix descriptor for original matrix
+  cusparseSpMatDescr_t mat_transpose_desc_{nullptr}; // matrix descriptor for transpose
+  cusparseDnVecDescr_t right_desc_{nullptr};
+  cusparseDnVecDescr_t left_desc_{nullptr};
 
   // spmm descriptors
   cusparseDnMatDescr_t b_desc_{nullptr};
   cusparseDnMatDescr_t c_desc_{nullptr};
 
   using temp_buffer = contiguous_vector_buffer<char, device::cuda>;
-  std::unique_ptr<temp_buffer> no_transpose_buffer_{nullptr};
-  std::unique_ptr<temp_buffer> transpose_buffer_{nullptr};
-  std::unique_ptr<temp_buffer> spmm_buffer_{nullptr};
+  temp_buffer no_transpose_buffer_;
+  temp_buffer transpose_buffer_;
+  std::unique_ptr<temp_buffer> spmm_buffer_;
+
+  using vector_buffer = contiguous_vector_buffer<Scalar, device::cuda>;
+  vector_buffer right_buffer_;
+  vector_buffer left_buffer_;
 };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -216,16 +247,27 @@ cusparse<Scalar, Compression>::cusparse(const_sparse_view mat) : base(mat) {
   void* values = const_cast<Scalar*>(this->mat_.values().data());
   void* inner = const_cast<index_t*>(this->mat_.inner_indices().data());
   void* outer = const_cast<index_t*>(this->mat_.outer_ptrs().data());
-  auto data_type = this->data_type();
+  const auto data_type = this->data_type();
   if constexpr (Compression == sparse_format::csr) {
     MATHPRIM_CHECK_CUSPARSE(cusparseCreateCsr(&mat_desc_, rows, cols, nnz, outer, inner, values, index_type(),
                                               index_type(), CUSPARSE_INDEX_BASE_ZERO, data_type));
+    MATHPRIM_CHECK_CUSPARSE(cusparseCreateCsr(&mat_transpose_desc_, rows, cols, nnz, outer, inner, values,
+      index_type(), index_type(), CUSPARSE_INDEX_BASE_ZERO, data_type));
   } else {
     MATHPRIM_CHECK_CUSPARSE(cusparseCreateCsc(&mat_desc_, rows, cols, nnz, outer, inner, values, index_type(),
                                               index_type(), CUSPARSE_INDEX_BASE_ZERO, data_type));
+    MATHPRIM_CHECK_CUSPARSE(cusparseCreateCsc(&mat_transpose_desc_, rows, cols, nnz, outer, inner, values, index_type(),
+                                              index_type(), CUSPARSE_INDEX_BASE_ZERO, data_type));
   }
-  MATHPRIM_CHECK_CUSPARSE(cusparseCreateDnVec(&x_desc_, cols, nullptr, data_type));
-  MATHPRIM_CHECK_CUSPARSE(cusparseCreateDnVec(&y_desc_, rows, nullptr, data_type));
+
+  // Create the vector descriptors
+  right_buffer_ = make_cuda_buffer<Scalar>(cols); zeros(right_buffer_);
+  left_buffer_ = make_cuda_buffer<Scalar>(rows); zeros(left_buffer_);
+  MATHPRIM_CHECK_CUSPARSE(cusparseCreateDnVec(&right_desc_, cols, right_buffer_.data(), data_type));
+  MATHPRIM_CHECK_CUSPARSE(cusparseCreateDnVec(&left_desc_, rows, left_buffer_.data(), data_type));
+
+  // setup spmv buffers.
+  preprosess_spmv();
 }
 
 template <typename Scalar, sparse_format Compression>
@@ -238,16 +280,20 @@ cusparse<Scalar, Compression>::cusparse(cusparse&& other) : base(other.matrix())
   no_transpose_buffer_ = std::move(other.no_transpose_buffer_);
   transpose_buffer_ = std::move(other.transpose_buffer_);
   spmm_buffer_ = std::move(other.spmm_buffer_);
+  right_buffer_ = std::move(other.right_buffer_);
+  left_buffer_ = std::move(other.left_buffer_);
   mat_desc_ = other.mat_desc_;
-  x_desc_ = other.x_desc_;
-  y_desc_ = other.y_desc_;
+  mat_transpose_desc_ = other.mat_transpose_desc_;
+  right_desc_ = other.right_desc_;
+  left_desc_ = other.left_desc_;
   b_desc_ = other.b_desc_;
   c_desc_ = other.c_desc_;
   other.mat_desc_ = nullptr;
-  other.x_desc_ = nullptr;
-  other.y_desc_ = nullptr;
+  other.right_desc_ = nullptr;
+  other.left_desc_ = nullptr;
   other.b_desc_ = nullptr;
   other.c_desc_ = nullptr;
+  preprosess_spmv();
 }
 
 template <typename Scalar, sparse_format Compression>
@@ -258,40 +304,46 @@ cusparse<Scalar, Compression>& cusparse<Scalar, Compression>::operator=(cusparse
     no_transpose_buffer_ = std::move(other.no_transpose_buffer_);
     transpose_buffer_ = std::move(other.transpose_buffer_);
     spmm_buffer_ = std::move(other.spmm_buffer_);
+    right_buffer_ = std::move(other.right_buffer_);
+    left_buffer_ = std::move(other.left_buffer_);
     mat_desc_ = other.mat_desc_;
-    x_desc_ = other.x_desc_;
-    y_desc_ = other.y_desc_;
+    mat_transpose_desc_ = other.mat_transpose_desc_;
+    right_desc_ = other.right_desc_;
+    left_desc_ = other.left_desc_;
     b_desc_ = other.b_desc_;
     c_desc_ = other.c_desc_;
     other.mat_desc_ = nullptr;
-    other.x_desc_ = nullptr;
-    other.y_desc_ = nullptr;
+    other.right_desc_ = nullptr;
+    other.left_desc_ = nullptr;
     other.b_desc_ = nullptr;
     other.c_desc_ = nullptr;
+    preprosess_spmv();
   }
   return *this;
 }
 
 template <typename Scalar, sparse_format Compression>
 void cusparse<Scalar, Compression>::reset() {
-  if (mat_desc_)
+  if (mat_desc_) {
     MATHPRIM_CHECK_CUSPARSE(cusparseDestroySpMat(mat_desc_));
-  if (x_desc_)
-    MATHPRIM_CHECK_CUSPARSE(cusparseDestroyDnVec(x_desc_));
-  if (y_desc_)
-    MATHPRIM_CHECK_CUSPARSE(cusparseDestroyDnVec(y_desc_));
-  if (b_desc_)
+  } // TODO: check if mat_transpose_desc_ is
+  if (right_desc_) {
+    MATHPRIM_CHECK_CUSPARSE(cusparseDestroyDnVec(right_desc_));
+  }
+  if (left_desc_) {
+    MATHPRIM_CHECK_CUSPARSE(cusparseDestroyDnVec(left_desc_));
+  }
+  if (b_desc_) {
     MATHPRIM_CHECK_CUSPARSE(cusparseDestroyDnMat(b_desc_));
-  if (c_desc_)
+  }
+  if (c_desc_) {
     MATHPRIM_CHECK_CUSPARSE(cusparseDestroyDnMat(c_desc_));
+  }
   mat_desc_ = nullptr;
-  x_desc_ = nullptr;
-  y_desc_ = nullptr;
+  right_desc_ = nullptr;
+  left_desc_ = nullptr;
   b_desc_ = nullptr;
   c_desc_ = nullptr;
-  no_transpose_buffer_.reset();
-  transpose_buffer_.reset();
-  spmm_buffer_.reset();
 }
 
 template <typename Scalar, sparse_format Compression>
@@ -303,30 +355,17 @@ void cusparse<Scalar, Compression>::gemv_no_trans(Scalar alpha, const_vector_vie
   cusparseHandle_t handle = internal::get_cusparse_handle();
 
   // Set up the operation descriptor
-  cusparseOperation_t op = CUSPARSE_OPERATION_NON_TRANSPOSE;
+  const cusparseOperation_t op = CUSPARSE_OPERATION_NON_TRANSPOSE;
 
   // Set up the cuSPARSE SpMV descriptor
-  cusparseSpMVAlg_t alg = CUSPARSE_SPMV_ALG_DEFAULT;
+  const cusparseSpMVAlg_t alg = CUSPARSE_SPMV_ALG_DEFAULT;
 
-  // Set up the cuSPARSE SpMV descriptor
-  cusparseSpMatDescr_t mat_desc = mat_desc_;
-  cusparseDnVecDescr_t x_desc = x_desc_;
-  cusparseDnVecDescr_t y_desc = y_desc_;
-  // Set the pointers for x and y
-  MATHPRIM_CHECK_CUSPARSE(cusparseDnVecSetValues(x_desc, const_cast<Scalar*>(x.data())));
-  MATHPRIM_CHECK_CUSPARSE(cusparseDnVecSetValues(y_desc, const_cast<Scalar*>(y.data())));
-
-  // External buffer for the SpMV operation
-  if (!no_transpose_buffer_) {
-    size_t buffer_size = 0;
-    MATHPRIM_CHECK_CUSPARSE(
-        cusparseSpMV_bufferSize(handle, op, &alpha, mat_desc, x_desc, &beta, y_desc, data_type(), alg, &buffer_size));
-    no_transpose_buffer_ = std::make_unique<temp_buffer>(make_buffer<char, device::cuda>(buffer_size));
-  }
-
+  copy(right_buffer_.view(), x);
+  copy(left_buffer_.view(), y);
   // Perform the SpMV operation
-  MATHPRIM_CHECK_CUSPARSE(cusparseSpMV(handle, op, &alpha, mat_desc, x_desc, &beta, y_desc, data_type(), alg,
-                                       no_transpose_buffer_->data()));
+  MATHPRIM_CHECK_CUSPARSE(cusparseSpMV(handle, op, &alpha, mat_desc_, right_desc_, &beta, left_desc_, data_type(), alg,
+                                       no_transpose_buffer_.data()));
+  copy(y, left_buffer_.view());
 }
 
 template <typename Scalar, sparse_format Compression>
@@ -339,29 +378,17 @@ void cusparse<Scalar, Compression>::gemv_trans(Scalar alpha, const_vector_view x
   cusparseHandle_t handle = internal::get_cusparse_handle();
 
   // Set up the operation descriptor
-  cusparseOperation_t op = CUSPARSE_OPERATION_TRANSPOSE;
+  const cusparseOperation_t op = CUSPARSE_OPERATION_TRANSPOSE;
 
   // Set up the cuSPARSE SpMV descriptor
-  cusparseSpMVAlg_t alg = CUSPARSE_SPMV_ALG_DEFAULT;
+  const cusparseSpMVAlg_t alg = CUSPARSE_SPMV_ALG_DEFAULT;
 
-  // Set up the cuSPARSE SpMV descriptor
-  cusparseSpMatDescr_t mat_desc = mat_desc_;
-  cusparseDnVecDescr_t x_desc = x_desc_;
-  cusparseDnVecDescr_t y_desc = y_desc_;
-  // Set the pointers for x and y
-  MATHPRIM_CHECK_CUSPARSE(cusparseDnVecSetValues(x_desc, const_cast<Scalar*>(x.data())));
-  MATHPRIM_CHECK_CUSPARSE(cusparseDnVecSetValues(y_desc, const_cast<Scalar*>(y.data())));
-  // External buffer for the SpMV operation
-  if (!transpose_buffer_) {
-    size_t buffer_size = 0;
-    MATHPRIM_CHECK_CUSPARSE(
-        cusparseSpMV_bufferSize(handle, op, &alpha, mat_desc, x_desc, &beta, y_desc, data_type(), alg, &buffer_size));
-    transpose_buffer_ = std::make_unique<temp_buffer>(make_buffer<char, device::cuda>(buffer_size));
-  }
-
+  copy(left_buffer_.view(), x);
+  copy(right_buffer_.view(), y);
   // Perform the SpMV operation
-  MATHPRIM_CHECK_CUSPARSE(
-      cusparseSpMV(handle, op, &alpha, mat_desc, x_desc, &beta, y_desc, data_type(), alg, transpose_buffer_->data()));
+  MATHPRIM_CHECK_CUSPARSE(cusparseSpMV(handle, op, &alpha, mat_transpose_desc_, left_desc_, &beta, right_desc_, data_type(),
+                                       alg, transpose_buffer_.data()));
+  copy(y, right_buffer_.view());
 }
 
 template <typename Scalar, sparse_format Compression>
