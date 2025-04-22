@@ -35,3 +35,5 @@ define.CMAKE_EXPORT_COMPILE_COMMANDS = true
 define.MATHPRIM_BUILD_BINDINGS=true
 define.MATHPRIM_BUILD_TESTS=false
 define.MATHPRIM_ENABLE_WARNINGS=true
+define.MATHPRIM_ENABLE_MKL=false
+# define.MKL_DIR="/opt/intel/mkl/lib/intel64/cmake/mkl"

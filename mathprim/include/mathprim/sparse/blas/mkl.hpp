@@ -5,6 +5,7 @@
 #endif
 
 #include <mkl_spblas.h>
+#include <iostream>
 #include <sstream>
 #include "mathprim/sparse/basic_sparse.hpp"
 
@@ -45,9 +46,26 @@ inline const char* mkl_status_to_string(sparse_status_t status) {
     }                                                                                                           \
   } while (0)
 
+#define MATHPRIM_INTERNAL_ASSERT_MKL_SPBLAS(cond, msg)                                                           \
+  do {                                                                                                           \
+    sparse_status_t status = (cond);                                                                             \
+    if (status != SPARSE_STATUS_SUCCESS) {                                                                       \
+      std::ostringstream oss;                                                                                    \
+      oss << "Assert " #cond " failed, got " << ::mathprim::sparse::blas::internal::mkl_status_to_string(status) \
+          << ", at " << __FILE__ << ":" << __LINE__ << "\n"                                                      \
+          << msg;                                                                                                \
+      std::cerr << oss.str();                                                                                    \
+      std::cerr.flush();                                                                                         \
+      std::abort();                                                                                              \
+    }                                                                                                            \
+  } while (0)
+
 template <typename Scalar, sparse_format Compression>
 class mkl : public sparse_blas_base<mkl<Scalar, Compression>, Scalar, device::cpu, Compression> {
 public:
+  static_assert(Compression == sparse_format::csr || Compression == sparse_format::csc,
+                "MKL only supports CSR and CSC formats.");
+
   using base = sparse_blas_base<mkl<Scalar, Compression>, Scalar, device::cpu, Compression>;
   friend base;
   using vector_view = typename base::vector_view;
@@ -128,15 +146,26 @@ mkl<Scalar, Compression>::mkl(const_sparse_view mat) : base(mat) {
   for (index_t i = 0; i < inner_size; ++i) {
     inner[i] = static_cast<MKL_INT>(origin_inner[i]);
   }
-
   if constexpr (Compression == sparse_format::csr) {
-    MATHPRIM_INTERNAL_CHECK_MKL_SPBLAS(                                                                            //
-        mkl_sparse_d_create_csr(&mat_desc_, SPARSE_INDEX_BASE_ZERO, rows, cols, outer, outer + 1, inner, values),  //
-        "mkl::mkl failed");
+    if constexpr (std::is_same_v<Scalar, float>) {
+      MATHPRIM_INTERNAL_CHECK_MKL_SPBLAS(                                                                            //
+          mkl_sparse_s_create_csr(&mat_desc_, SPARSE_INDEX_BASE_ZERO, rows, cols, outer, outer + 1, inner, values),  //
+          "mkl::mkl failed");
+    } else if constexpr (std::is_same_v<Scalar, double>) {
+      MATHPRIM_INTERNAL_CHECK_MKL_SPBLAS(                                                                            //
+          mkl_sparse_d_create_csr(&mat_desc_, SPARSE_INDEX_BASE_ZERO, rows, cols, outer, outer + 1, inner, values),  //
+          "mkl::mkl failed");
+    }
   } else {
-    MATHPRIM_INTERNAL_CHECK_MKL_SPBLAS(                                                                            //
-        mkl_sparse_d_create_csc(&mat_desc_, SPARSE_INDEX_BASE_ZERO, rows, cols, outer, outer + 1, inner, values),  //
-        "mkl::mkl failed");
+    if constexpr (std::is_same_v<Scalar, float>) {
+      MATHPRIM_INTERNAL_CHECK_MKL_SPBLAS(                                                                            //
+          mkl_sparse_s_create_csc(&mat_desc_, SPARSE_INDEX_BASE_ZERO, rows, cols, outer, outer + 1, inner, values),  //
+          "mkl::mkl failed");
+    } else if constexpr (std::is_same_v<Scalar, double>) {
+      MATHPRIM_INTERNAL_CHECK_MKL_SPBLAS(                                                                            //
+          mkl_sparse_d_create_csc(&mat_desc_, SPARSE_INDEX_BASE_ZERO, rows, cols, outer, outer + 1, inner, values),  //
+          "mkl::mkl failed");
+    }
   }
 
   descr_.type = SPARSE_MATRIX_TYPE_GENERAL;
@@ -183,7 +212,7 @@ mkl<Scalar, Compression>& mkl<Scalar, Compression>::operator=(mkl&& other) {
 template <typename Scalar, sparse_format Compression>
 mkl<Scalar, Compression>::~mkl() {
   if (mat_desc_) {
-    MATHPRIM_INTERNAL_CHECK_MKL_SPBLAS(  //
+    MATHPRIM_INTERNAL_ASSERT_MKL_SPBLAS(  //
         mkl_sparse_destroy(mat_desc_),   //
         "mkl::~mkl failed");
   }
@@ -192,17 +221,29 @@ mkl<Scalar, Compression>::~mkl() {
 template <typename Scalar, sparse_format Compression>
 void mkl<Scalar, Compression>::gemv_no_trans(Scalar alpha, const_vector_view x, Scalar beta, vector_view y) {
   MATHPRIM_INTERNAL_CHECK_THROW(mat_desc_, std::runtime_error, "Matrix descriptor is not initialized.");
-  MATHPRIM_INTERNAL_CHECK_MKL_SPBLAS(  //
-      mkl_sparse_d_mv(SPARSE_OPERATION_NON_TRANSPOSE, alpha, mat_desc_, descr_, x.data(), beta, y.data()),
-      "mkl::gemv_no_trans failed");
+  if constexpr (std::is_same_v<Scalar, float>) {
+    MATHPRIM_INTERNAL_CHECK_MKL_SPBLAS(  //
+        mkl_sparse_s_mv(SPARSE_OPERATION_NON_TRANSPOSE, alpha, mat_desc_, descr_, x.data(), beta, y.data()),
+        "mkl::gemv_no_trans failed");
+  } else if constexpr (std::is_same_v<Scalar, double>) {
+    MATHPRIM_INTERNAL_CHECK_MKL_SPBLAS(  //
+        mkl_sparse_d_mv(SPARSE_OPERATION_NON_TRANSPOSE, alpha, mat_desc_, descr_, x.data(), beta, y.data()),
+        "mkl::gemv_no_trans failed");
+  }
 }
 
 template <typename Scalar, sparse_format Compression>
 void mkl<Scalar, Compression>::gemv_trans(Scalar alpha, const_vector_view x, Scalar beta, vector_view y) {
   MATHPRIM_INTERNAL_CHECK_THROW(mat_desc_, std::runtime_error, "Matrix descriptor is not initialized.");
-  MATHPRIM_INTERNAL_CHECK_MKL_SPBLAS(  //
-      mkl_sparse_d_mv(SPARSE_OPERATION_TRANSPOSE, alpha, mat_desc_, descr_, x.data(), beta, y.data()),
-      "mkl::gemv_trans failed");
+  if constexpr (std::is_same_v<Scalar, float>) {
+    MATHPRIM_INTERNAL_CHECK_MKL_SPBLAS(  //
+        mkl_sparse_s_mv(SPARSE_OPERATION_TRANSPOSE, alpha, mat_desc_, descr_, x.data(), beta, y.data()),
+        "mkl::gemv_trans failed");
+  } else if constexpr (std::is_same_v<Scalar, double>) {
+    MATHPRIM_INTERNAL_CHECK_MKL_SPBLAS(  //
+        mkl_sparse_d_mv(SPARSE_OPERATION_TRANSPOSE, alpha, mat_desc_, descr_, x.data(), beta, y.data()),
+        "mkl::gemv_trans failed");
+  }
 }
 
 }  // namespace blas
