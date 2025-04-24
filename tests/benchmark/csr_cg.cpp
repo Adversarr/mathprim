@@ -10,13 +10,14 @@
 #include <mathprim/linalg/iterative/solver/cg.hpp>
 #include <mathprim/parallel/openmp.hpp>
 #include <mathprim/sparse/blas/cholmod.hpp>
-#include <mathprim/sparse/blas/mkl.hpp>
+// #include <mathprim/sparse/blas/mkl.hpp>
 #include <mathprim/sparse/blas/eigen.hpp>
 #include <mathprim/sparse/blas/naive.hpp>
 #include <mathprim/sparse/systems/laplace.hpp>
 
 #include "mathprim/linalg/iterative/precond/fsai0.hpp"
 #include "mathprim/linalg/iterative/precond/eigen_support.hpp"
+#include "mathprim/linalg/iterative/precond/ilu_superlu.hpp"
 #include "mathprim/linalg/iterative/solver/eigen_support.hpp"
 
 using namespace mathprim;
@@ -30,8 +31,8 @@ static void work(benchmark::State &state) {
   auto mat_buf = lap.matrix<mathprim::sparse::sparse_format::csr>();
   auto mat = mat_buf.const_view();
   auto rows = mat.rows();
-  // using SparseBlas = sparse::blas::naive<Scalar, sparse::sparse_format::csr, par::openmp>;
-  using SparseBlas = sparse::blas::mkl<Scalar, sparse::sparse_format::csr>;
+  using SparseBlas = sparse::blas::naive<Scalar, sparse::sparse_format::csr, par::openmp>;
+  // using SparseBlas = sparse::blas::mkl<Scalar, sparse::sparse_format::csr>;
   using preconditioner
       = sparse::iterative::diagonal_preconditioner<Scalar, device::cpu, sparse::sparse_format::csr, BlasImpl>;
   sparse::iterative::cg<Scalar, device::cpu, SparseBlas, BlasImpl, preconditioner> cg{mat};
@@ -64,6 +65,50 @@ static void work(benchmark::State &state) {
   }
   // par::seq().run(make_shape(rows), [xv = x.view()](index_t i) { std::cout << xv[i] << std::endl; });
 }
+
+template <typename BlasImpl>
+static void work_ilu_superlu(benchmark::State &state) {
+  int dsize = state.range(0);
+
+  sparse::convergence_criteria<Scalar> criteria{dsize * dsize, 1e-6f};
+  sparse::laplace_operator<Scalar, 2> lap(make_shape(dsize, dsize));
+  auto mat_buf = lap.matrix<mathprim::sparse::sparse_format::csr>();
+  auto mat = mat_buf.const_view();
+  auto rows = mat.rows();
+  using SparseBlas = sparse::blas::naive<Scalar, sparse::sparse_format::csr, par::openmp>;
+  // using SparseBlas = sparse::blas::mkl<Scalar, sparse::sparse_format::csr>;
+  using preconditioner = sparse::iterative::ilu<Scalar, device::cpu, sparse::sparse_format::csr>;
+  sparse::iterative::cg<Scalar, device::cpu, SparseBlas, BlasImpl, preconditioner> cg{mat};
+
+  auto b = make_buffer<Scalar>(rows); b.fill_bytes(0);
+  auto x = make_buffer<Scalar>(rows);
+  auto r = make_buffer<Scalar>(rows);
+  // GT = ones.
+  for (auto _ : state) {
+    state.PauseTiming();
+    par::seq().run(make_shape(rows), [xv = x.view()](index_t i) {
+      xv[i] = 1.0f;
+    });
+    // b = A * x
+    cg.linear_operator().gemv(1.0f, x.view(), 0.0f, b.view());
+
+    par::seq().run(make_shape(rows), [xv = x.view(), bv = b.view()](index_t i) {
+      xv[i] = (i % 100 - 50) / 100.0f;
+    });
+    state.ResumeTiming();
+    auto result = cg.solve(x.view(), b.view(), criteria);
+    if (result.norm_ > 1e-6f) {
+      state.SkipWithError("CG did not converge");
+    }
+    cg.blas().copy(r.view(), b.view()); // r = b
+    cg.linear_operator().gemv(-1, x.view(), 1, r.view()); // r = b - A * x
+    auto norm = cg.blas().norm(r.view()) / cg.blas().norm(b.view());
+
+    state.SetLabel(std::to_string(result.iterations_) + " " + std::to_string(norm));
+  }
+  // par::seq().run(make_shape(rows), [xv = x.view()](index_t i) { std::cout << xv[i] << std::endl; });
+}
+
 template <typename BlasImpl>
 static void work_ic(benchmark::State &state) {
   int dsize = state.range(0);
@@ -264,7 +309,8 @@ BENCHMARK_TEMPLATE(work , blas::cpu_handmade<Scalar>)->Range(lower, upper);
 // BENCHMARK(work_eigen_wrapped)->Range(lower, upper);
 // BENCHMARK(work_chol)->Range(lower, upper);
 // BENCHMARK_TEMPLATE(work_ic, blas::cpu_eigen<Scalar>)->Range(lower, upper);
-BENCHMARK_TEMPLATE(work2, blas::cpu_blas<Scalar>)->Range(lower, upper);
-BENCHMARK_TEMPLATE(work2, blas::cpu_handmade<Scalar>)->Range(lower, upper);
-BENCHMARK_TEMPLATE(work2, blas::cpu_eigen<Scalar>)->Range(lower, upper);
+BENCHMARK_TEMPLATE(work_ilu_superlu, blas::cpu_blas<Scalar>)->Range(lower, upper);
+// BENCHMARK_TEMPLATE(work2, blas::cpu_blas<Scalar>)->Range(lower, upper);
+// BENCHMARK_TEMPLATE(work2, blas::cpu_handmade<Scalar>)->Range(lower, upper);
+// BENCHMARK_TEMPLATE(work2, blas::cpu_eigen<Scalar>)->Range(lower, upper);
 BENCHMARK_MAIN();

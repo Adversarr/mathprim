@@ -153,14 +153,14 @@ public:
 
     MATHPRIM_CHECK_CUSPARSE(cusparseSpSV_createDescr(&spsvDescrL_));
     MATHPRIM_CHECK_CUSPARSE(cusparseSpSV_bufferSize(handle, CUSPARSE_OPERATION_NON_TRANSPOSE, &floatone,
-                                                    descr_sparse_lower_, vec_x_, vec_y_, dtype,
+                                                    descr_sparse_lower_, vec_x_, vec_intern_, dtype,
                                                     CUSPARSE_SPSV_ALG_DEFAULT, spsvDescrL_, &buf_size_l));
     buffer_l_ = make_cuda_buffer<char>(buf_size_l);
 
     MATHPRIM_CHECK_CUSPARSE(cusparseSpSV_createDescr(&spsvDescrLtrans_));
     MATHPRIM_CHECK_CUSPARSE(cusparseSpSV_bufferSize(handle, CUSPARSE_OPERATION_TRANSPOSE, &floatone,
-                                                    descr_sparse_lower_, vec_x_, vec_y_, dtype,
-                                                    CUSPARSE_SPSV_ALG_DEFAULT, spsvDescrL_, &buf_size_l));
+                                                    descr_sparse_lower_, vec_intern_, vec_y_, dtype,
+                                                    CUSPARSE_SPSV_ALG_DEFAULT, spsvDescrLtrans_, &buf_size_l));
     buffer_lt_ = make_cuda_buffer<char>(buf_size_l);
   }
 
@@ -203,11 +203,11 @@ public:
     /* Perform triangular solve analysis */
     MATHPRIM_CHECK_CUSPARSE(cusparseSpSV_analysis(            //
         handle, CUSPARSE_OPERATION_NON_TRANSPOSE, &floatone,  // solve info
-        descr_sparse_lower_, vec_x_, vec_y_, dtype,           // matrix info
+        descr_sparse_lower_, vec_x_, vec_intern_, dtype,      // matrix info
         CUSPARSE_SPSV_ALG_DEFAULT, spsvDescrL_, buffer_l_.data()));
     MATHPRIM_CHECK_CUSPARSE(cusparseSpSV_analysis(        //
         handle, CUSPARSE_OPERATION_TRANSPOSE, &floatone,  // solve info
-        descr_sparse_lower_, vec_x_, vec_y_, dtype,       // matrix info
+        descr_sparse_lower_, vec_intern_, vec_y_, dtype,  // matrix info
         CUSPARSE_SPSV_ALG_DEFAULT, spsvDescrLtrans_, buffer_lt_.data()));
   }
 
@@ -234,7 +234,7 @@ public:
     }
     if (descr_lower_) {
       cusparseDestroySpMat(descr_lower_);
-      vec_x_ = nullptr;
+      descr_lower_ = nullptr;
     }
     if (vec_x_) {
       cusparseDestroyDnVec(vec_x_);
@@ -303,7 +303,6 @@ private:
 
 }  // namespace mathprim::sparse::iterative
 
-#ifdef GNUC
-
-pragma GCC diagnostic pop
+#ifdef __GNUC__
+#  pragma GCC diagnostic pop
 #endif

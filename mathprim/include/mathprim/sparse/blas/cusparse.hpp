@@ -349,8 +349,6 @@ void cusparse<Scalar, Compression>::reset() {
 template <typename Scalar, sparse_format Compression>
 void cusparse<Scalar, Compression>::gemv_no_trans(Scalar alpha, const_vector_view x, Scalar beta, vector_view y) {
   MATHPRIM_INTERNAL_CHECK_THROW(mat_desc_, std::runtime_error, "Matrix descriptor is not initialized.");
-  MATHPRIM_ASSERT(x_desc_ && "Vector descriptor is not initialized.");
-  MATHPRIM_ASSERT(y_desc_ && "Vector descriptor is not initialized.");
   // Set up the cuSPARSE handle
   cusparseHandle_t handle = internal::get_cusparse_handle();
 
@@ -371,9 +369,6 @@ void cusparse<Scalar, Compression>::gemv_no_trans(Scalar alpha, const_vector_vie
 template <typename Scalar, sparse_format Compression>
 void cusparse<Scalar, Compression>::gemv_trans(Scalar alpha, const_vector_view x, Scalar beta, vector_view y) {
   MATHPRIM_INTERNAL_CHECK_THROW(mat_desc_, std::runtime_error, "Matrix descriptor is not initialized.");
-  MATHPRIM_ASSERT(x_desc_ && "Vector descriptor is not initialized.");
-  MATHPRIM_ASSERT(y_desc_ && "Vector descriptor is not initialized.");
-
   // Set up the cuSPARSE handle
   cusparseHandle_t handle = internal::get_cusparse_handle();
 
@@ -397,8 +392,6 @@ void cusparse<Scalar, Compression>::spmm_impl(Scalar alpha, basic_view<const Sca
                                               Scalar beta, basic_view<Scalar, SshapeC, SstrideC, device::cuda> C,
                                               bool transA) {
   MATHPRIM_INTERNAL_CHECK_THROW(mat_desc_, std::runtime_error, "Matrix descriptor is not initialized.");
-  MATHPRIM_ASSERT(x_desc_ && "Vector descriptor is not initialized.");
-  MATHPRIM_ASSERT(y_desc_ && "Vector descriptor is not initialized.");
   // Set up the cuSPARSE handle
   cusparseHandle_t handle = internal::get_cusparse_handle();
   const bool trans_b = B.stride(1) != 1, trans_c = C.stride(1) != 1;

@@ -33,7 +33,7 @@ public:
   static_assert(is_float32 || std::is_same_v<Scalar, double>, "Only float32 and float64 are supported.");
 
   ilu() = default;
-  explicit ilu(const_sparse view) : base(view) {}
+  explicit ilu(const_sparse view) : base(view) { this->compute({}); }
 
   ilu(ilu&& other) :
       base(other),
@@ -66,12 +66,10 @@ public:
     other.vec_intern_ = nullptr;
   }
 
-  ~ilu() {
-    reset();
-  }
+  ~ilu() { reset(); }
 
   void analyze_impl() {
-    reset(); // clear all previous information
+    reset();  // clear all previous information
     cusparseHandle_t handle = sparse::blas::internal::get_cusparse_handle();
     auto matrix = this->matrix();
     index_t rows = matrix.rows();
@@ -79,19 +77,16 @@ public:
     cudaDataType_t dtype = std::is_same_v<Scalar, float> ? CUDA_R_32F : CUDA_R_64F;
 
     /* Description of the A matrix */
-    MATHPRIM_INTERNAL_CHECK_THROW_CUSPARSE(
-      cusparseCreateMatDescr(&descr_a_),
-      std::runtime_error, "Failed to create matrix descriptor.");
+    MATHPRIM_INTERNAL_CHECK_THROW_CUSPARSE(cusparseCreateMatDescr(&descr_a_), std::runtime_error,
+                                           "Failed to create matrix descriptor.");
     cusparseMatrixType_t mat_type = CUSPARSE_MATRIX_TYPE_GENERAL;
     // if (matrix_.property() == sparse::sparse_property::symmetric) {
     //   mat_type = CUSPARSE_MATRIX_TYPE_SYMMETRIC;
     // }
-    MATHPRIM_INTERNAL_CHECK_THROW_CUSPARSE(
-      cusparseSetMatType(descr_a_, mat_type),
-      std::runtime_error, "Failed to set matrix type.");
-    MATHPRIM_INTERNAL_CHECK_THROW_CUSPARSE(
-      cusparseSetMatIndexBase(descr_a_, CUSPARSE_INDEX_BASE_ZERO),
-      std::runtime_error, "Failed to set matrix index base.");
+    MATHPRIM_INTERNAL_CHECK_THROW_CUSPARSE(cusparseSetMatType(descr_a_, mat_type), std::runtime_error,
+                                           "Failed to set matrix type.");
+    MATHPRIM_INTERNAL_CHECK_THROW_CUSPARSE(cusparseSetMatIndexBase(descr_a_, CUSPARSE_INDEX_BASE_ZERO),
+                                           std::runtime_error, "Failed to set matrix index base.");
 
     /* Allocate required memory */
     ilu_nnz_copy_ = make_cuda_buffer<Scalar>(nnz);
@@ -104,7 +99,7 @@ public:
     cusparseDiagType_t diag_unit = CUSPARSE_DIAG_TYPE_UNIT;
     cusparseFillMode_t fill_upper = CUSPARSE_FILL_MODE_UPPER;
     cusparseDiagType_t diag_non_unit = CUSPARSE_DIAG_TYPE_NON_UNIT;
-    
+
     index_t* row_offsets = const_cast<index_t*>(matrix.outer_ptrs().data());
     index_t* col_indices = const_cast<index_t*>(matrix.inner_indices().data());
     Scalar* values = const_cast<Scalar*>(matrix.values().data());
@@ -118,23 +113,27 @@ public:
     /* Copy A data to ILU(0) vals as input*/
     copy(ilu_nnz_copy_.view(), matrix.values().as_const());
     // Lower Part
-    MATHPRIM_INTERNAL_CHECK_THROW_CUSPARSE(cusparseCreateCsr(                                                     //
-        &descr_sparse_lower_,                                              // descr
-        rows, rows, nnz,                                                   // shape
-        row_offsets, col_indices, ilu_nnz_copy_.data(),                    // content
-        CUSPARSE_INDEX_32I, CUSPARSE_INDEX_32I, CUSPARSE_INDEX_BASE_ZERO,  // indexing
-        dtype), std::runtime_error, "Failed to create triangular matrix in ILU");
+    MATHPRIM_INTERNAL_CHECK_THROW_CUSPARSE(
+        cusparseCreateCsr(                                                     //
+            &descr_sparse_lower_,                                              // descr
+            rows, rows, nnz,                                                   // shape
+            row_offsets, col_indices, ilu_nnz_copy_.data(),                    // content
+            CUSPARSE_INDEX_32I, CUSPARSE_INDEX_32I, CUSPARSE_INDEX_BASE_ZERO,  // indexing
+            dtype),
+        std::runtime_error, "Failed to create triangular matrix in ILU");
     MATHPRIM_CHECK_CUSPARSE(cusparseSpMatSetAttribute(descr_sparse_lower_,  //
                                                       CUSPARSE_SPMAT_FILL_MODE, &fill_lower, sizeof(fill_lower)));
     MATHPRIM_CHECK_CUSPARSE(cusparseSpMatSetAttribute(descr_sparse_lower_,  //
                                                       CUSPARSE_SPMAT_DIAG_TYPE, &diag_unit, sizeof(diag_unit)));
     // Upper Part
-    MATHPRIM_INTERNAL_CHECK_THROW_CUSPARSE(cusparseCreateCsr(                                                     //
-        &descr_sparse_upper_,                                              // descr
-        rows, rows, nnz,                                                   // shape
-        row_offsets, col_indices, ilu_nnz_copy_.data(),                    // content
-        CUSPARSE_INDEX_32I, CUSPARSE_INDEX_32I, CUSPARSE_INDEX_BASE_ZERO,  // indexing
-        dtype), std::runtime_error, "Failed to create triangular matrix in ILU");
+    MATHPRIM_INTERNAL_CHECK_THROW_CUSPARSE(
+        cusparseCreateCsr(                                                     //
+            &descr_sparse_upper_,                                              // descr
+            rows, rows, nnz,                                                   // shape
+            row_offsets, col_indices, ilu_nnz_copy_.data(),                    // content
+            CUSPARSE_INDEX_32I, CUSPARSE_INDEX_32I, CUSPARSE_INDEX_BASE_ZERO,  // indexing
+            dtype),
+        std::runtime_error, "Failed to create triangular matrix in ILU");
     MATHPRIM_CHECK_CUSPARSE(cusparseSpMatSetAttribute(descr_sparse_upper_,  //
                                                       CUSPARSE_SPMAT_FILL_MODE, &fill_upper, sizeof(fill_upper)));
     MATHPRIM_CHECK_CUSPARSE(cusparseSpMatSetAttribute(descr_sparse_upper_,  //
@@ -163,13 +162,15 @@ public:
     }
     buffer_lu_ = make_cuda_buffer<char>(requirement);
     MATHPRIM_CHECK_CUSPARSE(cusparseSpSV_createDescr(&spsvDescrL_));
-    MATHPRIM_CHECK_CUSPARSE(cusparseSpSV_bufferSize(handle, CUSPARSE_OPERATION_NON_TRANSPOSE, &floatone, descr_sparse_lower_, vec_x_, vec_y_,
-                            dtype, CUSPARSE_SPSV_ALG_DEFAULT, spsvDescrL_, &buf_size_l));
+    MATHPRIM_CHECK_CUSPARSE(cusparseSpSV_bufferSize(handle, CUSPARSE_OPERATION_NON_TRANSPOSE, &floatone,
+                                                    descr_sparse_lower_, vec_x_, vec_y_, dtype,
+                                                    CUSPARSE_SPSV_ALG_DEFAULT, spsvDescrL_, &buf_size_l));
 
     buffer_l_ = make_cuda_buffer<char>(buf_size_l);
     MATHPRIM_CHECK_CUSPARSE(cusparseSpSV_createDescr(&spsvDescrU_));
-    MATHPRIM_CHECK_CUSPARSE(cusparseSpSV_bufferSize(handle, CUSPARSE_OPERATION_NON_TRANSPOSE, &floatone, descr_sparse_upper_, vec_x_, vec_y_,
-                            dtype, CUSPARSE_SPSV_ALG_DEFAULT, spsvDescrU_, &buf_size_u));
+    MATHPRIM_CHECK_CUSPARSE(cusparseSpSV_bufferSize(handle, CUSPARSE_OPERATION_NON_TRANSPOSE, &floatone,
+                                                    descr_sparse_upper_, vec_x_, vec_y_, dtype,
+                                                    CUSPARSE_SPSV_ALG_DEFAULT, spsvDescrU_, &buf_size_u));
     buffer_u_ = make_cuda_buffer<char>(buf_size_u);
   }
 
@@ -276,8 +277,8 @@ private:
     cusparseHandle_t handle = sparse::blas::internal::get_cusparse_handle();
     Scalar floatone = 1;
     auto dtype = std::is_same_v<Scalar, float> ? CUDA_R_32F : CUDA_R_64F;
-    MATHPRIM_CHECK_CUSPARSE(cusparseDnVecSetValues(vec_x_, const_cast<Scalar*>(x.data()))); // input
-    MATHPRIM_CHECK_CUSPARSE(cusparseDnVecSetValues(vec_y_, y.data())); // output
+    MATHPRIM_CHECK_CUSPARSE(cusparseDnVecSetValues(vec_x_, const_cast<Scalar*>(x.data())));  // input
+    MATHPRIM_CHECK_CUSPARSE(cusparseDnVecSetValues(vec_y_, y.data()));                       // output
     auto no_trans = CUSPARSE_OPERATION_NON_TRANSPOSE;
     MATHPRIM_CHECK_CUSPARSE(cusparseSpSV_solve(           //
         handle,                                           // context
@@ -308,7 +309,7 @@ private:
   cusparseSpSVDescr_t spsvDescrL_{nullptr}, spsvDescrU_{nullptr};
 
   // inputs
-  cusparseDnVecDescr_t vec_x_=nullptr, vec_y_ = nullptr, vec_intern_ = nullptr;
+  cusparseDnVecDescr_t vec_x_ = nullptr, vec_y_ = nullptr, vec_intern_ = nullptr;
 };
 
 }  // namespace mathprim::sparse::iterative

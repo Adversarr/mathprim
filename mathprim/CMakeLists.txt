@@ -107,6 +107,14 @@ if(MATHPRIM_ENABLE_CHOLMOD)
   target_compile_definitions(mathprim INTERFACE MATHPRIM_ENABLE_CHOLMOD)
 endif()
 
+if (MATHPRIM_ENABLE_SUPERLU)
+  find_package(superlu REQUIRED)
+  message(STATUS "Enabling SUPERLU")
+
+  target_link_libraries(mathprim INTERFACE superlu::superlu)
+  target_compile_definitions(mathprim INTERFACE MATHPRIM_ENABLE_SUPERLU)
+endif()
+
 if(MATHPRIM_INSTALL)
   include(GNUInstallDirs)
   install(DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/include/

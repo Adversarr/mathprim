@@ -457,8 +457,8 @@ void work_cuda_ai_bridson(benchmark::State &state) {
 // BENCHMARK_TEMPLATE(work, blas::cpu_eigen<Scalar>)->Range(1 << 4, LARGE_RANGE)->Unit(benchmark::kMillisecond);
 // BENCHMARK(work_cuda)->Range(1 << 4, LARGE_RANGE)->Unit(benchmark::kMillisecond);
 // BENCHMARK(work_cuda_no_prec)->Range(1 << 4, LARGE_RANGE)->Unit(benchmark::kMillisecond);
-// BENCHMARK(work_cuda_ilu0)->Range(1 << 4, LARGE_RANGE)->Unit(benchmark::kMillisecond);
-// BENCHMARK(work_cuda_ic)->Range(1 << 4, LARGE_RANGE)->Unit(benchmark::kMillisecond);
+BENCHMARK(work_cuda_ilu0)->Range(1 << 4, LARGE_RANGE)->Unit(benchmark::kMillisecond);
+BENCHMARK(work_cuda_ic)->Range(1 << 4, LARGE_RANGE)->Unit(benchmark::kMillisecond);
 BENCHMARK(work_cuda_ai)->Range(1 << 4, LARGE_RANGE)->Unit(benchmark::kMillisecond);
 BENCHMARK(work_cuda_ai_bridson)->Range(1 << 4, LARGE_RANGE)->Unit(benchmark::kMillisecond);
 
