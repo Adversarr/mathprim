@@ -2,7 +2,6 @@
 #include <cmath>
 
 #include "mathprim/blas/blas.hpp"  // IWYU pragma: export
-#include "mathprim/blas/cpu_eigen.hpp"
 #include "mathprim/core/defines.hpp"
 #include "mathprim/linalg/iterative/iterative.hpp"
 
@@ -83,7 +82,6 @@ public:
     if (!std::isfinite(x))            \
       throw_traced(#x "not finite");  \
   } while (0)
-    converged = norm <= params.norm_tol_;
     if (converged) {
       return results;
     }

@@ -14,6 +14,7 @@
 #include <mathprim/linalg/iterative/solver/cg.hpp>
 #include <mathprim/sparse/basic_sparse.hpp>
 #include <mathprim/sparse/blas/eigen.hpp>
+#include <mathprim/sparse/blas/naive.hpp>
 #include <mathprim/sparse/systems/laplace.hpp>
 
 
@@ -26,7 +27,8 @@ template <typename Flt>
 using sparse_blas_t = mp::sparse::blas::mkl<Flt, sparse::sparse_format::csr>;
 #else
 template <typename Flt>
-using sparse_blas_t = mp::sparse::blas::eigen<Flt, sparse::sparse_format::csr>;
+using sparse_blas_t = mp::sparse::blas::naive<Flt, sparse::sparse_format::csr>;
+// using sparse_blas_t = mp::sparse::blas::eigen<Flt, sparse::sparse_format::csr>;
 #endif
 
 template <typename Flt, typename Precond, typename Callback>
