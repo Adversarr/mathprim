@@ -2,6 +2,78 @@
 
 mathprim, or math's primitives, is a **glue-like** library for optimized numeric algorithms.
 
+## Dependencies and Requirements
+
+### Required Dependencies
+- **C++ Compiler**: C++17 compatible compiler
+- **CMake**: Version 3.23 or higher
+- **Eigen3**: Required for matrix operations
+- **BLAS**: OpenBLAS (Linux/Windows) or Accelerate (macOS)
+
+### Optional Dependencies
+- **CUDA Toolkit**: For GPU acceleration
+- **OpenMP**: For CPU parallelization
+- **CHOLMOD** (SuiteSparse): For direct sparse solvers
+- **SuperLU**: For additional sparse matrix solvers
+- **MKL**: Intel Math Kernel Library (optional alternative to OpenBLAS)
+- **Python**: For Python bindings (with Development headers)
+- **nanobind**: For Python bindings
+
+### Version Requirements
+- **C++**: Standard 17 or higher
+- **CUDA**: Compatible with your GPU architecture (CUDA Architectures 86 used in bindings)
+- **CMake**: 3.23 or higher
+
+## Installation on Ubuntu
+
+### Install Required Dependencies
+```bash
+# Install compiler and build tools
+sudo apt-get update
+sudo apt-get install -y build-essential cmake
+
+# Install Eigen3
+sudo apt-get install -y libeigen3-dev
+
+# Install BLAS
+sudo apt-get install -y libopenblas-dev
+```
+
+### Install Optional Dependencies
+```bash
+# Install CUDA (if needed)
+# Visit https://developer.nvidia.com/cuda-downloads for the latest version
+
+# Install OpenMP
+sudo apt-get install -y libomp-dev
+
+# Install SuiteSparse (CHOLMOD)
+sudo apt-get install -y libsuitesparse-dev
+
+# Install SuperLU
+sudo apt-get install -y libsuperlu-dev
+
+# Install Python development headers (for Python bindings)
+sudo apt-get install -y python3-dev
+
+# Install nanobind via pip (for Python bindings)
+pip install nanobind
+```
+
+## Building from Source
+```bash
+mkdir build && cd build
+cmake ..
+make -j$(nproc)
+```
+
+For CUDA support:
+```bash
+mkdir build && cd build
+cmake .. -DMATHPRIM_ENABLE_CUDA=ON
+make -j$(nproc)
+```
+
 Current Backends:
 1. CPU
 2. CUDA

@@ -42,54 +42,74 @@ using no = sparse::iterative::none_preconditioner<Scalar, device::cuda, mathprim
 ////////////////////////////////////////////////
 /// CPU->GPU->CPU
 ////////////////////////////////////////////////
-template <typename Flt, typename Precond>
-std::tuple<index_t, double, double> cg_cuda(Eigen::SparseMatrix<Flt, Eigen::RowMajor> A,         //
-                                            nb::ndarray<Flt, nb::shape<-1>, nb::device::cpu> b,  //
-                                            nb::ndarray<Flt, nb::shape<-1>, nb::device::cpu> x,  //
-                                            const Flt rtol,                                      //
-                                            index_t max_iter,                                    //
-                                            int verbose) {
+template <typename Flt, typename Precond, typename MatrixType>
+std::tuple<index_t, double, double> solve_with_precond(
+    const MatrixType& A,
+    nb::ndarray<Flt, nb::shape<-1>, nb::device::cpu> b,
+    nb::ndarray<Flt, nb::shape<-1>, nb::device::cpu> x,
+    const Flt rtol,
+    index_t max_iter,
+    int verbose) {
   using SparseBlas = mp::sparse::blas::cusparse<Flt, sparse::sparse_format::csr>;
   using LinearOp = SparseBlas;
   using Blas = blas::cublas<Flt>;
   using Solver = mp::sparse::iterative::cg<Flt, mp::device::cuda, LinearOp, Blas, Precond>;
+  using Sparse = sparse::basic_sparse_matrix<Flt, device::cuda, mathprim::sparse::sparse_format::csr>;
 
+  // Input validation
+  // Validate input dimensions
   auto h_b_view = view(b.data(), make_shape(b.size()));
   auto h_x_view = view(x.data(), make_shape(x.size()));
   if (b.ndim() != 1 || x.ndim() != 1) {
     throw std::invalid_argument("b and x must be 1D arrays.");
   }
-
-  if (h_b_view.size() != A.rows() || h_b_view.size() != A.cols()) {
-    throw std::invalid_argument("b and x must have the same size as the matrix.");
+  if (A.rows() != A.cols()) {
+    throw std::invalid_argument("Matrix A must be square.");
+  }
+  if (h_b_view.size() != A.rows() || h_x_view.size() != A.cols()) {
+    throw std::invalid_argument(
+      "Dimensions mismatch: b.size()=" + std::to_string(h_b_view.size()) +
+      ", x.size()=" + std::to_string(h_x_view.size()) +
+      ", A.rows()=" + std::to_string(A.rows()) +
+      ", A.cols()=" + std::to_string(A.cols()));
   }
 
+  // Set default max iterations if not specified
   if (max_iter == 0) {
     max_iter = A.rows();
+  } else if (max_iter < 0) {
+    throw std::invalid_argument("max_iter must be non-negative.");
   }
+
+  // Setup GPU buffers
   auto d_b = make_cuda_buffer<Flt>(b.size());
   auto d_x = make_cuda_buffer<Flt>(x.size());
   auto b_view = d_b.view();
   auto x_view = d_x.view();
-  auto view_A = eigen_support::view(A);
 
-  auto d_A = sparse::basic_sparse_matrix<Flt, device::cuda, mathprim::sparse::sparse_format::csr>(
-      view_A.rows(), view_A.cols(), view_A.nnz());
-
+  // Copy data to GPU
   copy(b_view, h_b_view);
   copy(x_view, h_x_view);
 
+  // Setup matrix on GPU
+  auto view_A = eigen_support::view(A);
+  auto d_A = Sparse(view_A.rows(), view_A.cols(), view_A.nnz());
   copy(d_A.outer_ptrs().view(), view_A.outer_ptrs());
   copy(d_A.inner_indices().view(), view_A.inner_indices());
   copy(d_A.values().view(), view_A.values());
   auto d_A_view = d_A.const_view();
 
+  // Solve system
+  // Time preconditioner setup
   auto start = time_now();
   Solver solver(d_A_view);
   sparse::convergence_criteria<Flt> criteria{max_iter, rtol};
   sparse::convergence_result<Flt> result;
-  auto prec = time_elapsed(start);
+  auto prec_setup = time_elapsed(start);
+  
+  // Time solver iterations
   start = time_now();
+
   if (verbose > 0) {
     result = solver.solve(x_view, b_view, criteria, [verbose](index_t iter, Flt norm) {
       if (iter % verbose == 0) {
@@ -100,8 +120,20 @@ std::tuple<index_t, double, double> cg_cuda(Eigen::SparseMatrix<Flt, Eigen::RowM
     result = solver.solve(x_view, b_view, criteria);
   }
   auto solve = time_elapsed(start);
+
+  // Copy result back to CPU
   copy(h_x_view, x_view);
-  return {result.iterations_, prec, solve};
+  return {result.iterations_, prec_setup, solve};
+}
+
+template <typename Flt, typename Precond>
+std::tuple<index_t, double, double> cg_cuda(Eigen::SparseMatrix<Flt, Eigen::RowMajor> A,
+                                           nb::ndarray<Flt, nb::shape<-1>, nb::device::cpu> b,
+                                           nb::ndarray<Flt, nb::shape<-1>, nb::device::cpu> x,
+                                           const Flt rtol,
+                                           index_t max_iter,
+                                           int verbose) {
+  return solve_with_precond<Flt, Precond>(A, b, x, rtol, max_iter, verbose);
 }
 
 ////////////////////////////////////////////////
@@ -152,7 +184,7 @@ static std::tuple<index_t, double, double> cg_cuda_csr_direct(          //
 
   auto start = time_now();
   Solver solver(matrix_v);
-  auto prec = time_elapsed(start);
+  auto prec_setup = time_elapsed(start);
   start = time_now();
 
   sparse::convergence_criteria<Flt> criteria{max_iter, rtol};
@@ -168,7 +200,7 @@ static std::tuple<index_t, double, double> cg_cuda_csr_direct(          //
   }
   auto solve = time_elapsed(start);
 
-  return {result.iterations_, prec, solve};
+  return {result.iterations_, prec_setup, solve};
 }
 
 template <typename Flt = float>
@@ -219,7 +251,7 @@ static std::tuple<index_t, double, double> pcg_with_ext_spai(  //
   Solver solver(view_device.as_const());
   // solver.preconditioner().derived().set_approximation(view_ainv.as_const(), epsilon);
   solver.preconditioner().derived().set_approximation(ainv, epsilon);
-  auto prec = time_elapsed(start);
+  auto prec_setup = time_elapsed(start);
   start = time_now();
   sparse::convergence_criteria<Flt> criteria{max_iter, rtol};
   sparse::convergence_result<Flt> result;
@@ -236,7 +268,7 @@ static std::tuple<index_t, double, double> pcg_with_ext_spai(  //
   auto solve = time_elapsed(start);
 
   copy(h_x, d_x);
-  return {result.iterations_, prec, solve};
+  return {result.iterations_, prec_setup, solve};
 }
 
 template <typename Flt = float>
