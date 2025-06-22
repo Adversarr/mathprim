@@ -1,3 +1,9 @@
+import torch
+# Let torch load CUDA dynamic libraries
+a = torch.tensor([1, 2, 3], dtype=torch.float32, device='cuda')
+a = a * a * a + a
+print(a)
+
 from pymathprim.linalg.cg_host import (
     pcg,
     ainv,
