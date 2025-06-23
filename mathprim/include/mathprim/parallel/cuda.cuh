@@ -1,6 +1,5 @@
 #pragma once
 #include <cuda/std/tuple>
-#include <cuda/stream_ref>
 #include <thrust/execution_policy.h>
 #include <thrust/for_each.h>
 #include <thrust/iterator/counting_iterator.h>

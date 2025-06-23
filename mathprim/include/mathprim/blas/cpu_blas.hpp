@@ -8,7 +8,7 @@
 #    define CBLAS_INT int
 #  endif
 #elif (defined(MATHPRIM_BLAS_VENDOR_OPENBLAS))
-#  include <openblas/cblas.h>
+#  include <cblas.h>
 #  ifndef CBLAS_INT
 #    define CBLAS_INT blasint
 #  endif

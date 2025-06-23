@@ -5,8 +5,8 @@
 #include "mathprim/linalg/iterative/iterative.hpp"
 #include "mathprim/sparse/basic_sparse.hpp"
 #include "mathprim/sparse/blas/cusparse.hpp"
-#include "superlu/slu_ddefs.h"
-#include "superlu/slu_sdefs.h"
+#include "slu_ddefs.h"
+#include "slu_sdefs.h"
 
 namespace mathprim::sparse::iterative {
 
