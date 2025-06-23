@@ -32,47 +32,40 @@ mathprim, or math's primitives, is a **glue-like** library for optimized numeric
 sudo apt-get update
 sudo apt-get install -y build-essential cmake
 
-# Install Eigen3
-sudo apt-get install -y libeigen3-dev
-
-# Install BLAS
-sudo apt-get install -y libopenblas-dev
+# Install Eigen3 and OpenBLAS
+sudo apt-get install -y libeigen3-dev libopenblas-dev
 ```
 
 ### Install Optional Dependencies
 ```bash
-# Install CUDA (if needed)
-# Visit https://developer.nvidia.com/cuda-downloads for the latest version
-
-# Install OpenMP
-sudo apt-get install -y libomp-dev
-
 # Install SuiteSparse (CHOLMOD)
 sudo apt-get install -y libsuitesparse-dev
 
 # Install SuperLU
 sudo apt-get install -y libsuperlu-dev
 
-# Install Python development headers (for Python bindings)
-sudo apt-get install -y python3-dev
+# Install benchmark and gtest (if testing and benchmarking are needed)
+sudo apt-get install -y libbenchmark-dev libgtest-dev
+```
 
-# Install nanobind via pip (for Python bindings)
-pip install nanobind
+## Installization on Arch based Linux
+
+```bash
+sudo pacman -S cmake eigen openblas # Required dependencies
+sudo pacman -S suitesparse superlu # Optional dependencies
 ```
 
 ## Building from Source
 ```bash
-mkdir build && cd build
-cmake ..
-make -j$(nproc)
+cmake -S . -B build
+cmake --build build -j$(nproc)
 ```
 
-For CUDA support:
-```bash
-mkdir build && cd build
-cmake .. -DMATHPRIM_ENABLE_CUDA=ON
-make -j$(nproc)
-```
+## Known Issues
+
+1. SuperLU's ilu does not work properly.
+
+# Architecture
 
 Current Backends:
 1. CPU
