@@ -12,13 +12,15 @@ from pymathprim.linalg.cg_host import (
     pcg_with_ext_spai,
     pcg_ic,
     grid_laplacian_nd_dbc,
+    ichol,
 )
 from pymathprim.linalg.cg_cuda import (
     pcg_cuda,
     pcg_diagonal_cuda,
     pcg_ainv_cuda,
     pcg_with_ext_spai_cuda,
-    pcg_ic_cuda
+    pcg_ic_cuda,
+    pcg_with_ext_cholesky
 )
 
 import numpy as np
@@ -88,10 +90,17 @@ print("=== pcg_with_ext_spai ===")
 x = np.ones(n*n, dtype=np.float64)
 b = A @ x
 x = np.zeros(n*n, dtype=np.float64)
-print(pcg_with_ext_spai(A, b, x, ainv(A), 1e-6, 1e-6, n * n * 4, 1))
+print(pcg_with_ext_spai(A, b, x, ainv(A), 1e-6, 1e-6, n * n * 4, 0))
 
 print("=== pcg_with_ext_spai_cuda ===")
 x = np.ones(n*n, dtype=np.float64)
 b = A @ x
 x = np.zeros(n*n, dtype=np.float64)
-print(pcg_with_ext_spai_cuda(A, b, x, ainv(A), 1e-6, 1e-6, n * n * 4, 1))
+print(pcg_with_ext_spai_cuda(A, b, x, ainv(A), 1e-6, 1e-6, n * n * 4, 0))
+
+print("=== pcg_with_ext_chol ===")
+x = np.ones(n*n, dtype=np.float64)
+b = A @ x
+x = np.zeros(n*n, dtype=np.float64)
+L = ichol(A)
+print(pcg_with_ext_cholesky(A, b, x, L, 1e-6, n * n * 4, 0))

@@ -11,6 +11,7 @@ __all__ = [
     "pcg_diagonal_cuda",
     "pcg_ainv_cuda",
     "pcg_ic_cuda",
+    "pcg_with_ext_cholesky",
     "cg_cuda_csr_direct",
     "pcg_cuda_csr_direct_diagonal",
     "pcg_cuda_csr_direct_ic",
@@ -177,6 +178,50 @@ def pcg_ic_cuda(
         The time taken to solve the linear system.
     """
     return libpymathprim.linalg.pcg_ic_cuda(A, b, x, rtol, max_iter, verbose)
+
+
+def pcg_with_ext_cholesky(
+    A: csr_matrix,
+    b: np.ndarray,
+    x: np.ndarray,
+    lower_l: csr_matrix,
+    rtol: float = 1e-4,
+    max_iter: int = 0,
+    verbose: int = 0,
+) -> Tuple[int, float, float]:
+    """
+    Solve the linear system Ax = b using the conjugate gradient method with external incomplete Cholesky preconditioner.
+    
+    This function uses a pre-computed lower triangular matrix from an incomplete Cholesky
+    factorization as the preconditioner for the conjugate gradient solver.
+
+    Parameters
+    ----------
+    A : scipy.sparse.csr_matrix
+        The coefficient matrix of the linear system.
+    b : numpy.ndarray
+        The right-hand side vector of the linear system.
+    x : numpy.ndarray
+        The initial guess for the solution vector.
+    lower_l : scipy.sparse.csr_matrix
+        The lower triangular matrix from an incomplete Cholesky factorization to be used as preconditioner.
+    rtol : float, optional
+        The relative tolerance for the stopping criterion. Default is 1e-4.
+    max_iter : int, optional
+        The maximum number of iterations. If 0, it will be set to the number of rows in A. Default is 0.
+    verbose : int, optional
+        The verbosity level. If greater than 0, progress information will be printed. Default is 0.
+
+    Returns
+    -------
+    int
+        The number of iterations performed.
+    float
+        The time taken to setup the preconditioner (in seconds).
+    float
+        The time taken to solve the linear system (in seconds).
+    """
+    return libpymathprim.linalg.pcg_with_ext_cholesky(A, b, x, lower_l, rtol, max_iter, verbose)
 
 
 def cg_cuda_csr_direct(
@@ -380,3 +425,4 @@ def pcg_cuda_csr_direct_with_ext_spai(
         max_iter=max_iter,
         verbose=verbose,
     )
+
