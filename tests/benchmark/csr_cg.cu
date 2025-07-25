@@ -484,7 +484,7 @@ void work_cuda_ic_ext(benchmark::State &state) {
 
   Eigen::SparseMatrix<Scalar, Eigen::RowMajor, index_t> ichol_mat = ichol.matrixL();
   // std::cout << ichol_mat.rows() << " " << ichol_mat.cols() << " " << ichol_mat.nonZeros() << std::endl;
-  cg.preconditioner().derived().set_external(eigen_support::view(ichol_mat));
+  cg.preconditioner().derived().set_external(eigen_support::view(ichol_mat).as_const());
 
   auto d_b = make_cuda_buffer<Scalar>(rows);
   auto d_x = make_cuda_buffer<Scalar>(rows);
