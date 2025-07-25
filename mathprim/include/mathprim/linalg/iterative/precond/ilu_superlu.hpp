@@ -4,7 +4,6 @@
 #include "mathprim/core/defines.hpp"
 #include "mathprim/linalg/iterative/iterative.hpp"
 #include "mathprim/sparse/basic_sparse.hpp"
-#include "mathprim/sparse/blas/cusparse.hpp"
 #include "slu_ddefs.h"
 #include "slu_sdefs.h"
 

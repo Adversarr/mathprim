@@ -10,8 +10,8 @@ class diagonal_preconditioner : public basic_preconditioner<diagonal_preconditio
 public:
   using const_sparse = sparse::basic_sparse_view<const Scalar, Device, Compression>;
   using buffer_type = contiguous_buffer<Scalar, shape_t<keep_dim>, Device>;
-  using this_type = diagonal_preconditioner<Scalar, Device, Compression, Blas>;
-  using base = basic_preconditioner<this_type, Scalar, Device, Compression>;
+  using self_type = diagonal_preconditioner<Scalar, Device, Compression, Blas>;
+  using base = basic_preconditioner<self_type, Scalar, Device, Compression>;
   using vector_type = typename base::vector_type;
   using const_vector = typename base::const_vector;
   friend base;

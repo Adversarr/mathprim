@@ -12,11 +12,11 @@ template <typename Scalar, typename Device, typename SparseBlas, typename BlasT,
 class cg : public basic_iterative_solver<cg<Scalar, Device, SparseBlas, BlasT, PreconditionerT>, Scalar, Device,
                                          SparseBlas> {
 public:
-  using this_type = cg<Scalar, Device, SparseBlas, BlasT, PreconditionerT>;
-  using base = basic_iterative_solver<this_type, Scalar, Device, SparseBlas>;
+  using self_type = cg<Scalar, Device, SparseBlas, BlasT, PreconditionerT>;
+  using base = basic_iterative_solver<self_type, Scalar, Device, SparseBlas>;
   friend base;
   static constexpr sparse_format compression = SparseBlas::compression;
-  using base2 = basic_sparse_solver<this_type, Scalar, Device, SparseBlas::compression>;
+  using base2 = basic_sparse_solver<self_type, Scalar, Device, SparseBlas::compression>;
   friend base2;
 
   using vector_view = typename base::vector_view;

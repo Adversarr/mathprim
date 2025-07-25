@@ -13,9 +13,9 @@ class basic_eigen_iterative_solver final
     : public basic_iterative_solver<basic_eigen_iterative_solver<EigenSolver, Scalar, Format>, Scalar, device::cpu,
                                     sparse::blas::eigen<Scalar, Format>> {
 public:
-  using this_type = basic_eigen_iterative_solver<EigenSolver, Scalar, Format>;
-  using base = basic_iterative_solver<this_type, Scalar, device::cpu, sparse::blas::eigen<Scalar, Format>>;
-  using base2 = basic_sparse_solver<this_type, Scalar, device::cpu, Format>;
+  using self_type = basic_eigen_iterative_solver<EigenSolver, Scalar, Format>;
+  using base = basic_iterative_solver<self_type, Scalar, device::cpu, sparse::blas::eigen<Scalar, Format>>;
+  using base2 = basic_sparse_solver<self_type, Scalar, device::cpu, Format>;
   friend base;
   friend base2;
   using vector_view = typename base::vector_view;

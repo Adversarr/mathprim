@@ -9,9 +9,9 @@ class basic_fixed_iteration
     : public basic_iterative_solver<basic_fixed_iteration<Scalar, Device, Format, SparseBlas, Blas, Smoother>,
                                     Scalar, Device, SparseBlas> {
 private:
-  using this_type = basic_fixed_iteration<Scalar, Device, Format, SparseBlas, Blas, Smoother>;
-  using base = basic_iterative_solver<this_type, Scalar, Device, SparseBlas>;
-  using base2 = basic_sparse_solver<this_type, Scalar, Device, SparseBlas::compression>;
+  using self_type = basic_fixed_iteration<Scalar, Device, Format, SparseBlas, Blas, Smoother>;
+  using base = basic_iterative_solver<self_type, Scalar, Device, SparseBlas>;
+  using base2 = basic_sparse_solver<self_type, Scalar, Device, SparseBlas::compression>;
   friend base;
   friend base2;
   using vector_view = typename base::vector_view;

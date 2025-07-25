@@ -276,7 +276,6 @@ public:
     return operator()(index_array<ndim>(static_cast<index_t>(args)...));
   }
 
-
   template <typename... Args,
             typename = std::enable_if_t<(std::is_integral_v<std::decay_t<Args>> && ...) && sizeof...(Args) < ndim>>
   MATHPRIM_PRIMFUNC mdslice_type<sizeof...(Args)> operator()(Args &&...args) const noexcept {
@@ -318,8 +317,7 @@ public:
    * @brief Return a subview, limiting to a multi dimensional slice
    */
   template <index_t Cnt>
-  MATHPRIM_PRIMFUNC mdslice_type<Cnt>
-  mdslice(const index_array<Cnt> &anchor) const noexcept {
+  MATHPRIM_PRIMFUNC mdslice_type<Cnt> mdslice(const index_array<Cnt> &anchor) const noexcept {
     index_t offset = 0;
     for (index_t i = 0; i < Cnt; ++i) {
       offset += anchor[i] * stride_[i];
@@ -407,6 +405,7 @@ public:
   template <typename Sshape2>
   MATHPRIM_PRIMFUNC basic_view<Scalar, Sshape2, default_stride_t<Sshape2>, Dev> reshape(const Sshape2 &shape) const {
     MATHPRIM_ASSERT(shape.numel() == numel() && "The new shape must have the same number of elements.");
+    MATHPRIM_ASSERT(this->is_contiguous() && "Reshape only works on contiguous views.");
     return {data_, shape, make_default_stride(shape)};
   }
 
