@@ -2,6 +2,10 @@
 
 mathprim, or math's primitives, is a **glue-like** library for optimized numeric algorithms.
 
+# KNOWN ISSUES
+
+Require CUDA >= 12.6: CUDA 12.4 will compile but fail at runtime.
+
 ## Dependencies and Requirements
 
 ### Required Dependencies
